@@ -29,7 +29,7 @@ Here is a quick overview of the files and directories included in this repositor
 
 ### 📜 OpenAPI
 
-- Example OpenAPI specification file (`template-payments-java-repository.openapi.yaml`) to document your RESTful APIs.
+- Example OpenAPI specification file (`backoffice-bff-java-repository.openapi.yaml`) to document your RESTful APIs.
 - Compatible with tools like Swagger and Postman.
 
 ### ⚙️ Helm

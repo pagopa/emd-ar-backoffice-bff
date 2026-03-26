@@ -15,9 +15,9 @@ plugins {
   id("com.github.jk1.dependency-license-report") version "3.1.1"
 }
 
-group = "it.gov.pagopa.payhub"
+group = "it.gov.pagopa.backoffice-bff"
 version = "0.0.1"
-description = "template-payments-java-repository"
+description = "backoffice-bff-java-repository"
 
 java {
   toolchain {
@@ -147,15 +147,15 @@ configure<SourceSetContainer> {
 
 springBoot {
   buildInfo()
-  mainClass.value("it.gov.pagopa.template.TemplateApplication")
+  mainClass.value("it.gov.pagopa.backoffice.BackofficeApplication")
 }
 
 openApiGenerate {
   generatorName.set("spring")
-  inputSpec.set("$rootDir/openapi/template-payments-java-repository.openapi.yaml")
+  inputSpec.set("$rootDir/openapi/backoffice-bff-java-repository.openapi.yaml")
   outputDir.set("$projectDir/build/generated")
-  apiPackage.set("it.gov.pagopa.template.controller.generated")
-  modelPackage.set("it.gov.pagopa.template.dto.generated")
+  apiPackage.set("it.gov.pagopa.backoffice-bff.controller.generated")
+  modelPackage.set("it.gov.pagopa.backoffice-bff.dto.generated")
   configOptions.set(
     mapOf(
       "dateLibrary" to "java8",

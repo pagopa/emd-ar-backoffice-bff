@@ -1,0 +1,34 @@
+package it.gov.pagopa.emd.ar.backoffice.config.json.jackson3;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+
+import it.gov.pagopa.emd.ar.backoffice.config.json.OffsetDateTimeToLocalDateTimeDeserializer;
+import it.gov.pagopa.emd.ar.backoffice.config.json.jackson3.OffsetDateTimeToLocalDateTimeJackson3Deserializer;
+import tools.jackson.core.JsonParser;
+
+import java.time.LocalDateTime;
+
+class OffsetDateTimeToLocalDateTimeJackson3DeserializerTest {
+
+  private final OffsetDateTimeToLocalDateTimeJackson3Deserializer deserializer = new OffsetDateTimeToLocalDateTimeJackson3Deserializer();
+
+  @Test
+  void whenDeserializeThenCallHandler(){
+    try(MockedStatic<OffsetDateTimeToLocalDateTimeDeserializer> deserializerStatic = Mockito.mockStatic(OffsetDateTimeToLocalDateTimeDeserializer.class)){
+      LocalDateTime expectedResult = LocalDateTime.now();
+      JsonParser jsonParser = Mockito.mock(JsonParser.class);
+
+      deserializerStatic.when(()-> OffsetDateTimeToLocalDateTimeDeserializer.parse("dateString"))
+          .thenReturn(expectedResult);
+      Mockito.when(jsonParser.getValueAsString())
+        .thenReturn("dateString");
+
+      LocalDateTime result = deserializer.deserialize(jsonParser, null);
+
+      Assertions.assertSame(expectedResult, result);
+    }
+  }
+}

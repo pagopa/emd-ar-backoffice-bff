@@ -27,7 +27,7 @@ jobs:
         uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 #4.4.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          release-type: simple
+          release-type: java
 
   # --- JOB 2: BUILD AND PUSH DOCKER ---
   build-and-push:

@@ -1,6 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.exception;
 
-import it.gov.pagopa.backoffice_bff.dto.generated.ErrorDTO;
+import it.gov.pagopa.emd.ar.backoffice.dto.generated.ErrorDTO;
 import it.gov.pagopa.emd.ar.backoffice.utils.Utilities;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

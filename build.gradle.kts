@@ -15,9 +15,9 @@ plugins {
   id("com.github.jk1.dependency-license-report") version "3.1.1"
 }
 
-group = "it.gov.pagopa.backoffice-bff"
+group = "it.gov.pagopa.emd.ar"
 version = "0.0.1"
-description = "backoffice-bff-java-repository"
+description = "emd-ar-backoffice-bff"
 
 java {
   toolchain {

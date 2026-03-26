@@ -147,15 +147,15 @@ configure<SourceSetContainer> {
 
 springBoot {
   buildInfo()
-  mainClass.value("it.gov.pagopa.backoffice.BackofficeApplication")
+  mainClass.value("it.gov.pagopa.emd.ar.backoffice.BackofficeApplication")
 }
 
 openApiGenerate {
   generatorName.set("spring")
   inputSpec.set("$rootDir/openapi/backoffice-bff-java-repository.openapi.yaml")
   outputDir.set("$projectDir/build/generated")
-  apiPackage.set("it.gov.pagopa.backoffice-bff.controller.generated")
-  modelPackage.set("it.gov.pagopa.backoffice-bff.dto.generated")
+  apiPackage.set("it.gov.pagopa.emd.ar.backoffice.controller.generated")
+  modelPackage.set("it.gov.pagopa.emd.ar.backoffice.dto.generated")
   configOptions.set(
     mapOf(
       "dateLibrary" to "java8",

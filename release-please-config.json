@@ -1,9 +1,7 @@
 {
-  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-  "release-type": "java",
   "packages": {
     ".": {
-      "release-type": "java",
+      "release-type": "simple",
       "extra-files": [
         {
           "type": "generic",

@@ -1,5 +1,0 @@
-prefix         = ""
-env            = "prod"
-env_short      = "p"
-domain         = ""
-location_short = "itn"

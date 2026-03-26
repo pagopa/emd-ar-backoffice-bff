@@ -8,10 +8,9 @@
         {
           "type": "generic",
           "path": "build.gradle.kts",
-          "search-pattern": "version = \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
+          "search": "version = \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
         }
       ]
     }
   }
 }
-

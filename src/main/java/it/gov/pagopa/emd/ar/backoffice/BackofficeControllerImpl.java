@@ -1,6 +1,5 @@
 package it.gov.pagopa.emd.ar.backoffice;
 
-import org.apache.catalina.util.StringUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @Slf4j
-public class BackofficeControllerImpl implements BeckofficeController {
+public class BackofficeControllerImpl implements BackofficeController {
 
     @Override
     public ResponseEntity<ResponseDTO> getToken(RequestDTO token) {

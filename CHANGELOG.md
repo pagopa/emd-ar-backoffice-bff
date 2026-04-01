@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.3.0...v0.4.0) (2026-04-01)
+
+
+### Features
+
+* [MMC-433] Update endpoint ([#7](https://github.com/pagopa/emd-ar-backoffice-bff/issues/7)) ([97beaa8](https://github.com/pagopa/emd-ar-backoffice-bff/commit/97beaa83c27d2bb1c3403499ca0234adbe9ed649))
+
 ## [0.3.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.2.0...v0.3.0) (2026-04-01)
 
 

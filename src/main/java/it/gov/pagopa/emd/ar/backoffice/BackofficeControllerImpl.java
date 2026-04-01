@@ -1,5 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice;
 
+import org.apache.catalina.util.StringUtil;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,24 +13,22 @@ import lombok.extern.slf4j.Slf4j;
 public class BackofficeControllerImpl implements BeckofficeController {
 
     @Override
-    public ResponseEntity<ResponseDTO>  getToken(String token) {
-        log.info("getToken(" + token + ")");
+    public ResponseEntity<ResponseDTO> getToken(RequestDTO token) {
+        String tokenString = token.getToken();
+        log.info("getToken(" + tokenString + ")");
 
         // Validazione base del formato
-        if (token == null || !token.startsWith("Bearer ")) {
+        if (tokenString == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-            .body(new ResponseDTO("ERROR","Token mancante o formato errato"));
+            .body(new ResponseDTO("ERROR","Token mancante", StringUtils.EMPTY));
         }
         
-        // Rimuove "Bearer "
-        String actualToken = token.substring(7);
-        
-        if (!isValidFormat(actualToken)) {
+        if (!isValidFormat(tokenString)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(new ResponseDTO("ERROR","Token mancante o formato errato"));
+            .body(new ResponseDTO("ERROR","Token mancante o formato errato", tokenString));
         }
 
-        return ResponseEntity.ok(new ResponseDTO("Success","Token received successfully"));
+        return ResponseEntity.ok(new ResponseDTO("Success","Token received successfully", token.getToken()));
     }
 
 

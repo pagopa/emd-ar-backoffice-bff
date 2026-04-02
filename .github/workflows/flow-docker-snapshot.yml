@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: 🔖 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: 🐳 Build Docker image (test only, no push)
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 #6.18.0

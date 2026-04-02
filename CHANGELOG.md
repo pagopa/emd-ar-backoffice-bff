@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.5.0...v0.5.1) (2026-04-02)
+
+
+### Bug Fixes
+
+* [MMC-433] Update path ([#12](https://github.com/pagopa/emd-ar-backoffice-bff/issues/12)) ([25511f8](https://github.com/pagopa/emd-ar-backoffice-bff/commit/25511f89c8e042ca465917d5a74f9050e6eb7980))
+
 ## [0.5.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.4.0...v0.5.0) (2026-04-01)
 
 

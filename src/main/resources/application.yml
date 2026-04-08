@@ -12,6 +12,12 @@ spring:
   threads:
     virtual:
       enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: "\${ISSUER_URI}"
+
 management:
   info:
     build.enabled: true
@@ -76,3 +82,13 @@ rest:
     timeout:
       connect-millis: "\${DEFAULT_REST_TIMEOUT_CONNECT_MILLIS:120000}"
       read-millis: "\${DEFAULT_REST_TIMEOUT_READ_MILLIS:120000}"
+
+keycloak:
+  auth-server-url: "\${KEYCLOAK_AUTH_URL}"
+  realm: "\${KEYCLOAK_REALM}"
+  client-id: "\${KEYCLOAK_CLIENT_ID}"
+  client-secret: "\${KEYCLOAK_CLIENT_SECRET}"
+
+auth:
+  expected-issuer: "\${AUTH_EXPECTED_ISSUER}"
+  expected-audience: "\${AUTH_EXPECTED_AUDIENCE}"

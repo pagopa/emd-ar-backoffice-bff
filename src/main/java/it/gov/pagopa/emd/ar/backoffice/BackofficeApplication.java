@@ -4,7 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.webmvc.autoconfigure.error.ErrorMvcAutoConfiguration;
 
-import it.gov.pagopa.emd.ar.backoffice.utils.Constants;
+import it.gov.pagopa.common.utils.Constants;
 
 import java.util.TimeZone;
 

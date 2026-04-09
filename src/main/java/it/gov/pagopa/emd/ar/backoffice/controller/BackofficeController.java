@@ -2,12 +2,10 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import it.gov.pagopa.emd.ar.backoffice.dto.RequestDTO;
 import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
 import reactor.core.publisher.Mono;
 
@@ -16,6 +14,6 @@ import reactor.core.publisher.Mono;
 public interface BackofficeController {
 
     @PostMapping("api/auth/pagopa")
-    public Mono<ResponseEntity<ResponseDTO>> getToken(@RequestHeader("Authorization") String authHeader, @RequestBody RequestDTO token);
+    public Mono<ResponseEntity<ResponseDTO>> getToken(@RequestHeader("Authorization") String authHeader);
 
 }

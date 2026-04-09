@@ -3,7 +3,6 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
-import it.gov.pagopa.emd.ar.backoffice.dto.RequestDTO;
 import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
 import it.gov.pagopa.emd.ar.backoffice.service.BackofficeServiceImpl;
 import lombok.extern.slf4j.Slf4j;
@@ -20,9 +19,9 @@ public class BackofficeControllerImpl implements BackofficeController {
     }
 
     @Override
-    public Mono<ResponseEntity<ResponseDTO>> getToken(String header, RequestDTO token) {
+    public Mono<ResponseEntity<ResponseDTO>> getToken(String header) {
         log.info("getToken()");
-        return backofficeService.getToken(header, token);
+        return backofficeService.getToken(header);
     }
     
 }

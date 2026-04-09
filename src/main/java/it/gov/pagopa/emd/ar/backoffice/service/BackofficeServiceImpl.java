@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 
-import it.gov.pagopa.emd.ar.backoffice.dto.RequestDTO;
 import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -44,7 +43,7 @@ public class BackofficeServiceImpl implements BackofficeService {
     }
 
     @Override
-    public Mono<ResponseEntity<ResponseDTO>> getToken(String header, RequestDTO token) {
+    public Mono<ResponseEntity<ResponseDTO>> getToken(String header) {
         
         log.info("getToken()");
 

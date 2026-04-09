@@ -63,6 +63,8 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-webmvc")
   implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
   implementation("org.springframework.boot:spring-boot-starter-restclient")
+  implementation("org.springframework.boot:spring-boot-starter-webflux")
+  implementation("org.springframework.boot:spring-boot-starter-web")
   implementation("org.springframework.data:spring-data-commons")
   implementation("org.springframework.boot:spring-boot-starter-validation")
   implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -73,6 +75,7 @@ dependencies {
   implementation("org.openapitools:jackson-databind-nullable:$openApiToolsVersion")
   implementation("org.apache.httpcomponents.client5:httpclient5:$httpClientVersion")
   implementation("org.apache.httpcomponents.core5:httpcore5:$httpCoreVersion")
+  implementation("com.auth0:java-jwt:4.4.0")
 
   // CVE fix
   implementation("tools.jackson.core:jackson-core:$jackson3CoreVersion")

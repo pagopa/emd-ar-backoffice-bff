@@ -77,6 +77,10 @@ dependencies {
   implementation("org.apache.httpcomponents.core5:httpcore5:$httpCoreVersion")
   implementation("com.auth0:java-jwt:4.4.0")
 
+  // Security
+  implementation ("org.springframework.boot:spring-boot-starter-security")
+  implementation ("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+
   // CVE fix
   implementation("tools.jackson.core:jackson-core:$jackson3CoreVersion")
   implementation("com.fasterxml.jackson.core:jackson-core:$jackson2CoreVersion")

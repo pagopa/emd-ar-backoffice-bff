@@ -12,6 +12,11 @@ import reactor.netty.http.client.HttpClient;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Utilizzato per la chiamata verso Keycloak.
+ * Configurazione del WebClient con timeout per le chiamate HTTP. Utilizza Netty come client sottostante e imposta timeout di connessione, lettura e scrittura a 5 secondi.
+ * Questo aiuta a prevenire che le chiamate HTTP si blocchino indefinitamente in caso di problemi di rete o server non responsivi.
+ */
 @Configuration
 public class WebClientConfig {
     

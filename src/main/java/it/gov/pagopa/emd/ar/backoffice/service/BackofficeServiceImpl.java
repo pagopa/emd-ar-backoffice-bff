@@ -11,6 +11,7 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.http.MediaType;
 
 import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
@@ -43,13 +44,11 @@ public class BackofficeServiceImpl implements BackofficeService {
     }
 
     @Override
-    public Mono<ResponseEntity<ResponseDTO>> getToken(String header) {
-        
-        log.info("getToken()");
+    public Mono<ResponseEntity<ResponseDTO>> getToken(Jwt jwt) {        
+        log.info("BackofficeServiceImpl - getToken()");
+        //String headerToken = header.substring(7);
 
-        String headerToken = header.substring(7);
-
-        if (authService.verifyTokenFields(headerToken)){
+        if (authService.verifyTokenFields(jwt)){
             return getKeycloakAccessToken().map(actualTokenString -> {
                 // QUI il token è una String vera, estratta dal Mono!
                 return ResponseEntity.ok(
@@ -63,6 +62,10 @@ public class BackofficeServiceImpl implements BackofficeService {
     }
 
     // Aggiungere token nella cache? La persistenza del token viene gestita lato FE? Serve o no la cache?
+    /**
+     * Metodo per ottenere un token di accesso da Keycloak usando le credenziali del client.
+     * @return
+     */
     public Mono<String> getKeycloakAccessToken() {
 
         log.info("getKeycloakAccessToken()");

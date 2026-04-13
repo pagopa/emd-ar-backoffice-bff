@@ -2,10 +2,13 @@ package it.gov.pagopa.emd.ar.backoffice.service;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.security.oauth2.jwt.Jwt;
+import it.gov.pagopa.emd.ar.backoffice.dto.OrganizationDTO;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -22,32 +25,30 @@ public class AuthService {
     @Value("${auth.expected-audience:account}")
     private String expectedAudience;
 
-    public boolean verifyTokenFields(String token) {
-        log.debug("verifyTokenFields()");
-        try {
-            // Decodifica il token
-            DecodedJWT jwt = JWT.decode(token);
+    public boolean verifyTokenFields(Jwt jwt) {
+        log.info("AuthService - verifyTokenFields()");
+        
+        //Recupera la mappa "organization" dal token
+        Map<String, Object> organizationMap = jwt.getClaim("organization");
 
-            // Controllo issuer (iss)
-            String issuer = jwt.getIssuer();
-            if (!expectedIssuer.equals(issuer)) {
-                log.warn("Validazione fallita: Issuer non corrispondente. Ricevuto: {}", issuer);
-                return false;
-            }
-
-            // Controllo audience (aud)
-            List<String> audiences = jwt.getAudience();
-            if (audiences == null || !audiences.contains(expectedAudience)) {
-                log.warn("Validazione fallita: Audience '{}' non trovata nel token.", expectedAudience);
-                return false;
-            }
-
-            log.info("Validazione token riuscita per sub: {}", jwt.getSubject());
-            return true;
-
-        } catch (Exception e) {
-            log.error("Errore durante la decodifica del token: {}", e.getMessage());
+        if (organizationMap == null) {
+            log.warn("AuthService - Validazione token fallita per sub: {}", jwt.getSubject());
             return false;
         }
+
+        ObjectMapper mapper = new ObjectMapper();
+        OrganizationDTO org = mapper.convertValue(organizationMap, OrganizationDTO.class);
+
+        String orgId = org.getId();
+        String orgName = org.getName();
+        String firstRole = org.getRoles().get(0).getRole();
+
+        System.out.println("Organization ID: " + orgId);
+        System.out.println("Organization Name: " + orgName);
+        System.out.println("First Role: " + firstRole);
+
+
+        log.info("AuthService - Validazione token riuscita per sub: {}", jwt.getSubject());
+        return true;
     }
 }

@@ -11,9 +11,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -37,11 +35,20 @@ public class BackofficeServiceImpl implements BackofficeService {
     @Value("${keycloak.realm}")
     private String realm;
 
-    @Value("${keycloak.client-id}")
-    private String clientId;
+    @Value("${keycloak.manager.client-id}")
+    private String managerClientId;
 
-    @Value("${keycloak.client-secret}")
-    private String clientSecret;
+    @Value("${keycloak.manager.client-secret}")
+    private String managerClientSecret;
+
+    @Value("${keycloak.token-exchange.client-id}")
+    private String tokenExchangeClientId;
+
+    @Value("${keycloak.token-exchange.client-secret}")
+    private String tokenExchangeClientSecret;
+
+    @Value("${keycloak.idp-alias}")
+    private String idpAlias;
 
     private WebClient webClient;
 
@@ -66,13 +73,11 @@ public class BackofficeServiceImpl implements BackofficeService {
             return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorRes));
         }
 
-        // Upsert non view
-
-        // Prendi token Admin
+        // Prendi token manager
         return getKeycloakAccessToken()
-            .flatMap(adminToken -> 
+            .flatMap(managerToken -> 
                 // Sincronizziamo l'utente (Upsert)
-                upsertKeycloakUser(adminToken, user)
+                upsertKeycloakUser(managerToken, user)
                 // Token Exchange
                 .then(Mono.defer(() -> getJwtBearerToken(externalToken)))
             )
@@ -101,10 +106,10 @@ public class BackofficeServiceImpl implements BackofficeService {
         // WebClient gestisce automaticamente il Content-Type se passi una MultiValueMap
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "client_credentials");
-        formData.add("client_id", clientId);
-        formData.add("client_secret", clientSecret);
+        formData.add("client_id", managerClientId);
+        formData.add("client_secret", managerClientSecret);
 
-        System.out.println("Requesting token from Keycloak at: " + tokenUrl);
+        log.info("Requesting token from Keycloak at: " + tokenUrl);
 
         Mono<String> token = webClient.post()
                 .uri(tokenUrl)
@@ -112,8 +117,8 @@ public class BackofficeServiceImpl implements BackofficeService {
                 .bodyValue(formData)
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, response -> 
-                response.bodyToMono(String.class).flatMap(error -> 
-                    Mono.error(new RuntimeException("Keycloak Auth Error: " + error))))
+                    response.bodyToMono(String.class).flatMap(error -> 
+                        Mono.error(new RuntimeException("Keycloak Auth Error: " + error))))
                 .bodyToMono(Map.class) // Trasforma il JSON di risposta in una Map
                 .map(responseMap -> (String) responseMap.get("access_token"));
         return token;
@@ -122,22 +127,24 @@ public class BackofficeServiceImpl implements BackofficeService {
     /**
      * Crea o aggiorna un utente su Keycloak basandosi sullo username (UID).
      */
-    private Mono<String> upsertKeycloakUser(String adminToken, UserDTO userDTO) {
+    private Mono<String> upsertKeycloakUser(String managerToken, UserDTO userDTO) {
         log.info("upsertKeycloakUser() - Start for user: {}", userDTO.getUid());
 
-        return getUsersFromKeycloak(userDTO.getUid(), adminToken)
+        return getUsersFromKeycloak(userDTO.getUid(), managerToken)
             .flatMap(users -> {
                 Map<String, Object> userPayload = buildKeycloakUserPayload(userDTO);
 
                 if (users.isEmpty()) {
                     // UTENTE NON ESISTE -> CREAZIONE (POST)
                     log.info("upsertKeycloakUser() - User not found, creating new user");
-                    return createKeycloakUser(adminToken, userPayload);
+                    return createKeycloakUser(managerToken, userPayload);
                 } else {
                     // UTENTE ESISTE -> AGGIORNAMENTO (PUT)
-                    String internalId = (String) users.get(0).get("id");
-                    log.info("upsertKeycloakUser() - User found with ID: {}, updating...", internalId);
-                    return updateKeycloakUser(adminToken, internalId, userPayload);
+                    String internalUserId = (String) users.get(0).get("id");
+                    log.info("upsertKeycloakUser() - User found with ID: {}, updating...", internalUserId);
+                    return updateKeycloakUser(managerToken, internalUserId, userPayload)
+                        .then(linkFederatedIdentity(managerToken, internalUserId, userDTO.getUid()))
+                        .thenReturn("User Updated and Identity Linked");
                 }
             });
     }
@@ -210,7 +217,7 @@ public class BackofficeServiceImpl implements BackofficeService {
 
         // Questo collega l'utente all'Identity Provider creato su Keycloak
         Map<String, String> federatedIdentity = new HashMap<>();
-        federatedIdentity.put("identityProvider", "jwt-authorization-grant"); // L'alias del tuo IdP
+        federatedIdentity.put("identityProvider", idpAlias); // L'alias dell'idp di sefcare presente su keycloak
         federatedIdentity.put("userId", userDTO.getUid());       // L'ID dell'utente presente nel token
         federatedIdentity.put("userName", userDTO.getUid());
         
@@ -230,6 +237,39 @@ public class BackofficeServiceImpl implements BackofficeService {
         return body;
     }
 
+    /**
+     * Collega un'identità federata a un utente esistente su Keycloak.
+     */
+    private Mono<Void> linkFederatedIdentity(String adminToken, String internalUserId, String externalUserId) {
+        
+        log.info("linkFederatedIdentity() - Linking user {} to IdP {} for internalId {}", 
+                externalUserId, idpAlias, internalUserId);
+
+        String url = String.format("%s/admin/realms/%s/users/%s/federated-identity/%s", 
+                                authServerUrl, realm, internalUserId, idpAlias);
+
+        // Prepariamo il payload JSON
+        Map<String, String> payload = new HashMap<>();
+        payload.put("userId", externalUserId);
+        payload.put("userName", externalUserId);
+
+        return webClient.post()
+                .uri(url)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(payload)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response -> 
+                    response.bodyToMono(String.class).flatMap(errorBody -> {
+                        // Se l'identità esiste già, Keycloak potrebbe dare 409. 
+                        // Possiamo decidere di loggare l'errore o ignorarlo se è solo un conflitto.
+                        log.error("Errore durante il link dell'identità federata: {}", errorBody);
+                        return Mono.error(new RuntimeException("Federated Identity Link failed: " + errorBody));
+                    })
+                )
+                .toBodilessEntity()
+                .then(); // Ritorna Mono<Void>
+    }
 
     /**
      * Effettua lo scambio del token esterno (assertion) con un token Keycloak 
@@ -242,8 +282,8 @@ public class BackofficeServiceImpl implements BackofficeService {
 
         // Prepariamo i parametri della form
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("client_id", clientId);
-        formData.add("client_secret", clientSecret);
+        formData.add("client_id", tokenExchangeClientId);
+        formData.add("client_secret", tokenExchangeClientSecret);
         formData.add("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
         formData.add("assertion", externalToken); // Il token JWT ricevuto da selfcare
 

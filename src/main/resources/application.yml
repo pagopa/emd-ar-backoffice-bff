@@ -1,5 +1,5 @@
 server:
-  http: "\${SERVER_PORT:8080}"
+  port: "\${SERVER_PORT:8081}"
 
 cors:
   allowed-origins: "\${CORS_ALLOWED_ORIGINS:http://localhost:5173}"
@@ -72,6 +72,8 @@ logging:
     PERFORMANCE_LOG: "\${LOG_LEVEL_PERFORMANCE_LOG:INFO}"
     PERFORMANCE_LOG.API_REQUEST: "\${LOG_LEVEL_PERFORMANCE_LOG_API_REQUEST:\${logging.level.PERFORMANCE_LOG}}"
     PERFORMANCE_LOG.REST_INVOKE: "\${LOG_LEVEL_PERFORMANCE_LOG_REST_INVOKE:\${logging.level.PERFORMANCE_LOG}}"
+    # Logging between webclient and keycloak
+    # org.springframework.web.reactive.function.client.ExchangeFunctions: TRACE
 
 rest:
   defaults:
@@ -86,9 +88,16 @@ rest:
 keycloak:
   auth-server-url: "\${KEYCLOAK_AUTH_URL}"
   realm: "\${KEYCLOAK_REALM}"
-  client-id: "\${KEYCLOAK_CLIENT_ID}"
-  client-secret: "\${KEYCLOAK_CLIENT_SECRET}"
+  idp-alias: "\${KEYCLOAK_IDP_ALIAS}"
+  manager:
+    client-id: "\${KEYCLOAK_CLIENT_ID}"
+    client-secret: "\${KEYCLOAK_CLIENT_SECRET}"
+  token-exchange:
+    client-id: "\${KEYCLOAK_TOKEN_EXCHANGE_CLIENT_ID}"
+    client-secret: "\${KEYCLOAK_TOKEN_EXCHANGE_CLIENT_SECRET}"
+
 
 auth:
+  # SELFCARE
   expected-issuer: "\${AUTH_EXPECTED_ISSUER}"
   expected-audience: "\${AUTH_EXPECTED_AUDIENCE}"

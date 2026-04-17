@@ -62,27 +62,29 @@ public class BackofficeServiceImpl implements BackofficeService {
         UserDTO user = authService.verifyTokenFields(jwt);
 
         if (user == null) {
-            return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ResponseDTO("ERROR", "Token non valido o incompleto", null)));
+            ResponseDTO errorRes = new ResponseDTO("ERROR", "Token non valido o incompleto", null);
+            return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorRes));
         }
+
+        // Upsert non view
 
         // Prendi token Admin
         return getKeycloakAccessToken()
             .flatMap(adminToken -> 
-            // Sincronizziamo l'utente (Upsert)
-            upsertKeycloakUser(adminToken, user)
-            // Token Exchange
-            .then(Mono.defer(() -> getJwtBearerToken(externalToken))))
+                // Sincronizziamo l'utente (Upsert)
+                upsertKeycloakUser(adminToken, user)
+                // Token Exchange
+                .then(Mono.defer(() -> getJwtBearerToken(externalToken)))
+            )
             // Token da restituire al FE
-            .map(finalToken -> ResponseEntity.ok(new ResponseDTO("Success", "Token exchanged", finalToken)
-        ))
-        .onErrorResume(e -> {
-            log.error("Errore nel processo di sync: {}", e.getMessage());
-            return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ResponseDTO("ERROR", "Errore durante l'upsert su Keycloak", null)));
-        });
-
-        
+            .map(finalToken -> ResponseEntity.ok(new ResponseDTO("Success", "Token exchanged", finalToken))
+            )
+            .onErrorResume(e -> {
+                log.error("Errore nel processo di sync: {}", e.getMessage());
+                ResponseDTO errorRes = new ResponseDTO("ERROR", "Errore durante la sincronizzazione con Keycloak: " + e.getMessage(), null);
+                return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(errorRes));
+            });
     }
 
     // Aggiungere token nella cache? La persistenza del token viene gestita lato FE? Serve o no la cache?

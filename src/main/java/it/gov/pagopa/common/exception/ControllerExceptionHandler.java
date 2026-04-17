@@ -2,8 +2,6 @@ package it.gov.pagopa.common.exception;
 
 import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.dto.generated.ErrorDTO;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
@@ -15,13 +13,16 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.server.ServerWebInputException;
+
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DatabindException;
 
@@ -32,13 +33,13 @@ import java.util.stream.Collectors;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ControllerExceptionHandler {
 
-  @ExceptionHandler({ValidationException.class, HttpMessageNotReadableException.class, MethodArgumentNotValidException.class, MethodArgumentTypeMismatchException.class})
-  public ResponseEntity<ErrorDTO> handleViolationException(Exception ex, HttpServletRequest request) {
+  @ExceptionHandler({ValidationException.class, ServerWebInputException.class, WebExchangeBindException.class, HttpMessageNotReadableException.class})
+  public ResponseEntity<ErrorDTO> handleViolationException(Exception ex, ServerHttpRequest request) {
     return handleException(ex, request, HttpStatus.BAD_REQUEST, ErrorDTO.CodeEnum.BAD_REQUEST);
   }
 
-  @ExceptionHandler({ServletException.class, ErrorResponseException.class})
-  public ResponseEntity<ErrorDTO> handleServletException(Exception ex, HttpServletRequest request) {
+  @ExceptionHandler({ErrorResponseException.class})
+  public ResponseEntity<ErrorDTO> handleServletException(Exception ex, ServerHttpRequest request) {
     HttpStatusCode httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
     ErrorDTO.CodeEnum errorCode = ErrorDTO.CodeEnum.GENERIC_ERROR;
     if (ex instanceof ErrorResponse errorResponse) {
@@ -53,11 +54,11 @@ public class ControllerExceptionHandler {
   }
 
   @ExceptionHandler({RuntimeException.class})
-  public ResponseEntity<ErrorDTO> handleRuntimeException(RuntimeException ex, HttpServletRequest request) {
+  public ResponseEntity<ErrorDTO> handleRuntimeException(RuntimeException ex, ServerHttpRequest request) {
     return handleException(ex, request, HttpStatus.INTERNAL_SERVER_ERROR, ErrorDTO.CodeEnum.GENERIC_ERROR);
   }
 
-  static ResponseEntity<ErrorDTO> handleException(Exception ex, HttpServletRequest request, HttpStatusCode httpStatus, ErrorDTO.CodeEnum errorEnum) {
+  static ResponseEntity<ErrorDTO> handleException(Exception ex, ServerHttpRequest request, HttpStatusCode httpStatus, ErrorDTO.CodeEnum errorEnum) {
     logException(ex, request, httpStatus);
 
     String message = buildReturnedMessage(ex);
@@ -68,7 +69,7 @@ public class ControllerExceptionHandler {
       .body(new ErrorDTO(errorEnum, message, Utilities.getTraceId()));
   }
 
-  private static void logException(Exception ex, HttpServletRequest request, HttpStatusCode httpStatus) {
+  private static void logException(Exception ex, ServerHttpRequest request, HttpStatusCode httpStatus) {
     boolean printStackTrace = httpStatus.is5xxServerError();
     Level logLevel = printStackTrace ? Level.ERROR : Level.INFO;
     log.makeLoggingEventBuilder(logLevel)
@@ -120,7 +121,7 @@ public class ControllerExceptionHandler {
     }
   }
 
-  static String getRequestDetails(HttpServletRequest request) {
-    return "%s %s".formatted(request.getMethod(), request.getRequestURI());
+  static String getRequestDetails(ServerHttpRequest request) {
+    return "%s %s".formatted(request.getMethod(), request.getPath().value());
   }
 }

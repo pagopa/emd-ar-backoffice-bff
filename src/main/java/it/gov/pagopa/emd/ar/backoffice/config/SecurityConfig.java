@@ -3,28 +3,30 @@ package it.gov.pagopa.emd.ar.backoffice.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @Configuration
-//@EnableWebFluxSecurity
-@EnableWebSecurity
+@EnableWebFluxSecurity
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+        
         http
-            .csrf(csrf -> csrf.disable()) 
-            .authorizeHttpRequests(auth -> auth
-                // Specifica l'API da proteggere
-                .requestMatchers("/emd/backoffice/api/auth/pagopa").authenticated()
+            .csrf(ServerHttpSecurity.CsrfSpec::disable) // Disabilita CSRF per API REST
+            .authorizeExchange(exchanges -> exchanges
+                // Specifica l'API che richiede autenticazione
+                .pathMatchers("/emd/backoffice/api/auth/pagopa").authenticated()
                 
-                // Lascia libere tutte le altre
-                .anyRequest().permitAll()
+                // Lascia tutte le altre API pubbliche
+                .anyExchange().permitAll()
             )
-            // Abilita il controllo del token JWT
-            .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
+        
+            // OAuth2 Resource Server in modalità reattiva
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(Customizer.withDefaults()));
         
         return http.build();
     }

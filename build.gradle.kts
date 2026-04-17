@@ -60,26 +60,38 @@ val jackson2CoreVersion = "2.21.1"
 val jackson3CoreVersion = "3.1.0"
 
 dependencies {
-  implementation("org.springframework.boot:spring-boot-starter-webmvc")
-  implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
-  implementation("org.springframework.boot:spring-boot-starter-restclient")
+  //implementation("org.springframework.boot:spring-boot-starter-webmvc")
+  //implementation("org.springframework.boot:spring-boot-starter-web")
+  //implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springDocOpenApiVersion")
+
+  // Webflux
   implementation("org.springframework.boot:spring-boot-starter-webflux")
-  implementation("org.springframework.boot:spring-boot-starter-web")
-  implementation("org.springframework.data:spring-data-commons")
-  implementation("org.springframework.boot:spring-boot-starter-validation")
-  implementation("org.springframework.boot:spring-boot-starter-actuator")
-  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springDocOpenApiVersion")
-  implementation("org.codehaus.janino:janino:$janinoVersion")
-  implementation("io.micrometer:micrometer-tracing-bridge-otel:$micrometerVersion")
-  implementation("io.micrometer:micrometer-registry-prometheus")
+
+  // OpenAPI
+  implementation("org.springdoc:springdoc-openapi-starter-webflux-ui:$springDocOpenApiVersion")
   implementation("org.openapitools:jackson-databind-nullable:$openApiToolsVersion")
-  implementation("org.apache.httpcomponents.client5:httpclient5:$httpClientVersion")
-  implementation("org.apache.httpcomponents.core5:httpcore5:$httpCoreVersion")
-  implementation("com.auth0:java-jwt:4.4.0")
 
   // Security
   implementation ("org.springframework.boot:spring-boot-starter-security")
   implementation ("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+
+  // Monitoring
+  implementation("org.springframework.boot:spring-boot-starter-actuator")
+  implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
+  implementation("io.micrometer:micrometer-tracing-bridge-otel:$micrometerVersion")
+  implementation("io.micrometer:micrometer-registry-prometheus")
+
+  //implementation("org.springframework.boot:spring-boot-starter-restclient")
+
+  implementation("org.springframework.data:spring-data-commons")
+
+  // Utilities
+  implementation("org.springframework.boot:spring-boot-starter-validation")
+  implementation("org.codehaus.janino:janino:$janinoVersion")
+  
+  //implementation("org.apache.httpcomponents.client5:httpclient5:$httpClientVersion")
+  //implementation("org.apache.httpcomponents.core5:httpcore5:$httpCoreVersion")
+  implementation("com.auth0:java-jwt:4.4.0")
 
   // CVE fix
   implementation("tools.jackson.core:jackson-core:$jackson3CoreVersion")
@@ -90,7 +102,8 @@ dependencies {
   testAnnotationProcessor("org.projectlombok:lombok")
 
   //	Testing
-  testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+  //testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+  testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("org.springframework.boot:spring-boot-starter-security-test")
   testImplementation("org.mockito:mockito-core")
   testImplementation("org.projectlombok:lombok")
@@ -165,6 +178,7 @@ openApiGenerate {
   modelPackage.set("it.gov.pagopa.emd.ar.backoffice.dto.generated")
   configOptions.set(
     mapOf(
+      "reactive" to "true",
       "dateLibrary" to "java8",
       "requestMappingMode" to "api_interface",
       "useSpringBoot3" to "true",

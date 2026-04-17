@@ -1,12 +1,6 @@
 package it.gov.pagopa.common.performancelogger;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.junit.jupiter.api.AfterEach;
+import it.gov.pagopa.common.utils.MemoryAppender;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,111 +8,75 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import it.gov.pagopa.common.performancelogger.ApiRequestPerformanceLogger;
-import it.gov.pagopa.common.utils.MemoryAppender;
-
-import java.io.IOException;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.web.server.WebFilterChain;
+import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
 class ApiRequestPerformanceLoggerTest {
+
     public static final String APPENDER_NAME = "API_REQUEST";
 
-    private ServletRequest httpServletRequestMock;
-    private ServletResponse httpServletResponseMock;
+    private MockServerWebExchange exchange;
+    
     @Mock
-    private FilterChain filterChainMock;
+    private WebFilterChain filterChainMock;
 
     private MemoryAppender memoryAppender;
-
     private ApiRequestPerformanceLogger filter;
 
     @BeforeEach
     void init() {
-        httpServletRequestMock = Mockito.mock(HttpServletRequest.class);
-        httpServletResponseMock = Mockito.mock(HttpServletResponse.class);
         filter = new ApiRequestPerformanceLogger();
+        // Mock del comportamento della catena: deve ritornare Mono.empty() per simulare il successo
+        Mockito.when(filterChainMock.filter(Mockito.any())).thenReturn(Mono.empty());
     }
 
     @BeforeEach
     void setupMemoryAppender() {
+        // Presumo che PerformanceLoggerTest sia già stato migrato o sia compatibile
         this.memoryAppender = PerformanceLoggerTest.buildPerformanceLoggerMemoryAppender(APPENDER_NAME);
     }
 
-    @AfterEach
-    void verifyNoMoreInteractions() throws ServletException, IOException {
-        Mockito.verify(filterChainMock)
-                .doFilter(httpServletRequestMock, httpServletResponseMock);
-
-        Mockito.verifyNoMoreInteractions(
-                httpServletRequestMock,
-                httpServletResponseMock,
-                filterChainMock
-        );
-    }
-
     @Test
-    void givenNotHttpServletRequestWhenDoFilterThenDontPerformanceLog() throws ServletException, IOException {
-        // Given
-        httpServletRequestMock = Mockito.mock(ServletRequest.class);
+    void givenNotCoveredPathWhenFilterThenDontPerformanceLog() {
+        // Given: una richiesta su un path escluso (es. /actuator)
+        exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/actuator/health").build());
 
-        // When
-        filter.doFilter(httpServletRequestMock, httpServletResponseMock, filterChainMock);
+        // When: eseguiamo il filtro. In WebFlux dobbiamo sottoscriverci (usiamo .block() nel test)
+        filter.filter(exchange, filterChainMock).block();
 
         // Then
         Assertions.assertEquals(0, memoryAppender.getLoggedEvents().size());
+        Mockito.verify(filterChainMock).filter(exchange);
     }
 
     @Test
-    void givenNotHttpServletResponseWhenDoFilterThenDontPerformanceLog() throws ServletException, IOException {
-        // Given
-        httpServletResponseMock = Mockito.mock(ServletResponse.class);
+    void givenCoveredPathWhenFilterThenPerformanceLog() {
+        // Given: una richiesta su un path tracciato
+        exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/test").build());
 
         // When
-        filter.doFilter(httpServletRequestMock, httpServletResponseMock, filterChainMock);
-
-        // Then
-        Assertions.assertEquals(0, memoryAppender.getLoggedEvents().size());
-    }
-
-    @Test
-    void givenNotCoveredPathWhenDoFilterThenDontPerformanceLog() throws ServletException, IOException {
-        // Given
-        configureRequestPath("/actuator");
-
-        // When
-        filter.doFilter(httpServletRequestMock, httpServletResponseMock, filterChainMock);
-
-        // Then
-        Assertions.assertEquals(0, memoryAppender.getLoggedEvents().size());
-    }
-
-    @Test
-    void givenCoveredPathWhenDoFilterThenDontPerformanceLog() throws ServletException, IOException {
-        // Given
-        configureRequestPath("/api/test");
-
-        // When
-        filter.doFilter(httpServletRequestMock, httpServletResponseMock, filterChainMock);
+        filter.filter(exchange, filterChainMock).block();
 
         // Then
         PerformanceLoggerTest.assertPerformanceLogMessage(APPENDER_NAME, "GET /api/test", "HttpStatus: 200", memoryAppender);
-
-        Mockito.verify(((HttpServletRequest)httpServletRequestMock), Mockito.times(2))
-                .getRequestURI();
-        Mockito.verify(((HttpServletRequest)httpServletRequestMock), Mockito.times(1))
-                .getMethod();
-        Mockito.verify(((HttpServletResponse)httpServletResponseMock))
-                .getStatus();
+        
+        // Verifichiamo che la catena sia stata chiamata
+        Mockito.verify(filterChainMock).filter(exchange);
     }
 
-    private void configureRequestPath(String path) {
-        Mockito.when(((HttpServletRequest)httpServletRequestMock).getRequestURI())
-                .thenReturn(path);
-        Mockito.lenient().when(((HttpServletRequest) httpServletRequestMock).getMethod())
-                .thenReturn("GET");
-        Mockito.lenient().when(((HttpServletResponse)httpServletResponseMock).getStatus())
-                .thenReturn(200);
-    }
+    @Test
+    void givenErrorResponseWhenFilterThenPerformanceLog() {
+        // Given: una richiesta che simula un errore (es. 404)
+        exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/not-found").build());
+        exchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.NOT_FOUND);
 
+        // When
+        filter.filter(exchange, filterChainMock).block();
+
+        // Then
+        PerformanceLoggerTest.assertPerformanceLogMessage(APPENDER_NAME, "GET /api/not-found", "HttpStatus: 404", memoryAppender);
+    }
 }

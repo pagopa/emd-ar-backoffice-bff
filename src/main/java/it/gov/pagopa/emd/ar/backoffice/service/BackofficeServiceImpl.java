@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
@@ -17,7 +18,6 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.http.MediaType;
 
@@ -69,33 +69,20 @@ public class BackofficeServiceImpl implements BackofficeService {
 
         // Decodifica manuale del token stringa in oggetto Jwt
         return jwtDecoder.decode(token)
-            .flatMap((Jwt jwt)  -> {
-
-                //Validazione e recupero info dal token di selfcare
-                UserDTO user = authService.verifyTokenFields(jwt);
-
-                if (user == null) {
-                    ResponseEntity<ResponseDTO> errorResponse = ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body(new ResponseDTO("ERROR", "Token non valido o incompleto", null));
-                    return Mono.just(errorResponse);
-                }
-
-                // Prendi token manager
-                return getKeycloakAccessToken()
-                    .flatMap(managerToken -> 
+            .flatMap(authService::verifyTokenFields)
+            .flatMap(user -> getKeycloakAccessToken()
+                    .flatMap(managerToken ->
                         // Sincronizziamo l'utente (Upsert)
-                        upsertKeycloakUser(managerToken, user)
+                        upsertKeycloakUser(managerToken, user))
                         // Token Exchange
                         .then(Mono.defer(() -> getJwtBearerToken(token)))
                     )
                     // Token da restituire al FE
-                    .map(finalToken -> ResponseEntity.ok(new ResponseDTO("Success", "Token exchanged", finalToken)));
-            })
-            .onErrorResume(e -> {
-            log.error("Errore validazione token o processo: {}", e.getMessage());
-            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ResponseDTO("ERROR", "Token non valido: " + e.getMessage(), null)));
+                    .map(finalToken -> ResponseEntity.ok(new ResponseDTO("Success", "Token exchanged", finalToken)))
+                    .onErrorResume(e -> {
+                        log.error("Errore validazione token o processo: {}", e.getMessage());
+                        return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(new ResponseDTO("ERROR", "Token non valido: " + e.getMessage(), null)));
             });
     }
 
@@ -134,7 +121,7 @@ public class BackofficeServiceImpl implements BackofficeService {
     /**
      * Crea o aggiorna un utente su Keycloak basandosi sullo username (UID).
      */
-    private Mono<String> upsertKeycloakUser(String managerToken, UserDTO userDTO) {
+    private Mono<Void> upsertKeycloakUser(String managerToken, UserDTO userDTO) {
         log.info("upsertKeycloakUser() - Start for user: {}", userDTO.getUid());
 
         return getUsersFromKeycloak(userDTO.getUid(), managerToken)
@@ -144,21 +131,14 @@ public class BackofficeServiceImpl implements BackofficeService {
                 if (users.isEmpty()) {
                     // UTENTE NON ESISTE -> CREAZIONE (POST)
                     log.info("upsertKeycloakUser() - User not found, creating new user");
-                    //return createKeycloakUser(managerToken, userPayload);
                     return createKeycloakUser(managerToken, userPayload)
-                    .then(getUsersFromKeycloak(userDTO.getUid(), managerToken)) // Recuperiamo l'ID appena creato
-                    .flatMap(newUsers -> {
-                        String internalId = (String) newUsers.get(0).get("id");
-                        return linkFederatedIdentity(managerToken, internalId, userDTO.getUid());
-                    })
-                    .thenReturn("User Created and Identity Linked");
+                    .then();
                 } else {
                     // UTENTE ESISTE -> AGGIORNAMENTO (PUT)
                     String internalUserId = (String) users.get(0).get("id");
                     log.info("upsertKeycloakUser() - User found with ID: {}, updating...", internalUserId);
                     return updateKeycloakUser(managerToken, internalUserId, userPayload)
-                        .then(linkFederatedIdentity(managerToken, internalUserId, userDTO.getUid()))
-                        .thenReturn("User Updated and Identity Linked");
+                        .then(linkFederatedIdentity(managerToken, internalUserId, userDTO.getUid()));
                 }
             });
     }
@@ -189,7 +169,7 @@ public class BackofficeServiceImpl implements BackofficeService {
     /**
      * Esegue la POST di creazione.
      */
-    private Mono<String> createKeycloakUser(String adminToken, Map<String, Object> payload) {
+    private Mono<Void> createKeycloakUser(String adminToken, Map<String, Object> payload) {
         log.info("createKeycloakUser() - Creating new user");
         String url = String.format("%s/admin/realms/%s/users", authServerUrl, realm);
         return webClient.post()
@@ -199,13 +179,13 @@ public class BackofficeServiceImpl implements BackofficeService {
                 .bodyValue(payload)
                 .retrieve()
                 .toBodilessEntity()
-                .thenReturn("User Created");
+                .then();
     }
 
     /**
      * Esegue la PUT di aggiornamento.
      */
-    private Mono<String> updateKeycloakUser(String adminToken, String internalId, Map<String, Object> payload) {
+    private Mono<Void> updateKeycloakUser(String adminToken, String internalId, Map<String, Object> payload) {
         String url = String.format("%s/admin/realms/%s/users/%s", authServerUrl, realm, internalId);
         return webClient.put()
                 .uri(url)
@@ -214,7 +194,7 @@ public class BackofficeServiceImpl implements BackofficeService {
                 .bodyValue(payload)
                 .retrieve()
                 .toBodilessEntity()
-                .thenReturn("User Updated");
+                .then();
     }
 
     /**
@@ -273,16 +253,18 @@ public class BackofficeServiceImpl implements BackofficeService {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
                 .retrieve()
-                .onStatus(HttpStatusCode::isError, response -> 
-                    response.bodyToMono(String.class).flatMap(errorBody -> {
-                        // Se l'identità esiste già, Keycloak potrebbe dare 409. 
-                        // Possiamo decidere di loggare l'errore o ignorarlo se è solo un conflitto.
-                        log.error("Errore durante il link dell'identità federata: {}", errorBody);
-                        return Mono.error(new RuntimeException("Federated Identity Link failed: " + errorBody));
-                    })
-                )
                 .toBodilessEntity()
-                .then(); // Ritorna Mono<Void>
+                .onErrorResume(WebClientResponseException.class, e -> {
+                    // Leggiamo il corpo dell'errore da Keycloak
+                    String errorBody = e.getResponseBodyAsString();
+                    if (errorBody.contains("User is already linked with provider")) {
+                    log.info("L'utente {} è già collegato all'IdP {}, procedo oltre.", externalUserId, idpAlias);
+                    return Mono.empty(); // Errore ignorato, link già presente
+                }
+                log.error("Errore durante il link dell'identità federata: {}", errorBody);
+                return Mono.error(new RuntimeException("Federated Identity Link failed: " + errorBody));
+            })
+            .then(); // Ritorna Mono<Void>
     }
 
     /**

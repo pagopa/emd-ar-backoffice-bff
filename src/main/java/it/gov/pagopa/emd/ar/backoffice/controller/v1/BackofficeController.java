@@ -5,13 +5,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 import it.gov.pagopa.emd.ar.backoffice.dto.AuthRequestDTO;
 import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
 import reactor.core.publisher.Mono;
 
-@RestController
 @RequestMapping("/emd/backoffice")
 public interface BackofficeController {
 

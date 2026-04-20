@@ -5,6 +5,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import it.gov.pagopa.emd.ar.backoffice.dto.OrganizationDTO;
 import it.gov.pagopa.emd.ar.backoffice.dto.UserDTO;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
@@ -20,17 +21,18 @@ public class AuthService {
         this.objectMapper = objectMapper;
     }
 
-    public UserDTO verifyTokenFields(Jwt jwt) {
-        log.info("AuthService - verifyTokenFields() for sub: {}", jwt.getSubject());
-        UserDTO user = new UserDTO();
-        
-        try{
+    public Mono<UserDTO> verifyTokenFields(Jwt jwt) {
+        return Mono.fromCallable(() -> {
+            log.info("AuthService - verifyTokenFields() for sub: {}", jwt.getSubject());
+            UserDTO user = new UserDTO();
+            
+            
             //Recupera la mappa "organization" dal token
             Map<String, Object> organizationMap = jwt.getClaim("organization");
 
             if (organizationMap == null) {
                 log.warn("AuthService - Validazione token fallita per sub: {}", jwt.getSubject());
-                return null;
+                throw new RuntimeException("Token incompleto: organization claim mancante");
             }
 
             OrganizationDTO org = objectMapper.convertValue(organizationMap, OrganizationDTO.class);
@@ -43,10 +45,6 @@ public class AuthService {
 
             log.info("AuthService - Validazione token riuscita per sub: {}", jwt.getSubject());
             return user;
-        } catch (Exception e) {
-            log.error("AuthService - Errore durante la validazione del token per sub: {}: {}", jwt.getSubject(), e.getMessage());
-            return null;
-        }
-        
+        }).doOnError(e -> log.error("Errore validazione token: {}", e.getMessage()));
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 
+import io.micrometer.tracing.Tracer;
 import it.gov.pagopa.common.utils.Utilities;
 
 /**
@@ -17,13 +18,21 @@ import it.gov.pagopa.common.utils.Utilities;
 @Order(-101) // Set in order to be executed after ServerHttpObservationFilter (which will handle traceId): configured through properties management.observations.http.server.filter.order
 public class TraceIdObservationFilter implements WebFilter {
 
+    private final Tracer tracer;
+
+    public TraceIdObservationFilter(Tracer tracer) {
+        this.tracer = tracer;
+    }
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        String traceId = Utilities.getTraceId();
-        if (traceId != null) {
-            // In WebFlux gli header sono immutabili, si aggiungono così:
-            exchange.getResponse().getHeaders().add("X-Trace-Id", traceId);
-        }
-        return chain.filter(exchange);
+        return chain.filter(exchange)
+            .doFirst(() -> {
+                // Recuperiamo il traceId corrente dal Tracer di Micrometer
+                if (tracer.currentSpan() != null) {
+                    String traceId = tracer.currentSpan().context().traceId();
+                    exchange.getResponse().getHeaders().add("X-Trace-Id", traceId);
+                }
+            });
     }
 }

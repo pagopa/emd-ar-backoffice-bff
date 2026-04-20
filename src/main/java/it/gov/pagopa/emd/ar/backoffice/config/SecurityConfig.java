@@ -5,6 +5,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @Configuration
@@ -18,7 +20,7 @@ public class SecurityConfig {
             .csrf(ServerHttpSecurity.CsrfSpec::disable) // Disabilita CSRF per API REST
             .authorizeExchange(exchanges -> exchanges
                 // Specifica l'API che richiede autenticazione
-                .pathMatchers("/emd/backoffice/api/auth/pagopa").authenticated()
+                //.pathMatchers("/emd/backoffice/api/auth/pagopa").authenticated()
                 
                 // Lascia tutte le altre API pubbliche
                 .anyExchange().permitAll()
@@ -29,5 +31,11 @@ public class SecurityConfig {
                 .jwt(Customizer.withDefaults()));
         
         return http.build();
+    }
+
+    @Bean
+    public ReactiveJwtDecoder jwtDecoder() {
+        // Sostituisci con l'URL reale del set di chiavi pubbliche del fornitore del token
+        return NimbusReactiveJwtDecoder.withJwkSetUri("https://dev.selfcare.pagopa.it/.well-known/jwks.json").build();
     }
 }

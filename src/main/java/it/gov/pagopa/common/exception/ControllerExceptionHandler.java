@@ -33,6 +33,12 @@ import java.util.stream.Collectors;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ControllerExceptionHandler {
 
+  private final Utilities utilities;
+
+  public ControllerExceptionHandler(Utilities utilities) {
+        this.utilities = utilities;
+    }
+    
   @ExceptionHandler({ValidationException.class, ServerWebInputException.class, WebExchangeBindException.class, HttpMessageNotReadableException.class})
   public ResponseEntity<ErrorDTO> handleViolationException(Exception ex, ServerHttpRequest request) {
     return handleException(ex, request, HttpStatus.BAD_REQUEST, ErrorDTO.CodeEnum.BAD_REQUEST);
@@ -58,7 +64,7 @@ public class ControllerExceptionHandler {
     return handleException(ex, request, HttpStatus.INTERNAL_SERVER_ERROR, ErrorDTO.CodeEnum.GENERIC_ERROR);
   }
 
-  static ResponseEntity<ErrorDTO> handleException(Exception ex, ServerHttpRequest request, HttpStatusCode httpStatus, ErrorDTO.CodeEnum errorEnum) {
+  private ResponseEntity<ErrorDTO> handleException(Exception ex, ServerHttpRequest request, HttpStatusCode httpStatus, ErrorDTO.CodeEnum errorEnum) {
     logException(ex, request, httpStatus);
 
     String message = buildReturnedMessage(ex);
@@ -66,7 +72,7 @@ public class ControllerExceptionHandler {
     return ResponseEntity
       .status(httpStatus)
       .contentType(MediaType.APPLICATION_JSON)
-      .body(new ErrorDTO(errorEnum, message, Utilities.getTraceId()));
+      .body(new ErrorDTO(errorEnum, message, utilities.getTraceId()));
   }
 
   private static void logException(Exception ex, ServerHttpRequest request, HttpStatusCode httpStatus) {

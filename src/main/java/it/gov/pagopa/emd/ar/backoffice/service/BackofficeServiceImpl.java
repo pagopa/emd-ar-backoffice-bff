@@ -18,6 +18,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.http.MediaType;
 
 import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
@@ -50,45 +51,51 @@ public class BackofficeServiceImpl implements BackofficeService {
     @Value("${keycloak.idp-alias}")
     private String idpAlias;
 
+    private final ReactiveJwtDecoder jwtDecoder;
+
     private WebClient webClient;
 
     private AuthService authService;
 
-    public BackofficeServiceImpl(WebClient webClient, AuthService authService) {
+    public BackofficeServiceImpl(WebClient webClient, AuthService authService, ReactiveJwtDecoder jwtDecoder) {
         this.webClient = webClient;
         this.authService = authService;
+        this.jwtDecoder = jwtDecoder;
     }
 
     @Override
-    public Mono<ResponseEntity<ResponseDTO>> getToken(Jwt jwt) {
+    public Mono<ResponseEntity<ResponseDTO>> getToken(String token) {
         log.info("BackofficeServiceImpl - getToken()");
 
-        String externalToken = jwt.getTokenValue(); // Recupera la stringa JWT originale
+        // Decodifica manuale del token stringa in oggetto Jwt
+        return jwtDecoder.decode(token)
+            .flatMap((Jwt jwt)  -> {
 
-        //Validazione e recupero info dal token di selfcare
-        UserDTO user = authService.verifyTokenFields(jwt);
+                //Validazione e recupero info dal token di selfcare
+                UserDTO user = authService.verifyTokenFields(jwt);
 
-        if (user == null) {
-            ResponseDTO errorRes = new ResponseDTO("ERROR", "Token non valido o incompleto", null);
-            return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorRes));
-        }
+                if (user == null) {
+                    ResponseEntity<ResponseDTO> errorResponse = ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(new ResponseDTO("ERROR", "Token non valido o incompleto", null));
+                    return Mono.just(errorResponse);
+                }
 
-        // Prendi token manager
-        return getKeycloakAccessToken()
-            .flatMap(managerToken -> 
-                // Sincronizziamo l'utente (Upsert)
-                upsertKeycloakUser(managerToken, user)
-                // Token Exchange
-                .then(Mono.defer(() -> getJwtBearerToken(externalToken)))
-            )
-            // Token da restituire al FE
-            .map(finalToken -> ResponseEntity.ok(new ResponseDTO("Success", "Token exchanged", finalToken))
-            )
+                // Prendi token manager
+                return getKeycloakAccessToken()
+                    .flatMap(managerToken -> 
+                        // Sincronizziamo l'utente (Upsert)
+                        upsertKeycloakUser(managerToken, user)
+                        // Token Exchange
+                        .then(Mono.defer(() -> getJwtBearerToken(token)))
+                    )
+                    // Token da restituire al FE
+                    .map(finalToken -> ResponseEntity.ok(new ResponseDTO("Success", "Token exchanged", finalToken)));
+            })
             .onErrorResume(e -> {
-                log.error("Errore nel processo di sync: {}", e.getMessage());
-                ResponseDTO errorRes = new ResponseDTO("ERROR", "Errore durante la sincronizzazione con Keycloak: " + e.getMessage(), null);
-                return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                            .body(errorRes));
+            log.error("Errore validazione token o processo: {}", e.getMessage());
+            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ResponseDTO("ERROR", "Token non valido: " + e.getMessage(), null)));
             });
     }
 
@@ -137,7 +144,14 @@ public class BackofficeServiceImpl implements BackofficeService {
                 if (users.isEmpty()) {
                     // UTENTE NON ESISTE -> CREAZIONE (POST)
                     log.info("upsertKeycloakUser() - User not found, creating new user");
-                    return createKeycloakUser(managerToken, userPayload);
+                    //return createKeycloakUser(managerToken, userPayload);
+                    return createKeycloakUser(managerToken, userPayload)
+                    .then(getUsersFromKeycloak(userDTO.getUid(), managerToken)) // Recuperiamo l'ID appena creato
+                    .flatMap(newUsers -> {
+                        String internalId = (String) newUsers.get(0).get("id");
+                        return linkFederatedIdentity(managerToken, internalId, userDTO.getUid());
+                    })
+                    .thenReturn("User Created and Identity Linked");
                 } else {
                     // UTENTE ESISTE -> AGGIORNAMENTO (PUT)
                     String internalUserId = (String) users.get(0).get("id");

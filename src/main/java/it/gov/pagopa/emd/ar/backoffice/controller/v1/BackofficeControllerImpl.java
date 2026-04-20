@@ -1,9 +1,9 @@
-package it.gov.pagopa.emd.ar.backoffice.controller;
+package it.gov.pagopa.emd.ar.backoffice.controller.v1;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.security.oauth2.jwt.Jwt;
 
+import it.gov.pagopa.emd.ar.backoffice.dto.AuthRequestDTO;
 import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
 import it.gov.pagopa.emd.ar.backoffice.service.BackofficeServiceImpl;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +20,8 @@ public class BackofficeControllerImpl implements BackofficeController {
     }
 
     @Override
-    public Mono<ResponseEntity<ResponseDTO>> getToken(Jwt jwt) {
-        return backofficeService.getToken(jwt);
+    public Mono<ResponseEntity<ResponseDTO>> getToken(AuthRequestDTO authRequest) {
+        return backofficeService.getToken(authRequest.getToken());
     }
     
 }

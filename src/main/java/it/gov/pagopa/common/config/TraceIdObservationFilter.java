@@ -8,8 +8,8 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 
+import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
-import it.gov.pagopa.common.utils.Utilities;
 
 /**
  * Take an ID trace from the request and set it inside the response header "X-Trace-Id" to make it available for clients.
@@ -27,10 +27,15 @@ public class TraceIdObservationFilter implements WebFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         return chain.filter(exchange)
-            .doFirst(() -> {
-                // Recuperiamo il traceId corrente dal Tracer di Micrometer
-                if (tracer.currentSpan() != null) {
-                    String traceId = tracer.currentSpan().context().traceId();
+            .contextWrite(ctx -> {
+                // Micrometer Tracing propaga automaticamente lo span nel context
+                return ctx;
+            })
+            .doOnSubscribe(s -> {
+                // Aggiungiamo l'header alla risposta prima che venga inviata
+                Span currentSpan = tracer.currentSpan();
+                if (currentSpan != null) {
+                    String traceId = currentSpan.context().traceId();
                     exchange.getResponse().getHeaders().add("X-Trace-Id", traceId);
                 }
             });

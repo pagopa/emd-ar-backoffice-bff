@@ -10,8 +10,8 @@ import it.gov.pagopa.emd.ar.backoffice.dto.AuthRequestDTO;
 import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
 import reactor.core.publisher.Mono;
 
-@RequestMapping("/emd/backoffice")
-public interface BackofficeController {
+@RequestMapping("/emd/backoffice/v1")
+public interface AuthControllerV1 {
 
     @PostMapping(value = "api/auth/pagopa", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<ResponseDTO>> getToken(@RequestBody AuthRequestDTO authRequest);

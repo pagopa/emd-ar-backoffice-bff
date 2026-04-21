@@ -1,5 +1,6 @@
 package it.gov.pagopa.common.utils;
 
+import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import org.springframework.stereotype.Component;
 
@@ -13,8 +14,9 @@ public class Utilities {
     }
 
     public String getTraceId() {
-        return (tracer.currentSpan() != null) 
-            ? tracer.currentSpan().context().traceId() 
+        Span span = tracer.currentSpan();
+        return span != null
+            ? span.context().traceId()
             : "no-trace-id";
     }
 }

@@ -8,6 +8,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
@@ -18,9 +20,11 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.http.MediaType;
 
+import it.gov.pagopa.emd.ar.backoffice.dto.OrganizationDTO;
 import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
 import it.gov.pagopa.emd.ar.backoffice.dto.UserDTO;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +32,7 @@ import reactor.core.publisher.Mono;
 
 @Service
 @Slf4j
-public class BackofficeServiceImpl implements BackofficeService {
+public class AuthServiceImpl implements AuthService {
 
     @Value("${keycloak.auth-server-url}")
     private String authServerUrl;
@@ -55,12 +59,12 @@ public class BackofficeServiceImpl implements BackofficeService {
 
     private WebClient webClient;
 
-    private AuthService authService;
+    private final ObjectMapper objectMapper;
 
-    public BackofficeServiceImpl(WebClient webClient, AuthService authService, ReactiveJwtDecoder jwtDecoder) {
+    public AuthServiceImpl(WebClient webClient, ReactiveJwtDecoder jwtDecoder, ObjectMapper objectMapper) {
         this.webClient = webClient;
-        this.authService = authService;
         this.jwtDecoder = jwtDecoder;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -69,7 +73,7 @@ public class BackofficeServiceImpl implements BackofficeService {
 
         // Decodifica manuale del token stringa in oggetto Jwt
         return jwtDecoder.decode(token)
-            .flatMap(authService::verifyTokenFields)
+            .flatMap(this::verifyTokenFields)
             .flatMap(user -> getKeycloakAccessToken()
                     .flatMap(managerToken ->
                         // Sincronizziamo l'utente (Upsert)
@@ -84,6 +88,32 @@ public class BackofficeServiceImpl implements BackofficeService {
                         return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                             .body(new ResponseDTO("ERROR", "Token non valido: " + e.getMessage(), null)));
             });
+    }
+
+    public Mono<UserDTO> verifyTokenFields(Jwt jwt) {
+        return Mono.fromCallable(() -> {
+            log.info("AuthService - verifyTokenFields() for sub: {}", jwt.getSubject());
+            UserDTO user = new UserDTO();
+            
+            //Recupera la mappa "organization" dal token
+            Map<String, Object> organizationMap = jwt.getClaim("organization");
+
+            if (organizationMap == null) {
+                log.warn("AuthService - Validazione token fallita per sub: {}", jwt.getSubject());
+                throw new RuntimeException("Token incompleto: organization claim mancante");
+            }
+
+            OrganizationDTO org = objectMapper.convertValue(organizationMap, OrganizationDTO.class);
+
+            user.setName(jwt.getClaimAsString("name"));
+            user.setFamilyName(jwt.getClaimAsString("family_name"));
+            user.setEmail(jwt.getClaimAsString("email"));
+            user.setUid(jwt.getClaimAsString("uid"));
+            user.setOrganization(org);
+
+            log.info("AuthService - Validazione token riuscita per sub: {}", jwt.getSubject());
+            return user;
+        }).doOnError(e -> log.error("Errore validazione token: {}", e.getMessage()));
     }
 
     // Aggiungere token nella cache? La persistenza del token viene gestita lato FE? Serve o no la cache?

@@ -5,17 +5,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import it.gov.pagopa.emd.ar.backoffice.dto.AuthRequestDTO;
 import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
-import it.gov.pagopa.emd.ar.backoffice.service.BackofficeServiceImpl;
+import it.gov.pagopa.emd.ar.backoffice.service.AuthServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
 @RestController
 @Slf4j
-public class BackofficeControllerImpl implements BackofficeController {
+public class AuthControllerImplV1 implements AuthControllerV1 {
     
-    private BackofficeServiceImpl backofficeService;
+    private AuthServiceImpl backofficeService;
 
-    public BackofficeControllerImpl(BackofficeServiceImpl backofficeService) {
+    public AuthControllerImplV1(AuthServiceImpl backofficeService) {
         this.backofficeService = backofficeService;
     }
 

@@ -1,15 +1,20 @@
 package it.gov.pagopa.emd.ar.backoffice.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ResponseDTO {
+@Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class AuthResponse {
     private String status;
     private String message;
-    private OrganizationDTO organizationInfo;
+    private UserDTO userInfo;
     private String token;
 }

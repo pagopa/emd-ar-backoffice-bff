@@ -25,7 +25,7 @@ import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.http.MediaType;
 
 import it.gov.pagopa.emd.ar.backoffice.dto.OrganizationDTO;
-import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
+import it.gov.pagopa.emd.ar.backoffice.dto.AuthResponse;
 import it.gov.pagopa.emd.ar.backoffice.dto.UserDTO;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -68,7 +68,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public Mono<ResponseEntity<ResponseDTO>> getToken(String token) {
+    public Mono<ResponseEntity<AuthResponse>> getToken(String token) {
         log.info("BackofficeServiceImpl - getToken()");
 
         // Decodifica manuale del token
@@ -81,12 +81,18 @@ public class AuthServiceImpl implements AuthService {
                         // Token Exchange
                         .then(Mono.defer(() -> getJwtBearerToken(token)))
                         // Risposta finale
-                        .map(finalToken -> ResponseEntity.ok(new ResponseDTO("Success", "Token exchanged", user.getOrganization(), finalToken)))
+                        .map(finalToken -> ResponseEntity.ok(AuthResponse.builder()
+                                                                            .userInfo(user)
+                                                                            .token(finalToken)
+                                                                            .build()))
                     )
                     .onErrorResume(e -> {
                         log.error("Errore validazione token o processo: {}", e.getMessage());
                         return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                            .body(new ResponseDTO("ERROR", "Token non valido: " + e.getMessage(), null, null)));
+                            .body(AuthResponse.builder()
+                                                    .status("ERROR")
+                                                    .message(e.getMessage())
+                                                    .build()));
             });
     }
 
@@ -141,8 +147,8 @@ public class AuthServiceImpl implements AuthService {
                 .bodyValue(formData)
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, response -> 
-                    response.bodyToMono(String.class).flatMap(error -> 
-                        Mono.error(new RuntimeException("Keycloak Auth Error: " + error))))
+                    response.bodyToMono(String.class)
+                        .flatMap(body -> handleKeycloakError("Auth Manager Error", body)))
                 .bodyToMono(Map.class) // Trasforma il JSON di risposta in una Map
                 .map(responseMap -> (String) responseMap.get("access_token"));
         return token;
@@ -319,17 +325,26 @@ public class AuthServiceImpl implements AuthService {
                 .accept(MediaType.APPLICATION_JSON)
                 .bodyValue(formData)
                 .retrieve()
-                .onStatus(status -> status.isError(), response -> {
+                .onStatus(HttpStatusCode::isError, response -> {
                     return response.bodyToMono(String.class)
-                            .flatMap(errorBody -> {
-                                log.error("Errore durante il JWT Bearer Grant: {}", errorBody);
-                                return Mono.error(new RuntimeException("Exchange failed: " + errorBody));
-                            });
-                })
+                            .flatMap(body -> handleKeycloakError("Exchange failed", body));
+                        })
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
                 .map(responseMap -> (String) responseMap.get("access_token"))
                 .doOnError(e -> log.error("Errore fatale nello scambio token: {}", e.getMessage()));
 
     }
+
+    private Mono<Throwable> handleKeycloakError(String context, String errorBody) {
+    try {
+        // Parsing del JSON di Keycloak
+        Map<String, Object> errorMap = objectMapper.readValue(errorBody, Map.class);
+        String description = (String) errorMap.getOrDefault("error_description", errorMap.get("error"));
+        return Mono.error(new RuntimeException(description));
+    } catch (Exception e) {
+        // Se non è un JSON , restituiamo il corpo originale
+        return Mono.error(new RuntimeException(context + ": " + errorBody));
+    }
+}
 
 }

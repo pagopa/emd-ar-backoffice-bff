@@ -4,7 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.gov.pagopa.emd.ar.backoffice.dto.AuthRequestDTO;
-import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
+import it.gov.pagopa.emd.ar.backoffice.dto.AuthResponse;
 import it.gov.pagopa.emd.ar.backoffice.service.AuthServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -20,7 +20,7 @@ public class AuthControllerImplV1 implements AuthControllerV1 {
     }
 
     @Override
-    public Mono<ResponseEntity<ResponseDTO>> getToken(AuthRequestDTO authRequest) {
+    public Mono<ResponseEntity<AuthResponse>> getToken(AuthRequestDTO authRequest) {
         return backofficeService.getToken(authRequest.getToken());
     }
     

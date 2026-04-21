@@ -7,12 +7,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import it.gov.pagopa.emd.ar.backoffice.dto.AuthRequestDTO;
-import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
+import it.gov.pagopa.emd.ar.backoffice.dto.AuthResponse;
 import reactor.core.publisher.Mono;
 
 @RequestMapping("/emd/backoffice/v1")
 public interface AuthControllerV1 {
 
     @PostMapping(value = "api/auth/pagopa", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<ResponseDTO>> getToken(@RequestBody AuthRequestDTO authRequest);
+    public Mono<ResponseEntity<AuthResponse>> getToken(@RequestBody AuthRequestDTO authRequest);
 }

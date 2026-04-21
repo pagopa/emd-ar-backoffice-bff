@@ -90,11 +90,11 @@ keycloak:
   realm: "\${KEYCLOAK_REALM}"
   idp-alias: "\${KEYCLOAK_IDP_ALIAS}"
   manager:
-    client-id: "\${KEYCLOAK_CLIENT_ID}"
-    client-secret: "\${KEYCLOAK_CLIENT_SECRET}"
-  token-exchange:
-    client-id: "\${KEYCLOAK_TOKEN_EXCHANGE_CLIENT_ID}"
-    client-secret: "\${KEYCLOAK_TOKEN_EXCHANGE_CLIENT_SECRET}"
+    client-id: "\${KEYCLOAK_MANAGER_CLIENT_ID}"
+    client-secret: "\${KEYCLOAK_MANAGER_CLIENT_SECRET}"
+  ar-backoffice:
+    client-id: "\${KEYCLOAK_BACKOFFICE_CLIENT_ID}"
+    client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
 
 
 auth:

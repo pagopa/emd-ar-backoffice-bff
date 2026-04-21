@@ -1,4 +1,4 @@
-package it.gov.pagopa.emd.ar.backoffice.dto;
+package it.gov.pagopa.emd.ar.backoffice.dto.v1;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
@@ -12,9 +12,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class AuthResponse {
+public class AuthResponseV1 {
     private String status;
     private String message;
-    private UserDTO userInfo;
+    private UserDTOV1 userInfo;
     private String token;
 }

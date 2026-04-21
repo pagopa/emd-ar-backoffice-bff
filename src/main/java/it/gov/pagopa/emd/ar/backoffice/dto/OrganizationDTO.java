@@ -2,7 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.dto;
 
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
 import lombok.Data;
 
@@ -11,7 +11,7 @@ public class OrganizationDTO {
     private String id;
     private String name;
     private List<RoleDTO> roles;
-    @JsonProperty("fiscal_code")
+    @JsonAlias("fiscal_code")
     private String fiscalCode;
     private String ipaCode;
 }

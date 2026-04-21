@@ -71,7 +71,7 @@ public class AuthServiceImpl implements AuthService {
     public Mono<ResponseEntity<ResponseDTO>> getToken(String token) {
         log.info("BackofficeServiceImpl - getToken()");
 
-        // Decodifica manuale del token stringa in oggetto Jwt
+        // Decodifica manuale del token
         return jwtDecoder.decode(token)
             .flatMap(this::verifyTokenFields)
             .flatMap(user -> getKeycloakAccessToken()
@@ -80,26 +80,26 @@ public class AuthServiceImpl implements AuthService {
                         upsertKeycloakUser(managerToken, user))
                         // Token Exchange
                         .then(Mono.defer(() -> getJwtBearerToken(token)))
+                        // Risposta finale
+                        .map(finalToken -> ResponseEntity.ok(new ResponseDTO("Success", "Token exchanged", user.getOrganization(), finalToken)))
                     )
-                    // Token da restituire al FE
-                    .map(finalToken -> ResponseEntity.ok(new ResponseDTO("Success", "Token exchanged", finalToken)))
                     .onErrorResume(e -> {
                         log.error("Errore validazione token o processo: {}", e.getMessage());
                         return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                            .body(new ResponseDTO("ERROR", "Token non valido: " + e.getMessage(), null)));
+                            .body(new ResponseDTO("ERROR", "Token non valido: " + e.getMessage(), null, null)));
             });
     }
 
     public Mono<UserDTO> verifyTokenFields(Jwt jwt) {
         return Mono.fromCallable(() -> {
-            log.info("AuthService - verifyTokenFields() for sub: {}", jwt.getSubject());
+            log.info("verifyTokenFields() for sub: {}", jwt.getSubject());
             UserDTO user = new UserDTO();
             
             //Recupera la mappa "organization" dal token
             Map<String, Object> organizationMap = jwt.getClaim("organization");
 
             if (organizationMap == null) {
-                log.warn("AuthService - Validazione token fallita per sub: {}", jwt.getSubject());
+                log.warn("verifyTokenFields() - Validazione token fallita per sub: {}", jwt.getSubject());
                 throw new RuntimeException("Token incompleto: organization claim mancante");
             }
 
@@ -111,9 +111,9 @@ public class AuthServiceImpl implements AuthService {
             user.setUid(jwt.getClaimAsString("uid"));
             user.setOrganization(org);
 
-            log.info("AuthService - Validazione token riuscita per sub: {}", jwt.getSubject());
+            log.info("verifyTokenFields() - Validazione token riuscita per sub: {}", jwt.getSubject());
             return user;
-        }).doOnError(e -> log.error("Errore validazione token: {}", e.getMessage()));
+        }).doOnError(e -> log.error("verifyTokenFields() - Errore validazione token: {}", e.getMessage()));
     }
 
     // Aggiungere token nella cache? La persistenza del token viene gestita lato FE? Serve o no la cache?
@@ -294,7 +294,7 @@ public class AuthServiceImpl implements AuthService {
                 log.error("Errore durante il link dell'identità federata: {}", errorBody);
                 return Mono.error(new RuntimeException("Federated Identity Link failed: " + errorBody));
             })
-            .then(); // Ritorna Mono<Void>
+            .then();
     }
 
     /**

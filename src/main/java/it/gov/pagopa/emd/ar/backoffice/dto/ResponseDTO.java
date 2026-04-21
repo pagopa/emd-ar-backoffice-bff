@@ -10,5 +10,6 @@ import lombok.NoArgsConstructor;
 public class ResponseDTO {
     private String status;
     private String message;
+    private OrganizationDTO organizationInfo;
     private String token;
 }

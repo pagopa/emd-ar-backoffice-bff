@@ -60,9 +60,6 @@ val jackson2CoreVersion = "2.21.1"
 val jackson3CoreVersion = "3.1.0"
 
 dependencies {
-  //implementation("org.springframework.boot:spring-boot-starter-webmvc")
-  //implementation("org.springframework.boot:spring-boot-starter-web")
-  //implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springDocOpenApiVersion")
 
   // Webflux
   implementation("org.springframework.boot:spring-boot-starter-webflux")
@@ -74,6 +71,7 @@ dependencies {
   // Security
   implementation ("org.springframework.boot:spring-boot-starter-security")
   implementation ("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+  implementation("com.auth0:java-jwt:4.4.0")
 
   // Monitoring
   implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -81,31 +79,30 @@ dependencies {
   implementation("io.micrometer:micrometer-tracing-bridge-otel:$micrometerVersion")
   implementation("io.micrometer:micrometer-registry-prometheus")
 
-  //implementation("org.springframework.boot:spring-boot-starter-restclient")
-
   implementation("org.springframework.data:spring-data-commons")
 
   // Utilities
   implementation("org.springframework.boot:spring-boot-starter-validation")
   implementation("org.codehaus.janino:janino:$janinoVersion")
   
-  //implementation("org.apache.httpcomponents.client5:httpclient5:$httpClientVersion")
-  //implementation("org.apache.httpcomponents.core5:httpcore5:$httpCoreVersion")
-  implementation("com.auth0:java-jwt:4.4.0")
+  
 
   // CVE fix
   implementation("tools.jackson.core:jackson-core:$jackson3CoreVersion")
   implementation("com.fasterxml.jackson.core:jackson-core:$jackson2CoreVersion")
+
+  implementation("io.micrometer:context-propagation")
+  implementation("io.micrometer:micrometer-tracing-bridge-otel")
 
   compileOnly("org.projectlombok:lombok")
   annotationProcessor("org.projectlombok:lombok")
   testAnnotationProcessor("org.projectlombok:lombok")
 
   //	Testing
-  //testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+  testImplementation("org.springframework.boot:spring-boot-test-autoconfigure")
   testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("org.springframework.boot:spring-boot-starter-security-test")
-  testImplementation("org.mockito:mockito-core")
+  testImplementation("io.projectreactor:reactor-test")
   testImplementation("org.projectlombok:lombok")
 }
 

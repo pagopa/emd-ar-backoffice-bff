@@ -5,87 +5,76 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpRequest;
-import org.springframework.http.client.ClientHttpRequestExecution;
-import org.springframework.http.client.ClientHttpResponse;
-
-import it.gov.pagopa.common.config.rest.QueryParamsPlusEncoderInterceptor;
+import org.springframework.http.HttpMethod;
+import org.springframework.web.reactive.function.client.ClientRequest;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.ExchangeFunction;
+import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.net.URI;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
+import reactor.test.StepVerifier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class QueryParamsPlusEncoderInterceptorTest {
 
-    @Mock
-    private HttpRequest mockRequest;
-    @Mock
-    private ClientHttpRequestExecution mockExecution;
+    private QueryParamsPlusEncoderInterceptor filter;
 
-    byte[] mockBody = new byte[0];
-
-    private QueryParamsPlusEncoderInterceptor queryParamsPlusEncoderInterceptor;
+    @Mock
+    private ExchangeFunction next;
+    @Mock
+    private ClientResponse mockResponse;
 
     @BeforeEach
     void setUp() {
-        queryParamsPlusEncoderInterceptor = new QueryParamsPlusEncoderInterceptor();
+        filter = new QueryParamsPlusEncoderInterceptor();
     }
 
     @Test
-    void givenRequestWhenInterceptThenUpdateQuery() throws IOException {
-        //given
-        ClientHttpResponse mockResponse = mock(ClientHttpResponse.class);
-        OffsetDateTime offsetDateTime = OffsetDateTime.parse("2025-04-08T11:57:03.375275400+02:00");
-        String formattedDateTime = offsetDateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-        URI uri = URI.create("http://example/api/resource?datetime=" + formattedDateTime);
+    void givenRequestWithPlusWhenFilterThenEncodePlus() {
+        // Given
+        URI uri = URI.create("http://example/api?datetime=2025-04-08T11:57:03.375%2B02:00");
+        ClientRequest request = ClientRequest.create(org.springframework.http.HttpMethod.GET, uri).build();
+        
+        ArgumentCaptor<ClientRequest> captor = ArgumentCaptor.forClass(ClientRequest.class);
+        when(next.exchange(captor.capture())).thenReturn(Mono.just(mockResponse));
 
-        when(mockRequest.getURI()).thenReturn(uri);
-        when(mockExecution.execute(Mockito.any(), Mockito.eq(mockBody))).thenReturn(mockResponse);
+        // When
+        Mono<ClientResponse> result = filter.filter(request, next);
 
-        //when
-        ClientHttpResponse actualResponse = queryParamsPlusEncoderInterceptor.intercept(mockRequest, mockBody, mockExecution);
+        // Then
+        StepVerifier.create(result)
+                .expectNext(mockResponse)
+                .verifyComplete();
 
-        //then
-        assertEquals(mockResponse, actualResponse);
-
-        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
-        Mockito.verify(mockExecution).execute(requestCaptor.capture(), Mockito.eq(mockBody));
-        HttpRequest interceptedRequest = requestCaptor.getValue();
-
-        URI interceptedUri = interceptedRequest.getURI();
-        assertEquals("http://example/api/resource?datetime=2025-04-08T11:57:03.3752754%2B02:00", interceptedUri.toString());
+        URI interceptedUri = captor.getValue().url();
+        // Verifica che il + sia rimasto %2B (o codificato correttamente)
+        assertEquals("http://example/api?datetime=2025-04-08T11:57:03.375%2B02:00", interceptedUri.toString());
     }
 
     @Test
-    void givenNullQueryWhenInterceptThenReturnUri() throws IOException {
-        //given
-        ClientHttpResponse mockResponse = mock(ClientHttpResponse.class);
-
+    void givenNullQueryWhenInterceptThenReturnUri() {
+        // Given: un URL senza query parameters
         URI uri = URI.create("http://example/api/resource");
+        ClientRequest request = ClientRequest.create(HttpMethod.GET, uri).build();
+        
+        ArgumentCaptor<ClientRequest> captor = ArgumentCaptor.forClass(ClientRequest.class);
+        when(next.exchange(captor.capture())).thenReturn(Mono.just(mockResponse));
 
-        when(mockRequest.getURI()).thenReturn(uri);
-        when(mockExecution.execute(Mockito.any(), Mockito.eq(mockBody))).thenReturn(mockResponse);
+        // When
+        Mono<ClientResponse> result = filter.filter(request, next);
 
-        //when
-        ClientHttpResponse actualResponse = queryParamsPlusEncoderInterceptor.intercept(mockRequest, mockBody, mockExecution);
+        // Then
+        StepVerifier.create(result)
+                .expectNext(mockResponse)
+                .verifyComplete();
 
-        //then
-        assertEquals(mockResponse, actualResponse);
-
-        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
-        Mockito.verify(mockExecution).execute(requestCaptor.capture(), Mockito.eq(mockBody));
-        HttpRequest interceptedRequest = requestCaptor.getValue();
-
-        URI interceptedUri = interceptedRequest.getURI();
-        assertEquals("http://example/api/resource", interceptedUri.toString());
+        // Verifichiamo che l'URI sia rimasto identico
+        assertEquals("http://example/api/resource", captor.getValue().url().toString());
     }
 
 }

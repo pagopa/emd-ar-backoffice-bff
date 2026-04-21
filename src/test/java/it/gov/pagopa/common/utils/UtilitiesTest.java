@@ -1,32 +1,72 @@
 package it.gov.pagopa.common.utils;
 
-
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.MDC;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.gov.pagopa.common.utils.Utilities;
+@ExtendWith(MockitoExtension.class)
+class UtilitiesTest {
 
-public class UtilitiesTest {
+    @Mock
+    private Tracer tracerMock;
 
-  @Test
-  void testGetTraceId(){
-    // Given
-    String expectedResult = "TRACEID";
-    setTraceId(expectedResult);
+    @Mock
+    private Span spanMock;
 
-    // When
-    String result = Utilities.getTraceId();
+    @Mock
+    private TraceContext traceContextMock;
 
-    // Then
-    Assertions.assertSame(expectedResult, result);
-    clearTraceIdContext();
-  }
+    private Utilities utilities;
 
-  public static void setTraceId(String traceId) {
-    MDC.put("traceId", traceId);
-  }
-  public static void clearTraceIdContext(){
-    MDC.clear();
-  }
+    @BeforeEach
+    void setUp() {
+        utilities = new Utilities(tracerMock);
+    }
+
+    @Test
+    void testGetTraceId() {
+        // Given
+        String expectedResult = "TRACEID";
+        
+        // Simuliamo la catena: tracer.currentSpan().context().traceId()
+        Mockito.when(tracerMock.currentSpan()).thenReturn(spanMock);
+        Mockito.when(spanMock.context()).thenReturn(traceContextMock);
+        Mockito.when(traceContextMock.traceId()).thenReturn(expectedResult);
+
+        // When
+        String result = utilities.getTraceId();
+
+        // Then
+        Assertions.assertEquals(expectedResult, result);
+    }
+
+    @Test
+    void testGetTraceIdWhenNoSpan() {
+        // Given: non c'è alcuno span attivo
+        Mockito.when(tracerMock.currentSpan()).thenReturn(null);
+
+        // When
+        String result = utilities.getTraceId();
+
+        // Then
+        Assertions.assertNull(result);
+    }
+
+    // Questi metodi ora servono solo per i test degli altri componenti che usano MDC (se ancora presenti)
+    // Ma per UtilitiesTest sono obsoleti. Li teniamo solo se servono a TraceIdObservationFilterTest
+    public static void setTraceId(String traceId) {
+        // In WebFlux questo metodo è deprecato, ma lo lasciamo per compatibilità con i tuoi vecchi test
+        org.slf4j.MDC.put("traceId", traceId);
+    }
+
+    public static void clearTraceIdContext(){
+        org.slf4j.MDC.clear();
+    }
 }

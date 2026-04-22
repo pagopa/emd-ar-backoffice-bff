@@ -1,23 +1,15 @@
 package it.gov.pagopa.emd.ar.backoffice;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import it.gov.pagopa.emd.ar.backoffice.dto.ResponseDTO;
-import it.gov.pagopa.emd.ar.backoffice.dto.UserDTO;
+import it.gov.pagopa.emd.ar.backoffice.dto.v1.UserDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.AuthServiceImpl;
-import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
 public class AuthServiceImplTest {
@@ -46,7 +38,7 @@ public class AuthServiceImplTest {
     @Test
     void whenGetTokenSuccess_thenReturnsResponseDTO() {
         // 1. Mock authService.verifyTokenFields
-        UserDTO user = new UserDTO(); // Popola con dati mock
+        UserDTOV1 user = new UserDTOV1(); // Popola con dati mock
         //when(authService.verifyTokenFields(any())).thenReturn(user);
 
         // 2. Mock WebClient per getKeycloakAccessToken

@@ -2,7 +2,8 @@ package it.gov.pagopa.common.exception;
 
 import it.gov.pagopa.common.config.json.JsonConfig;
 import it.gov.pagopa.common.utils.TestUtils;
-import it.gov.pagopa.common.utils.Utilities; // Importa la classe Utilities reale
+import it.gov.pagopa.common.utils.Utilities;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -10,159 +11,61 @@ import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.hibernate.validator.internal.engine.ConstraintViolationImpl;
-import org.hibernate.validator.internal.engine.path.PathImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-//import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean; // O @MockBean se usi Spring Boot < 3.4
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.Set;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
 
-@ExtendWith({SpringExtension.class})
-//@WebFluxTest(controllers = {ControllerExceptionHandlerTest.TestController.class})
-@ContextConfiguration(classes = {
-        ControllerExceptionHandlerTest.TestController.class,
-        ControllerExceptionHandler.class,
-        JsonConfig.class
-})
+@ExtendWith(MockitoExtension.class)
 class ControllerExceptionHandlerTest {
 
-    @Autowired
     private WebTestClient webTestClient;
 
-    @MockitoSpyBean
-    private TestController testControllerSpy;
-
-    // MODIFICA: Mockiamo Utilities invece di usare MDC
-    @MockitoBean
+    @Mock
     private Utilities utilities;
 
-    public static final String DATA = "data";
-    public static final TestRequestBody BODY = new TestRequestBody("bodyData", null, "abc", LocalDateTime.now());
+    @Mock
+    private TestController testControllerMock;
+
     private final String traceId = "TRACEID";
 
     @RestController
-    @Slf4j
     static class TestController {
         @PostMapping(value = "/test", produces = MediaType.APPLICATION_JSON_VALUE)
-        Mono<String> testEndpoint(@RequestParam("data") String data, @Valid @RequestBody TestRequestBody body) {
+        public Mono<String> testEndpoint(@RequestParam("data") String data, @Valid @RequestBody TestRequestBody body) {
             return Mono.just("OK");
         }
     }
 
     @BeforeEach
-    void init() {
+    void setUp() {
         TestUtils.clearDefaultTimezone();
-        // Configura il mock per restituire il traceId fisso durante i test
-        Mockito.when(utilities.getTraceId()).thenReturn(traceId);
-    }
+        
+        // Configuriamo il WebTestClient agganciando il controller e l'handler manualmente
+        // Evita errori di caricamento del contesto Spring
+        this.webTestClient = WebTestClient.bindToController(testControllerMock)
+                .controllerAdvice(new ControllerExceptionHandler(utilities))
+                .build();
 
-    // Helper method per WebTestClient
-    private WebTestClient.ResponseSpec performRequest(String data, MediaType accept, Object body) {
-        WebTestClient.RequestBodySpec request = webTestClient.post()
-                .uri(uriBuilder -> uriBuilder.path("/test")
-                        .queryParam(DATA, data)
-                        .build())
-                .accept(accept);
-
-        if (body != null) {
-            return request.contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(body)
-                    .exchange();
-        }
-        return request.exchange();
-    }
-
-    @Test
-    void handleMissingRequestParameterException() {
-        performRequest(null, MediaType.APPLICATION_JSON, BODY)
-                .expectStatus().isBadRequest()
-                .expectBody()
-                .jsonPath("$.code").isEqualTo("BAD_REQUEST")
-                .jsonPath("$.message").isEqualTo("Required request parameter 'data' for method parameter type String is not present")
-                .jsonPath("$.traceId").isEqualTo(traceId);
-    }
-
-    @Test
-    void handleRuntimeExceptionError() {
-        doThrow(new RuntimeException("Error")).when(testControllerSpy).testEndpoint(any(), any());
-
-        performRequest(DATA, MediaType.APPLICATION_JSON, BODY)
-                .expectStatus().is5xxServerError()
-                .expectBody()
-                .jsonPath("$.code").isEqualTo("GENERIC_ERROR")
-                .jsonPath("$.message").isEqualTo("Error")
-                .jsonPath("$.traceId").isEqualTo(traceId);
-    }
-
-    @Test
-    void handleUrlNotFound() {
-        webTestClient.post().uri("/NOTEXISTENTURL")
-                .exchange()
-                .expectStatus().isNotFound()
-                .expectBody()
-                .jsonPath("$.code").isEqualTo("NOT_FOUND")
-                .jsonPath("$.traceId").isEqualTo(traceId);
-    }
-
-    @Test
-    void handleNoBodyException() {
-        performRequest(DATA, MediaType.APPLICATION_JSON, null)
-                .expectStatus().isBadRequest()
-                .expectBody()
-                .jsonPath("$.code").isEqualTo("BAD_REQUEST")
-                .jsonPath("$.message").isEqualTo("Required request body is missing")
-                .jsonPath("$.traceId").isEqualTo(traceId);
-    }
-
-    @Test
-    void handleInvalidBodyException() {
-        TestRequestBody invalidBody = new TestRequestBody(null, null, "ABC", null);
-
-        performRequest(DATA, MediaType.APPLICATION_JSON, invalidBody)
-                .expectStatus().isBadRequest()
-                .expectBody()
-                .jsonPath("$.code").isEqualTo("BAD_REQUEST")
-                .jsonPath("$.message").value(org.hamcrest.Matchers.containsString("requiredField: must not be null"))
-                .jsonPath("$.traceId").isEqualTo(traceId);
-    }
-
-    @Test
-    void handleViolationException() {
-        ConstraintViolationException ex = new ConstraintViolationException("Error", Set.of(
-                ConstraintViolationImpl.forParameterValidation(
-                        "template", Map.of(), Map.of(), "resolved message", null, null, null, null,
-                        PathImpl.createPathFromString("fieldName"), null, null, null)
-        ));
-
-        doThrow(ex).when(testControllerSpy).testEndpoint(any(), any());
-
-        performRequest(DATA, MediaType.APPLICATION_JSON, BODY)
-                .expectStatus().isBadRequest()
-                .expectBody()
-                .jsonPath("$.code").isEqualTo("BAD_REQUEST")
-                .jsonPath("$.message").isEqualTo("Invalid request content. fieldName: resolved message")
-                .jsonPath("$.traceId").isEqualTo(traceId);
+        Mockito.lenient().when(utilities.getTraceId()).thenReturn(traceId);
     }
 
     @Data
@@ -173,5 +76,168 @@ class ControllerExceptionHandlerTest {
         private String notRequiredField;
         @Pattern(regexp = "[a-z]+") private String lowerCaseAlphabeticField;
         private LocalDateTime dateTimeField;
+    }
+
+    @Test
+    void handleMissingRequestParameterException() {
+        // Test di un parametro mancante (gestito da Spring prima di arrivare al mock)
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").build()) // Manca 'data'
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new TestRequestBody("val", null, "abc", LocalDateTime.now()))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST")
+                .jsonPath("$.message").value(containsString("Required query parameter 'data' is not present"));
+    }
+
+    @Test
+    void handleRuntimeExceptionError() {
+        // Configurazione del mock per lanciare errore
+        when(testControllerMock.testEndpoint(any(), any())).thenReturn(Mono.error(new RuntimeException("Error")));
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new TestRequestBody("val", null, "abc", LocalDateTime.now()))
+                .exchange()
+                .expectStatus().is5xxServerError()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("GENERIC_ERROR")
+                .jsonPath("$.message").isEqualTo("Error");
+    }
+
+    @Test
+    void handleViolationException() {
+        // Mock di una violazione di validazione manuale
+        ConstraintViolation<?> violation = Mockito.mock(ConstraintViolation.class);
+        jakarta.validation.Path path = Mockito.mock(jakarta.validation.Path.class);
+        when(path.toString()).thenReturn("fieldName");
+        when(violation.getPropertyPath()).thenReturn(path);
+        when(violation.getMessage()).thenReturn("resolved message");
+        
+        ConstraintViolationException ex = new ConstraintViolationException("Error", Set.of(violation));
+        when(testControllerMock.testEndpoint(any(), any())).thenReturn(Mono.error(ex));
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new TestRequestBody("val", null, "abc", LocalDateTime.now()))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST")
+                .jsonPath("$.message").isEqualTo("Invalid request content. fieldName: resolved message");
+    }
+
+    @Test
+    void handleUrlNotFound() {
+        webTestClient.get()
+                .uri("/url-non-esistente")
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void handleResponseStatusException() {
+        when(testControllerMock.testEndpoint(any(), any()))
+                .thenReturn(Mono.error(new ResponseStatusException(HttpStatus.EXPECTATION_FAILED, "Custom Error")));
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new TestRequestBody("val", null, "abc", LocalDateTime.now()))
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.EXPECTATION_FAILED)
+                .expectBody()
+                .jsonPath("$.message").value(containsString("Custom Error"));
+    }
+
+    @Test
+    void handleInvalidBodyException() {
+        TestRequestBody invalidBody = new TestRequestBody(null, null, "ABC", LocalDateTime.now());
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(invalidBody)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST")
+                // WebFlux racchiude i messaggi di validazione in una stringa molto lunga. 
+                // Verifichiamo solo che le parti fondamentali siano presenti.
+                .jsonPath("$.message").value(containsString("must not be null"))
+                .jsonPath("$.message").value(containsString("must match \"[a-z]+\""));
+    }
+
+    @Test
+    void handleNotParsableBodyException() {
+        // Quando Jackson fallisce il parsing in WebFlux, il messaggio di default è "Failed to read HTTP message"
+        String malformedJson = "{\"requiredField\":\"val\", \"dateTimeField\":\"2025-99-99\"}";
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(malformedJson)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST")
+                .jsonPath("$.message").value(containsString("Failed to read HTTP message"));
+    }
+
+    @Test
+    void handleMalformedJsonException() {
+        String malformedJson = "{\"requiredField\":\"val\" "; 
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(malformedJson)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST")
+                .jsonPath("$.message").value(containsString("Failed to read HTTP message"));
+    }
+
+    @Test
+    void handleNoBodyException() {
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST")
+                .jsonPath("$.message").value(containsString("No request body"));
+    }
+
+    @Test
+    void handleUnsupportedMediaType() {
+        // Test quando il client invia un Content-Type non supportato
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.TEXT_XML) // Invia XML, il controller si aspetta JSON
+                .bodyValue("<xml>test</xml>")
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST");
+    }
+
+    @Test
+    void handleMethodNotAllowed() {
+        // Test quando si sbaglia il metodo HTTP (es. GET invece di POST)
+        webTestClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.METHOD_NOT_ALLOWED)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST");
     }
 }

@@ -56,7 +56,7 @@ class UtilitiesTest {
         String result = utilities.getTraceId();
 
         // Then
-        Assertions.assertNull(result);
+        Assertions.assertEquals("no-trace-id", result);
     }
 
     // Questi metodi ora servono solo per i test degli altri componenti che usano MDC (se ancora presenti)

@@ -8,6 +8,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.URI;
@@ -20,8 +21,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import org.springframework.http.MediaType;
 
 import it.gov.pagopa.emd.ar.backoffice.dto.v1.OrganizationDTOV1;
@@ -104,14 +104,13 @@ public class AuthServiceImpl implements AuthService {
      * @return {@code Mono<UserDTOV1>} containing the user info extracted 
      * from the token if validation is successful, or an error if validation fails
      */
-    public Mono<UserDTOV1> verifyARTokenFields(Jwt jwt) {
+    public Mono<UserDTOV1> verifyARTokenFields(DecodedJWT jwt) {
         return Mono.fromCallable(() -> {
             log.info("verifyARTokenFields() for sub: {}", jwt.getSubject());
             UserDTOV1 user = new UserDTOV1();
-            
-            //Get the "organization" claim from the AR token
-            Map<String, Object> organizationMap = jwt.getClaim("organization");
 
+            Map<String, Object> organizationMap = jwt.getClaim("organization").asMap();
+        
             if (organizationMap == null) {
                 log.warn("verifyARTokenFields() - Validation failed: organization claim missing for sub: {}", jwt.getSubject());
                 throw new RuntimeException("Invalid token: organization claim is missing");
@@ -119,13 +118,14 @@ public class AuthServiceImpl implements AuthService {
 
             OrganizationDTOV1 org = objectMapper.convertValue(organizationMap, OrganizationDTOV1.class);
 
-            user.setName(jwt.getClaimAsString("name"));
-            user.setFamilyName(jwt.getClaimAsString("family_name"));
-            user.setEmail(jwt.getClaimAsString("email"));
-            user.setUid(jwt.getClaimAsString("uid"));
+            // Get the "organization" claim from the AR token
+            user.setName(jwt.getClaim("name").asString());
+            user.setFamilyName(jwt.getClaim("family_name").asString());
+            user.setEmail(jwt.getClaim("email").asString());
+            user.setUid(jwt.getClaim("uid").asString());
             user.setOrganization(org);
 
-            log.info("verifyARTokenFields() - Validation successful for subject: {}: {}", jwt.getSubject());
+            log.info("verifyARTokenFields() - Validation successful for subject: {}", jwt.getSubject());
             return user;
         }).doOnError(e -> log.error("verifyARTokenFields() - Token validation error: {}", e.getMessage()));
     }
@@ -388,7 +388,7 @@ public class AuthServiceImpl implements AuthService {
     private Mono<Throwable> handleKeycloakError(String context, String errorBody) {
         try {
             // Json parsing
-            Map<String, Object> errorMap = objectMapper.readValue(errorBody, Map.class);
+            Map<String, Object> errorMap = objectMapper.readValue(errorBody, new TypeReference<Map<String, Object>>() {});
             String description = (String) errorMap.getOrDefault("error_description", errorMap.get("error"));
             return Mono.error(new RuntimeException(description));
         } catch (Exception e) {

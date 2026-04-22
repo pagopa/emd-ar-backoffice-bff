@@ -26,6 +26,11 @@
 <td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
 </tr>
 <tr>
+<td><a href='https://github.com/auth0/jwks-rsa-java'>com.auth0:jwks-rsa</a></td>
+<td>0.22.1</td>
+<td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
+</tr>
+<tr>
 <td><a href='https://github.com/FasterXML/java-classmate'>com.fasterxml:classmate</a></td>
 <td>1.7.3</td>
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
@@ -61,14 +66,34 @@
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
 <tr>
+<td><a href='http://findbugs.sourceforge.net/'>com.google.code.findbugs:jsr305</a></td>
+<td>3.0.2</td>
+<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
+</tr>
+<tr>
+<td>com.google.errorprone:error_prone_annotations</td>
+<td>2.18.0</td>
+<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/google/guava/'>com.google.guava:failureaccess</a></td>
+<td>1.0.1</td>
+<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/google/guava/'>com.google.guava:guava</a></td>
+<td>32.1.1-jre</td>
+<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/google/guava'>com.google.guava:guava-parent</a></td>
+<td>32.1.1-jre</td>
+<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
+</tr>
+<tr>
 <td><a href='https://developers.google.com/protocol-buffers/'>com.google.protobuf:protobuf-java</a></td>
 <td>4.32.0</td>
 <td><a href='https://opensource.org/licenses/BSD-3-Clause'>BSD-3-Clause</a></td>
-</tr>
-<tr>
-<td><a href='https://connect2id.com'>com.nimbusds:nimbus-jose-jwt</a></td>
-<td>10.4</td>
-<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
 <tr>
 <td><a href='https://square.github.io/okhttp/'>com.squareup.okhttp3:okhttp</a></td>
@@ -426,6 +451,11 @@
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
 <tr>
+<td><a href='https://checkerframework.org/'>org.checkerframework:checker-qual</a></td>
+<td>3.33.0</td>
+<td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
+</tr>
+<tr>
 <td>org.codehaus.janino:commons-compiler</td>
 <td>3.1.12</td>
 <td><a href='https://opensource.org/licenses/BSD-3-Clause'>BSD-3-Clause</a></td>
@@ -616,16 +646,6 @@
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
 <tr>
-<td><a href='https://spring.io/projects/spring-boot'>org.springframework.boot:spring-boot-security</a></td>
-<td>4.0.3</td>
-<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
-</tr>
-<tr>
-<td><a href='https://spring.io/projects/spring-boot'>org.springframework.boot:spring-boot-security-oauth2-resource-server</a></td>
-<td>4.0.3</td>
-<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
-</tr>
-<tr>
 <td><a href='https://spring.io/projects/spring-boot'>org.springframework.boot:spring-boot-starter</a></td>
 <td>4.0.3</td>
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
@@ -651,22 +671,12 @@
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
 <tr>
-<td><a href='https://spring.io/projects/spring-boot'>org.springframework.boot:spring-boot-starter-oauth2-resource-server</a></td>
-<td>4.0.3</td>
-<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
-</tr>
-<tr>
 <td><a href='https://spring.io/projects/spring-boot'>org.springframework.boot:spring-boot-starter-opentelemetry</a></td>
 <td>4.0.3</td>
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
 <tr>
 <td><a href='https://spring.io/projects/spring-boot'>org.springframework.boot:spring-boot-starter-reactor-netty</a></td>
-<td>4.0.3</td>
-<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
-</tr>
-<tr>
-<td><a href='https://spring.io/projects/spring-boot'>org.springframework.boot:spring-boot-starter-security</a></td>
 <td>4.0.3</td>
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
@@ -698,41 +708,6 @@
 <tr>
 <td><a href='https://spring.io/projects/spring-data'>org.springframework.data:spring-data-commons</a></td>
 <td>4.0.3</td>
-<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
-</tr>
-<tr>
-<td><a href='https://spring.io/projects/spring-security'>org.springframework.security:spring-security-config</a></td>
-<td>7.0.3</td>
-<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
-</tr>
-<tr>
-<td><a href='https://spring.io/projects/spring-security'>org.springframework.security:spring-security-core</a></td>
-<td>7.0.3</td>
-<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
-</tr>
-<tr>
-<td><a href='https://spring.io/projects/spring-security'>org.springframework.security:spring-security-crypto</a></td>
-<td>7.0.3</td>
-<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
-</tr>
-<tr>
-<td><a href='https://spring.io/projects/spring-security'>org.springframework.security:spring-security-oauth2-core</a></td>
-<td>7.0.3</td>
-<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
-</tr>
-<tr>
-<td><a href='https://spring.io/projects/spring-security'>org.springframework.security:spring-security-oauth2-jose</a></td>
-<td>7.0.3</td>
-<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
-</tr>
-<tr>
-<td><a href='https://spring.io/projects/spring-security'>org.springframework.security:spring-security-oauth2-resource-server</a></td>
-<td>7.0.3</td>
-<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
-</tr>
-<tr>
-<td><a href='https://spring.io/projects/spring-security'>org.springframework.security:spring-security-web</a></td>
-<td>7.0.3</td>
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
 <tr>

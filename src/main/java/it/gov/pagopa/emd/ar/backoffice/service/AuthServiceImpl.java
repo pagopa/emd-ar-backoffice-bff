@@ -55,13 +55,13 @@ public class AuthServiceImpl implements AuthService {
     @Value("${keycloak.idp-alias}")
     private String idpAlias;
 
-    private final ReactiveJwtDecoder jwtDecoder;
+    private final PagoPaTokenValidator pagoPaValidator;
     private WebClient webClient;
     private final ObjectMapper objectMapper;
 
-    public AuthServiceImpl(WebClient webClient, ReactiveJwtDecoder jwtDecoder, ObjectMapper objectMapper) {
+    public AuthServiceImpl(WebClient webClient, PagoPaTokenValidator pagoPaValidator, ObjectMapper objectMapper) {
         this.webClient = webClient;
-        this.jwtDecoder = jwtDecoder;
+        this.pagoPaValidator = pagoPaValidator;
         this.objectMapper = objectMapper;
     }
 
@@ -73,7 +73,7 @@ public class AuthServiceImpl implements AuthService {
         log.info("AuthService - exchangeToken()");
 
         // Manual decode and validation of the AR token
-        return jwtDecoder.decode(token)
+        return pagoPaValidator.validate(token)
             .flatMap(this::verifyARTokenFields)
             .flatMap(user -> getKeycloakManagerToken()
                     .flatMap(managerToken ->
@@ -277,7 +277,7 @@ public class AuthServiceImpl implements AuthService {
         body.put("enabled", true);
         body.put("emailVerified", true);
 
-        // Link the federated identity (the AR token) to the user. This is needed both in creation and update, 
+        // Link the Idp to the user. This is needed both in creation and update, 
         // because in case of update we could have an existing user without a link to the IdP, and we need 
         // to ensure the link is always present after this operation.
         Map<String, String> federatedIdentity = new HashMap<>();

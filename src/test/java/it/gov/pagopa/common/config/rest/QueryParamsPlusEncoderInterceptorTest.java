@@ -12,7 +12,6 @@ import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 import reactor.core.publisher.Mono;
 
-import java.io.IOException;
 import java.net.URI;
 import reactor.test.StepVerifier;
 

@@ -10,6 +10,8 @@ import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +32,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Set;
 
-import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -91,7 +92,8 @@ class ControllerExceptionHandlerTest {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST")
-                .jsonPath("$.message").value(containsString("Required query parameter 'data' is not present"));
+                .jsonPath("$.message").value(value -> Assertions.assertThat((String) value)
+                                                                .contains("Required query parameter 'data' is not present"));
     }
 
     @Test
@@ -155,7 +157,8 @@ class ControllerExceptionHandlerTest {
                 .exchange()
                 .expectStatus().isEqualTo(HttpStatus.EXPECTATION_FAILED)
                 .expectBody()
-                .jsonPath("$.message").value(containsString("Custom Error"));
+                .jsonPath("$.message").value(value -> Assertions.assertThat((String) value)
+                                                                .contains("Custom Error"));
     }
 
     @Test
@@ -171,7 +174,8 @@ class ControllerExceptionHandlerTest {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST")
-                .jsonPath("$.message").value(containsString("Failed to read HTTP message"));
+                .jsonPath("$.message").value(value -> Assertions.assertThat((String) value)
+                                                                .contains("Failed to read HTTP message"));
     }
 
     @Test
@@ -186,7 +190,8 @@ class ControllerExceptionHandlerTest {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST")
-                .jsonPath("$.message").value(containsString("Failed to read HTTP message"));
+                .jsonPath("$.message").value(value -> Assertions.assertThat((String) value)
+                                                                .contains("Failed to read HTTP message"));
     }
 
     @Test
@@ -198,7 +203,8 @@ class ControllerExceptionHandlerTest {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST")
-                .jsonPath("$.message").value(containsString("No request body"));
+                .jsonPath("$.message").value(value -> Assertions.assertThat((String) value)
+                                                                .contains("No request body"));
     }
 
     @Test

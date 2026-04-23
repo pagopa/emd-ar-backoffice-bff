@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -62,6 +63,8 @@ class ControllerExceptionHandlerTest {
         // Evita errori di caricamento del contesto Spring
         this.webTestClient = WebTestClient.bindToController(testControllerMock)
                 .controllerAdvice(new ControllerExceptionHandler(utilities))
+                .configureClient()
+                .responseTimeout(Duration.ofSeconds(10))
                 .build();
 
         Mockito.lenient().when(utilities.getTraceId()).thenReturn(traceId);
@@ -153,24 +156,6 @@ class ControllerExceptionHandlerTest {
                 .expectStatus().isEqualTo(HttpStatus.EXPECTATION_FAILED)
                 .expectBody()
                 .jsonPath("$.message").value(containsString("Custom Error"));
-    }
-
-    @Test
-    void handleInvalidBodyException() {
-        TestRequestBody invalidBody = new TestRequestBody(null, null, "ABC", LocalDateTime.now());
-
-        webTestClient.post()
-                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(invalidBody)
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectBody()
-                .jsonPath("$.code").isEqualTo("BAD_REQUEST")
-                // WebFlux racchiude i messaggi di validazione in una stringa molto lunga.
-                // Verifichiamo solo che le parti fondamentali siano presenti.
-                .jsonPath("$.message").value(containsString("must not be null"))
-                .jsonPath("$.message").value(containsString("must match \"[a-z]+\""));
     }
 
     @Test

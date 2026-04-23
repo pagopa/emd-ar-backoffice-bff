@@ -91,7 +91,4 @@ class TraceIdObservationFilterTest {
         assertNull(exchange.getResponse().getHeaders().getFirst("X-Trace-Id"));
     }
 
-    // Nota: il terzo test che avevi prima (quello che usava UtilitiesTest.setTraceId) 
-    // ora è ridondante perché testava la stessa cosa del primo test, ma passando per l'MDC.
-    // In WebFlux testiamo solo l'interazione con il Tracer.
 }

@@ -1,6 +1,5 @@
 package it.gov.pagopa.common.exception;
 
-import it.gov.pagopa.common.config.json.JsonConfig;
 import it.gov.pagopa.common.utils.TestUtils;
 import it.gov.pagopa.common.utils.Utilities;
 import jakarta.validation.ConstraintViolation;
@@ -168,7 +167,7 @@ class ControllerExceptionHandlerTest {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST")
-                // WebFlux racchiude i messaggi di validazione in una stringa molto lunga. 
+                // WebFlux racchiude i messaggi di validazione in una stringa molto lunga.
                 // Verifichiamo solo che le parti fondamentali siano presenti.
                 .jsonPath("$.message").value(containsString("must not be null"))
                 .jsonPath("$.message").value(containsString("must match \"[a-z]+\""));
@@ -192,7 +191,7 @@ class ControllerExceptionHandlerTest {
 
     @Test
     void handleMalformedJsonException() {
-        String malformedJson = "{\"requiredField\":\"val\" "; 
+        String malformedJson = "{\"requiredField\":\"val\" ";
 
         webTestClient.post()
                 .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())

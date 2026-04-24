@@ -12,9 +12,12 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.URI;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -29,6 +32,7 @@ import it.gov.pagopa.emd.ar.backoffice.dto.v1.AuthResponseV1;
 import it.gov.pagopa.emd.ar.backoffice.dto.v1.UserDTOV1;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -56,9 +60,27 @@ public class AuthServiceImpl implements AuthService {
     @Value("${keycloak.idp-alias}")
     private String idpAlias;
 
+
     private final SelfCareTokenValidator selfCareValidator;
     private WebClient webClient;
     private final ObjectMapper objectMapper;
+
+    /**
+     * In-memory cache for the Keycloak manager token (client_credentials grant).
+     * Avoids a round-trip to Keycloak on every auth request.
+     * The token is proactively refreshed before expiry via a background task.
+     */
+    private record CachedToken(String value, Instant expiresAt) {
+        boolean isValid() { return Instant.now().isBefore(expiresAt); }
+    }
+    private final AtomicReference<CachedToken> managerTokenCache = new AtomicReference<>();
+
+    /**
+     * Tracks the currently scheduled proactive refresh task.
+     * Ensures only one refresh chain is active at any time — prevents leaks
+     * in case of concurrent cold-start fetches.
+     */
+    private final AtomicReference<Disposable> scheduledRefresh = new AtomicReference<>();
 
     public AuthServiceImpl(WebClient webClient, SelfCareTokenValidator selfCareValidator, ObjectMapper objectMapper) {
         this.webClient = webClient;
@@ -69,6 +91,14 @@ public class AuthServiceImpl implements AuthService {
     @PostConstruct
     public void init() {
         log.info("[AR-BFF][AUTH_SERVICE] Initialized: auth-server-url={} realm={} idp-alias={}", authServerUrl, realm, idpAlias);
+        // Warmup: fetch the manager token eagerly so the first real request finds a warm cache.
+        // Uses subscribe() (not block()) to avoid blocking Spring startup.
+        // If Keycloak is temporarily unavailable, the first request will trigger a sync fetch as fallback.
+        fetchAndCacheManagerToken()
+            .subscribe(
+                t  -> log.info("[AR-BFF][AUTH_SERVICE] Warmup: manager token ready"),
+                e  -> log.warn("[AR-BFF][AUTH_SERVICE] Warmup: failed to pre-fetch manager token, will retry on first request: {}", e.getMessage())
+            );
     }
 
     /**
@@ -144,15 +174,28 @@ public class AuthServiceImpl implements AuthService {
         }).doOnError(e -> log.error("[AR-BFF][VERIFY_CLAIMS] Failed: {}", e.getMessage()));
     }
 
-    // Consider using cache
     /**
-     * Get a Keycloak token using client credentials grant.
-     * This token is used for for user management operations (create/update).
+     * Get a Keycloak manager token using client credentials grant.
+     * The token is cached in memory and proactively refreshed 60s before expiry,
+     * so no request ever hits the cold fetch path after the first one.
      *
      * @return {@code Mono<String>} containing the Keycloak token or an error if the request fails
      */
     public Mono<String> getKeycloakManagerToken() {
-        log.info("[AR-BFF][GET_MANAGER_TOKEN] Requesting client_credentials token");
+        CachedToken cached = managerTokenCache.get();
+        if (cached != null && cached.isValid()) {
+            log.info("[AR-BFF][GET_MANAGER_TOKEN] Using cached manager token");
+            return Mono.just(cached.value());
+        }
+        return fetchAndCacheManagerToken();
+    }
+
+    /**
+     * Fetches a new manager token from Keycloak, caches it, and schedules a proactive refresh
+     * 60 seconds before expiry so subsequent requests always find a warm token.
+     */
+    private Mono<String> fetchAndCacheManagerToken() {
+        log.info("[AR-BFF][GET_MANAGER_TOKEN] Requesting new client_credentials token");
 
         String tokenUrl = String.format("%s/realms/%s/protocol/openid-connect/token", authServerUrl, realm);
 
@@ -169,8 +212,39 @@ public class AuthServiceImpl implements AuthService {
                 .onStatus(HttpStatusCode::isError, response ->
                     response.bodyToMono(String.class)
                         .flatMap(body -> handleKeycloakError("Auth Manager Error", body)))
-                .bodyToMono(Map.class)
-                .map(responseMap -> (String) responseMap.get("access_token"));
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .map(responseMap -> {
+                    String token = (String) responseMap.get("access_token");
+                    Number expiresIn = (Number) responseMap.getOrDefault("expires_in", 300);
+                    long ttl = expiresIn.longValue();
+                    managerTokenCache.set(new CachedToken(token, Instant.now().plusSeconds(ttl)));
+                    // Schedule proactive refresh 60s before expiry
+                    long refreshDelay = Math.max(0, ttl - 60);
+                    scheduleProactiveTokenRefresh(refreshDelay);
+                    log.info("[AR-BFF][GET_MANAGER_TOKEN] Token cached for {}s, proactive refresh in {}s", ttl, refreshDelay);
+                    return token;
+                });
+    }
+
+    /**
+     * Schedules a background token refresh after {@code delaySeconds}.
+     * Cancels any previously scheduled refresh to prevent duplicate chains
+     * (e.g. from concurrent cold-start fetches).
+     * On success, the new token replaces the cache and schedules the next refresh.
+     * On failure, logs a warning — the next real request will trigger a sync fetch as fallback.
+     */
+    private void scheduleProactiveTokenRefresh(long delaySeconds) {
+        Disposable newRefresh = Mono.delay(Duration.ofSeconds(delaySeconds))
+            .flatMap(ignored -> fetchAndCacheManagerToken())
+            .subscribe(
+                token -> log.info("[AR-BFF][GET_MANAGER_TOKEN] Token proactively refreshed"),
+                e -> log.warn("[AR-BFF][GET_MANAGER_TOKEN] Proactive refresh failed, will retry on next request: {}", e.getMessage())
+            );
+        // Atomically replace and dispose the previous scheduled refresh to prevent duplicate chains
+        Disposable existing = scheduledRefresh.getAndSet(newRefresh);
+        if (existing != null && !existing.isDisposed()) {
+            existing.dispose();
+        }
     }
 
     /**
@@ -219,7 +293,8 @@ public class AuthServiceImpl implements AuthService {
      *  the search criteria or an error if the request fails
      */
     public Mono<List<Map<String, Object>>> getKeycloakUser(String username, String adminToken) {
-        log.info("getKeycloakUser() - searching for: {}", username);
+        log.info("[AR-BFF][GET_KC_USER] Searching for user");
+        log.debug("[AR-BFF][GET_KC_USER] username={}", username);
 
         String usersUrl = String.format("%s/admin/realms/%s/users", authServerUrl, realm);
         // Build the URI with query parameters for exact username search

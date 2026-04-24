@@ -3,8 +3,6 @@ package it.gov.pagopa.common.utils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import it.gov.pagopa.common.utils.SecurityUtils;
-
 import java.net.URI;
 
 class SecurityUtilsTest {

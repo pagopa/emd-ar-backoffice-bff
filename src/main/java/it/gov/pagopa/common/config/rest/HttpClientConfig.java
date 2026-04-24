@@ -4,12 +4,17 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
+import org.springframework.context.annotation.Configuration;
 
 @Data
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
+@Configuration
+@ConfigurationProperties(prefix = "rest.defaults")
 public class HttpClientConfig {
     @NestedConfigurationProperty
     private HttpClientConnectionPoolConfig connectionPool;

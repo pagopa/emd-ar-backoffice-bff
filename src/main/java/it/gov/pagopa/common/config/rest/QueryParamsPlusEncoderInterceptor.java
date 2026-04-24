@@ -1,41 +1,45 @@
 package it.gov.pagopa.common.config.rest;
 
-import jakarta.annotation.Nonnull;
-import org.springframework.http.HttpRequest;
-import org.springframework.http.client.ClientHttpRequestExecution;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.http.client.support.HttpRequestWrapper;
+import org.springframework.web.reactive.function.client.ClientRequest;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
+import org.springframework.web.reactive.function.client.ExchangeFunction;
 import org.springframework.web.util.UriComponentsBuilder;
+import reactor.core.publisher.Mono;
 
-import java.io.IOException;
 import java.net.URI;
 
-public class QueryParamsPlusEncoderInterceptor implements ClientHttpRequestInterceptor {
+/**
+ * Filtro per WebClient che codifica il carattere '+' in '%2B' nei query parameters.
+ * Necessario perché alcuni sistemi interpretano il '+' come uno spazio.
+ */
+public class QueryParamsPlusEncoderInterceptor implements ExchangeFilterFunction {
 
   private static final String PLUS_RAW = "+";
   private static final String PLUS_ENCODED = "%2B";
 
   @Override
-  @Nonnull
-  public ClientHttpResponse intercept(@Nonnull HttpRequest request,@Nonnull byte[] body,@Nonnull ClientHttpRequestExecution execution) throws IOException {
-    HttpRequest encodedRequest = new HttpRequestWrapper(request) {
-      @Override
-      @Nonnull
-      public URI getURI() {
-        URI uri = super.getURI();
+    public Mono<ClientResponse> filter(ClientRequest request, ExchangeFunction next) {
+        URI uri = request.url();
         String escapedQuery = uri.getRawQuery();
 
-        if(escapedQuery != null){
-          escapedQuery = escapedQuery.replace(PLUS_RAW, PLUS_ENCODED);
-          return UriComponentsBuilder.fromUri(uri)
-                  .replaceQuery(escapedQuery)
-                  .build(true).toUri();
-        }else {
-          return uri;
+        if (escapedQuery != null && escapedQuery.contains(PLUS_RAW)) {
+            escapedQuery = escapedQuery.replace(PLUS_RAW, PLUS_ENCODED);
+            
+            URI newUri = UriComponentsBuilder.fromUri(uri)
+                    .replaceQuery(escapedQuery)
+                    .build(true) // 'true' indica che i componenti sono già encodati (tranne il nostro +)
+                    .toUri();
+
+            // WebClient Request è immutabile, ne creiamo una nuova copia con la nuova URI
+            ClientRequest encodedRequest = ClientRequest.from(request)
+                    .url(newUri)
+                    .build();
+            
+            return next.exchange(encodedRequest);
         }
-      }
-    };
-    return execution.execute(encodedRequest, body);
-  }
+        
+        return next.exchange(request);
+    }
 }
+

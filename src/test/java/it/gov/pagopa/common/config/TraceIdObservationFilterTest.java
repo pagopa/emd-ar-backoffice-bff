@@ -1,63 +1,94 @@
 package it.gov.pagopa.common.config;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.web.server.WebFilterChain;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
-import it.gov.pagopa.common.config.TraceIdObservationFilter;
-import it.gov.pagopa.common.utils.UtilitiesTest;
-import java.io.IOException;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class TraceIdObservationFilterTest {
 
     @Mock
-    private HttpServletRequest requestMock;
-    @Mock
-    private HttpServletResponse responseMock;
-    @Mock
-    private FilterChain filterChainMock;
+    private Tracer tracerMock;
 
-    private final TraceIdObservationFilter filter = new TraceIdObservationFilter();
+    @Mock
+    private Span spanMock;
+
+    @Mock
+    private TraceContext traceContextMock;
+
+    @Mock
+    private WebFilterChain filterChainMock;
+
+    private TraceIdObservationFilter filter;
+
+    @BeforeEach
+    void setUp() {
+        filter = new TraceIdObservationFilter(tracerMock);
+    }
 
     @AfterEach
-    void verifyNoMoreInteractions() throws ServletException, IOException {
-        UtilitiesTest.clearTraceIdContext();
-        Mockito.verify(filterChainMock)
-                .doFilter(Mockito.same(requestMock), Mockito.same(responseMock));
-
-        Mockito.verifyNoMoreInteractions(
-                requestMock,
-                responseMock,
-                filterChainMock
-        );
+    void verifyNoMoreInteractions() {
+        // Verifichiamo che la catena dei filtri sia stata chiamata esattamente una volta
+        Mockito.verify(filterChainMock).filter(any(MockServerWebExchange.class));
+        Mockito.verifyNoMoreInteractions(filterChainMock);
     }
 
     @Test
-    void givenNotTraceIdWhendoFilterInternalThenDoNothing() throws ServletException, IOException {
-        filter.doFilterInternal(requestMock, responseMock, filterChainMock);
-
-        Mockito.verifyNoInteractions(responseMock);
-    }
-
-    @Test
-    void givenTraceIdWhendoFilterInternalThenConfigureResponseHeader() throws ServletException, IOException {
+    void givenTraceIdWhenFilterThenAddHeader() {
         // Given
-        String traceId = "TRACEID";
-        UtilitiesTest.setTraceId(traceId);
+        String traceId = "mock-trace-id";
+        
+        // Mock della catena Micrometer: tracer -> currentSpan -> context -> traceId
+        when(tracerMock.currentSpan()).thenReturn(spanMock);
+        when(spanMock.context()).thenReturn(traceContextMock);
+        when(traceContextMock.traceId()).thenReturn(traceId);
+        
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/test").build());
+        when(filterChainMock.filter(any())).thenReturn(Mono.empty());
 
         // When
-        filter.doFilterInternal(requestMock, responseMock, filterChainMock);
+        Mono<Void> result = filter.filter(exchange, filterChainMock);
 
         // Then
-        Mockito.verify(responseMock)
-                .setHeader("X-Trace-Id", traceId);
+        StepVerifier.create(result).verifyComplete();
+        
+        // Verifichiamo che l'header X-Trace-Id sia presente nella risposta
+        assertEquals(traceId, exchange.getResponse().getHeaders().getFirst("X-Trace-Id"));
     }
+
+    @Test
+    void givenNoSpanWhenFilterThenDoNothing() {
+        // Given: il tracer non ha alcuno span attivo (ritorna null)
+        when(tracerMock.currentSpan()).thenReturn(null);
+        
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/test").build());
+        when(filterChainMock.filter(any())).thenReturn(Mono.empty());
+
+        // When
+        Mono<Void> result = filter.filter(exchange, filterChainMock);
+
+        // Then
+        StepVerifier.create(result).verifyComplete();
+        
+        // Verifichiamo che l'header NON sia stato aggiunto
+        assertNull(exchange.getResponse().getHeaders().getFirst("X-Trace-Id"));
+    }
+
 }

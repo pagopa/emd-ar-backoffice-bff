@@ -2,8 +2,6 @@ package it.gov.pagopa.common.performancelogger;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import it.gov.pagopa.common.performancelogger.PerformanceLogger;
-import it.gov.pagopa.common.performancelogger.PerformanceLoggerThresholdLevels;
 import it.gov.pagopa.common.utils.MemoryAppender;
 
 import org.junit.jupiter.api.Assertions;

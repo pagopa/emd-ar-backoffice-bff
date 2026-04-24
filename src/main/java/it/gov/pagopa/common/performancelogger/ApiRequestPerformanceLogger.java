@@ -1,54 +1,39 @@
 package it.gov.pagopa.common.performancelogger;
 
-import jakarta.servlet.*;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.core.annotation.Order;
-import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilter;
+import org.springframework.web.server.WebFilterChain;
+import reactor.core.publisher.Mono;
 
-import java.io.IOException;
-import java.util.List;
-
-/**
- * It will execute {@link PerformanceLogger} on each Api request
- */
-@Service
-@Order(-101) // Set in order to be executed after ServerHttpObservationFilter (which will handle traceId): configured through properties management.observations.http.server.filter.order
-public class ApiRequestPerformanceLogger implements Filter {
-
-    private static final List<String> blackListPathPrefixList = List.of(
-            "/actuator",
-            "/favicon.ico",
-            "/swagger"
-    );
+@Component
+@Slf4j
+public class ApiRequestPerformanceLogger implements WebFilter {
 
     @Override
-    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws ServletException, IOException {
-        if (servletRequest instanceof HttpServletRequest httpServletRequest &&
-                servletResponse instanceof HttpServletResponse httpServletResponse &&
-                isPerformanceLoggedRequest(httpServletRequest)
-        ) {
-            PerformanceLogger.execute(
-                    "API_REQUEST",
-                    getRequestDetails(httpServletRequest),
-                    () -> {
-                        filterChain.doFilter(servletRequest, servletResponse);
-                        return "ok";
-                    },
-                    x -> "HttpStatus: " + httpServletResponse.getStatus(),
-                    null);
-        } else {
-            filterChain.doFilter(servletRequest, servletResponse);
-        }
+    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        long startTime = System.currentTimeMillis();
+        
+        return chain.filter(exchange)
+            .doFinally(signalType -> {
+                long duration = System.currentTimeMillis() - startTime;
+                if (isPerformanceLoggedRequest(exchange)) {
+                    log.info("Request: {} - Duration: {}ms", getRequestDetails(exchange), duration);
+                }
+            });
     }
 
-    private boolean isPerformanceLoggedRequest(HttpServletRequest httpServletRequest) {
-        String requestURI = httpServletRequest.getRequestURI();
-        return blackListPathPrefixList.stream()
-                .noneMatch(requestURI::startsWith);
+    private boolean isPerformanceLoggedRequest(ServerWebExchange exchange) {
+        String path = exchange.getRequest().getPath().value();
+        // Evita di loggare gli endpoint di health check o simili se necessario
+        return !path.contains("/actuator");
     }
 
-    static String getRequestDetails(HttpServletRequest request) {
-        return "%s %s".formatted(request.getMethod(), request.getRequestURI());
+    static String getRequestDetails(ServerWebExchange exchange) {
+        return "%s %s".formatted(
+            exchange.getRequest().getMethod(),
+            exchange.getRequest().getPath().value()
+        );
     }
 }

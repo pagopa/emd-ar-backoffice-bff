@@ -34,7 +34,7 @@ class AuthServiceImplTest {
     private WebClient webClient;
 
     @Mock
-    private PagoPaTokenValidator pagoPaValidator;
+    private SelfCareTokenValidator selfCareValidator;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -80,14 +80,14 @@ class AuthServiceImplTest {
      * verificando che il risultato sia un {@link ResponseEntity} con stato HTTP 200 (OK)
      * e contenente il token Keycloak finale.
      * </p>
-     * 
+     *
      * @see AuthServiceImpl#exchangeToken(String)
      */
     @Test
     @SuppressWarnings("unchecked")
     void exchangeToken_Success_NewUser() {
         // PREPARAZIONE MOCK DEI CLAIM - Devono essere completati PRIMA del JWT
-        
+
         // Claim Organizzazione
         Claim orgClaim = mock(Claim.class);
         Map<String, Object> orgData = Map.of(
@@ -112,8 +112,8 @@ class AuthServiceImplTest {
 
         // CONFIGURAZIONE JWT (Usa i mock pronti sopra)
         DecodedJWT decodedJWT = mock(DecodedJWT.class);
-        when(pagoPaValidator.validate(anyString())).thenReturn(Mono.just(decodedJWT));
-        
+        when(selfCareValidator.validate(anyString())).thenReturn(Mono.just(decodedJWT));
+
         when(decodedJWT.getClaim("organization")).thenReturn(orgClaim);
         when(decodedJWT.getClaim("name")).thenReturn(nameClaim);
         when(decodedJWT.getClaim("family_name")).thenReturn(familyNameClaim);
@@ -121,7 +121,7 @@ class AuthServiceImplTest {
         when(decodedJWT.getClaim("uid")).thenReturn(uidClaim);
         when(decodedJWT.getSubject()).thenReturn("mario_uid");
 
-        // CONFIGURAZIONE WEBCLIENT 
+        // CONFIGURAZIONE WEBCLIENT
         WebClient.RequestBodyUriSpec postUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec postBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.RequestHeadersSpec postHeadersSpec = mock(WebClient.RequestHeadersSpec.class);
@@ -140,11 +140,11 @@ class AuthServiceImplTest {
         // Manager Token (chiamata a bodyToMono(Map.class))
         when(postResponseSpec.bodyToMono(eq(Map.class)))
                 .thenReturn(Mono.just(Map.of("access_token", "manager-token")));
-        
+
         // Create User (chiamata a toBodilessEntity())
         when(postResponseSpec.toBodilessEntity())
                 .thenReturn(Mono.just(ResponseEntity.ok().build()));
-        
+
         // Final Token Exchange (chiamata a bodyToMono(ParameterizedTypeReference))
         when(postResponseSpec.bodyToMono(any(ParameterizedTypeReference.class)))
                 .thenReturn(Mono.just(Map.of("access_token", "final-kc-token")));

@@ -93,7 +93,8 @@ keycloak:
 
 
 auth:
-  # SELFCARE
-  jwk-set-uri : "\${JWT_SET_URI}"
-  expected-issuer: "\${AUTH_EXPECTED_ISSUER}"
-  expected-audience: "\${AUTH_EXPECTED_AUDIENCE}"
+  sc:
+    # SELFCARE
+    jwk-set-uri: "\${SC_JWT_SET_URI}"
+    expected-issuer: "\${SC_AUTH_EXPECTED_ISSUER}"
+    expected-audience: "\${SC_AUTH_EXPECTED_AUDIENCE}"

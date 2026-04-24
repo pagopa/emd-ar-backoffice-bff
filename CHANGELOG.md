@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.6.0...v0.7.0) (2026-04-24)
+
+
+### Features
+
+* [MMC-468] add token exchange and auth/exchange endpoint ([#16](https://github.com/pagopa/emd-ar-backoffice-bff/issues/16)) ([cea8ce7](https://github.com/pagopa/emd-ar-backoffice-bff/commit/cea8ce73a4e409ab0c640037e6c21915cc9cea0d))
+
 ## [0.6.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.5.1...v0.6.0) (2026-04-09)
 
 

@@ -108,6 +108,15 @@ public class AuthServiceImpl implements AuthService {
     public Mono<ResponseEntity<AuthResponseV1>> exchangeToken(String token) {
         log.info("[AR-BFF][EXCHANGE_TOKEN] Start");
 
+        if (token == null || token.isBlank()) {
+            log.warn("[AR-BFF][EXCHANGE_TOKEN] Rejected: token is null or blank");
+            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(AuthResponseV1.builder()
+                    .status("ERROR")
+                    .message("Authentication failed")
+                    .build()));
+        }
+
         return selfCareValidator.validate(token)
             .doOnSuccess(jwt -> {
                 log.info("[AR-BFF][VALIDATE_SC_TOKEN] Token validated: kid={}", jwt.getKeyId());
@@ -130,12 +139,13 @@ public class AuthServiceImpl implements AuthService {
                                                                         .build()));
             })
             .onErrorResume(e -> {
+                // Log the real cause internally, but never expose internal details to the caller
                 log.error("[AR-BFF][EXCHANGE_TOKEN] Failed: {}", e.getMessage());
                 return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(AuthResponseV1.builder()
-                                            .status("ERROR")
-                                            .message(e.getMessage())
-                                            .build()));
+                        .status("ERROR")
+                        .message("Authentication failed")
+                        .build()));
             });
     }
 

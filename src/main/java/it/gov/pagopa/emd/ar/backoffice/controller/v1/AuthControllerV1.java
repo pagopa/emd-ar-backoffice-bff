@@ -1,7 +1,10 @@
 package it.gov.pagopa.emd.ar.backoffice.controller.v1;
 
+import jakarta.validation.Valid;
+
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,6 +14,7 @@ import it.gov.pagopa.emd.ar.backoffice.dto.v1.AuthResponseV1;
 import reactor.core.publisher.Mono;
 
 @RequestMapping("/emd/backoffice/api/v1")
+@Validated
 public interface AuthControllerV1 {
 
     /**
@@ -23,5 +27,5 @@ public interface AuthControllerV1 {
      *  Keycloak token, or an error response
      */
     @PostMapping(value = "auth/exchange", consumes = MediaType.APPLICATION_JSON_VALUE)
-    Mono<ResponseEntity<AuthResponseV1>> exchangeToken(@RequestBody AuthRequestDTOV1 authRequest);
+    Mono<ResponseEntity<AuthResponseV1>> exchangeToken(@Valid @RequestBody AuthRequestDTOV1 authRequest);
 }

@@ -33,6 +33,7 @@ public class SelfCareJwtConfig {
                 .cached(10, 24, TimeUnit.HOURS)
                 .rateLimited(10, 1, TimeUnit.MINUTES)
                 .build();
+
         log.info("[AR-BFF][SELFCARE_JWT_CONFIG] JwkProvider initialized: jwk-set-uri={}", jwkSetUri);
         return provider;
     }

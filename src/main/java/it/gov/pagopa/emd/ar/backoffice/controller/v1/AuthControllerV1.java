@@ -14,11 +14,14 @@ import reactor.core.publisher.Mono;
 public interface AuthControllerV1 {
 
     /**
-     * Endpoint for exchanging an AR token with a Keycloak token
-     * @param authRequest AR token
-     * @return {@code Mono<ResponseEntity<AuthResponse>>} containing the AR user info and the
-     *  Keycloak token or an error response
+     * Exchanges a SelfCare token for a Keycloak session token (JWT Bearer Grant).
+     * The backend validates the incoming SelfCare token, performs JIT user provisioning,
+     * and returns a Keycloak token along with the user info.
+     *
+     * @param authRequest request body containing the SelfCare token
+     * @return {@code Mono<ResponseEntity<AuthResponseV1>>} containing the user info and the
+     *  Keycloak token, or an error response
      */
     @PostMapping(value = "auth/exchange", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<AuthResponseV1>> exchangeToken (@RequestBody AuthRequestDTOV1 authRequest);
+    Mono<ResponseEntity<AuthResponseV1>> exchangeToken(@RequestBody AuthRequestDTOV1 authRequest);
 }

@@ -93,6 +93,19 @@ public class ControllerExceptionHandler {
 
   private static String buildReturnedMessage(Exception ex) {
     switch (ex) {
+
+      //Web flux
+      case WebExchangeBindException webExchangeBindException -> {
+            return "Invalid request content." +
+                webExchangeBindException.getBindingResult()
+                    .getAllErrors().stream()
+                    .map(e -> " " +
+                        (e instanceof FieldError fieldError ? fieldError.getField() : e.getObjectName()) +
+                        ": " + e.getDefaultMessage())
+                    .sorted()
+                    .collect(Collectors.joining(";"));
+        }
+
       case HttpMessageNotReadableException httpMessageNotReadableException -> {
         if (httpMessageNotReadableException.getCause() instanceof DatabindException jsonMappingException) {
           return "Cannot parse body. " +

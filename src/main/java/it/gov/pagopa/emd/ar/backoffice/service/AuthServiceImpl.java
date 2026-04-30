@@ -497,4 +497,70 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    /**
+    * Crea un nuovo client OIDC su Keycloak.
+    *
+    * @param clientId L'identificativo univoco del client (es. "my-new-service")
+    * @param description Una descrizione testuale del client
+    * @param redirectUris Lista di URI validi per il redirect
+    * @return Mono<String> L'ID interno del client creato su Keycloak
+    */
+    public Mono<String> createKeycloakClient(String clientId) {
+        log.info("[AR-BFF][CREATE_CLIENT] Starting process for clientId={}", clientId);
+        
+        return getKeycloakManagerToken()
+            .flatMap(adminToken -> {
+                String createUrl = String.format("%s/admin/realms/%s/clients", authServerUrl, realm);
+                Map<String, Object> payload = buildClientPayload(clientId);
+                
+                return webClient.post()
+                    .uri(createUrl)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(payload)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                            .flatMap(body -> handleKeycloakError("Create Client Error", body)))
+                    .toBodilessEntity()
+                    .map(response -> {
+                        // Logghiamo l'ID interno per debug
+                        String location = response.getHeaders().getFirst(HttpHeaders.LOCATION);
+                        if (location != null) {
+                            String internalId = location.substring(location.lastIndexOf('/') + 1);
+                            log.debug("[AR-BFF][CREATE_CLIENT] Client created successfully. Internal ID: {}", internalId);
+                        }
+                        return clientId;
+                    });
+            })
+            .doOnSuccess(res -> log.info("[AR-BFF][CREATE_CLIENT] Successfully created client: {}", clientId))
+            .doOnError(e -> log.error("[AR-BFF][CREATE_CLIENT] Failed: {}", e.getMessage()));
+    }
+
+    /**
+     * Costruisce il payload JSON per la creazione di un client OIDC standard.
+     */
+    private Map<String, Object> buildClientPayload(String clientId) {
+        log.info("[AR-BFF][BUILD_CLIENT_PAYLOAD] Building payload for clientId={}", clientId);
+        Map<String, Object> client = new HashMap<>();
+        client.put("clientId", clientId);
+        client.put("name", clientId);
+        client.put("enabled", true);
+        client.put("protocol", "openid-connect");
+        client.put("standardFlowEnabled", false);
+        client.put("directAccessGrantsEnabled", false);
+        client.put("webOrigins", List.of());
+        client.put("bearerOnly", false);
+        client.put("publicClient", false);
+        client.put("serviceAccountsEnabled", true);
+        client.put("redirectUris", List.of());
+        
+        // Client Secret (Confidential)
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put("use.refresh.tokens", "true");
+        client.put("attributes", attributes);
+        
+        return client;
+    }
+
 }

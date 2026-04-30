@@ -3,8 +3,12 @@ package it.gov.pagopa.emd.ar.backoffice.controller.v1;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import org.springframework.web.bind.annotation.RequestBody;
+import it.gov.pagopa.emd.ar.backoffice.dto.v1.TppDTOV1;
+import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
@@ -20,4 +24,14 @@ public interface TppControllerV1 {
      */
     @GetMapping(value = "tpp/test", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<Map<String, String>>> test();
+
+    /**
+     * Endpoint to save TPP information. Expects a valid TppDTOV1 payload in the request body.
+     * It will contact the TPP service to save the provided TPP information. Then it will create a new client
+     * in Keycloak with the TPP information. Finally it will return the tppId of the saved TPP as response.
+     *
+     * @return {@code Mono<ResponseEntity<String>>} The tppId with status OK
+     */
+    @PostMapping(value = "tpp")
+    Mono<ResponseEntity<String>> saveTpp(@Valid @RequestBody TppDTOV1 tppDTO);
 }

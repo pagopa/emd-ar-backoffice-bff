@@ -76,6 +76,9 @@ rest:
     timeout:
       connect-millis: "\${DEFAULT_REST_TIMEOUT_CONNECT_MILLIS:120000}"
       read-millis: "\${DEFAULT_REST_TIMEOUT_READ_MILLIS:120000}"
+  client:
+    tpp:
+      base-url: "\${EMD_TPP}"
 
 keycloak:
   auth-server-url: "\${KEYCLOAK_AUTH_URL}"

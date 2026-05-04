@@ -501,13 +501,21 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-    * Crea un nuovo client OIDC su Keycloak.
-    *
-    * @param clientId L'identificativo univoco del client (es. "my-new-service")
-    * @param description Una descrizione testuale del client
-    * @param redirectUris Lista di URI validi per il redirect
-    * @return Mono<String> L'ID interno del client creato su Keycloak
-    */
+     * Creates a new OIDC client in Keycloak and associates it with a predefined group.
+     * <p>
+     * This method performs an orchestrated reactive flow:
+     * <ol>
+     *     <li>Obtains a manager access token for authentication.</li>
+     *     <li>Sends a POST request to create the client.</li>
+     *     <li>Extracts the internal UUID from the response headers.</li>
+     *     <li>Retrieves the Service Account User identity automatically created by Keycloak.</li>
+     *     <li>Links the Service Account identity to the configured group ID.</li>
+     * </ol>
+     * </p>
+     *
+     * @param clientId the unique identifier for the new client (e.g., "my-new-service")
+     * @return a {@code Mono<String>} containing the clientId upon successful creation and group association
+     */
     public Mono<String> createKeycloakClient(String clientId) {
         log.info("[AR-BFF][CREATE_CLIENT] Starting process for clientId={}", clientId);
         
@@ -527,7 +535,7 @@ public class AuthServiceImpl implements AuthService {
                             .flatMap(body -> handleKeycloakError("Create Client Error", body)))
                     .toBodilessEntity()
                     .flatMap(response -> {
-                        // Logghiamo l'ID interno per debug
+                        // Get the internal client ID from the Location header to perform subsequent operations
                         String location = response.getHeaders().getFirst(HttpHeaders.LOCATION);
                         
                         if (location == null) {
@@ -546,7 +554,14 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * Costruisce il payload JSON per la creazione di un client OIDC standard.
+     * Builds the JSON payload for a standard OIDC Confidential client creation.
+     * <p>
+     * The client is configured with Service Accounts enabled to allow it to have a
+     * user identity, which is required for group membership and role assignments.
+     * </p>
+     *
+     * @param clientId the identifier to be assigned as both clientId and name
+     * @return a {@code Map<String, Object>} representing the Keycloak ClientRepresentation payload
      */
     private Map<String, Object> buildClientPayload(String clientId) {
         log.info("[AR-BFF][BUILD_CLIENT_PAYLOAD] Building payload for clientId={}", clientId);
@@ -571,6 +586,14 @@ public class AuthServiceImpl implements AuthService {
         return client;
     }
 
+    /**
+     * Retrieves the internal unique identifier (UUID) of the Service Account User
+     * associated with a specific Keycloak client.
+     *
+     * @param adminToken the manager token with administrative privileges
+     * @param internalClientId the internal UUID of the client (not the human-readable clientId)
+     * @return a {@code Mono<String>} containing the internal User ID of the service account
+     */
     private Mono<String> getServiceAccountUserId(String adminToken, String internalClientId) {
         String url = String.format("%s/admin/realms/%s/clients/%s/service-account-user", authServerUrl, realm, internalClientId);
         return webClient.get()
@@ -581,6 +604,18 @@ public class AuthServiceImpl implements AuthService {
                 .map(user -> (String) user.get("id"));
     }
 
+    /**
+     * Associates a specific user (including service accounts) with a Keycloak group.
+     * <p>
+     * This method executes a PUT request to the Keycloak Admin API to link an identity
+     * to a specific group path.
+     * </p>
+     *
+     * @param adminToken the manager token with administrative privileges
+     * @param userId the internal UUID of the user to be added
+     * @param groupId the internal UUID of the group
+     * @return a {@code Mono<Void>} that completes when the operation is finished
+     */
     private Mono<Void> addUserToGroup(String adminToken, String userId, String groupId) {
         String url = String.format("%s/admin/realms/%s/users/%s/groups/%s", authServerUrl, realm, userId, groupId);
         return webClient.put()

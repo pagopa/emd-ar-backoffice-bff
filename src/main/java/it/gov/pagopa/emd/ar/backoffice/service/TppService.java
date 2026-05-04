@@ -6,10 +6,9 @@ import reactor.core.publisher.Mono;
 public interface TppService {
     
     /**
-     * This method will save the provided TPP information, create a new client in Keycloak with the
-     * same TPP information and return the tppId of the saved TPP as response.
-     * @param tppDTO
-     * @return
+     * <p>Creates a new TPP by first saving it through the connector and then creating a corresponding Keycloak client.</p>
+     * @param tppDTO the TPP data to create
+     * @return {@code Mono<String>} containing the tppId of the created TPP or an error if the operation fails
      */
     Mono<String> createTppAndKeycloakClient(TppDTOV1 tppDTO);
 }

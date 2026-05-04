@@ -21,9 +21,7 @@ public class TppServiceImpl implements TppService {
     }
 
     /**
-     * <p>Creates a new TPP by first saving it through the connector and then creating a corresponding Keycloak client.</p>
-     * @param tppDTO the TPP data to create
-     * @return a Mono containing the tppId of the created TPP or an error if the operation fails
+     * {@inheritDoc}
      */
     @Override
     public Mono<String> createTppAndKeycloakClient(TppDTOV1 tppDTO) {

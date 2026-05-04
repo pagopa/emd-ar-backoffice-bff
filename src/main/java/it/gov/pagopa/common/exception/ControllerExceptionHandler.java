@@ -33,114 +33,114 @@ import java.util.stream.Collectors;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ControllerExceptionHandler {
 
-  private final Utilities utilities;
+    private final Utilities utilities;
 
-  public ControllerExceptionHandler(Utilities utilities) {
+    public ControllerExceptionHandler(Utilities utilities) {
         this.utilities = utilities;
     }
     
-  @ExceptionHandler({ValidationException.class, ServerWebInputException.class, WebExchangeBindException.class, HttpMessageNotReadableException.class})
-  public ResponseEntity<ErrorDTO> handleViolationException(Exception ex, ServerHttpRequest request) {
-    return handleException(ex, request, HttpStatus.BAD_REQUEST, ErrorDTO.CodeEnum.BAD_REQUEST);
-  }
-
-  @ExceptionHandler({ErrorResponseException.class})
-  public ResponseEntity<ErrorDTO> handleServletException(Exception ex, ServerHttpRequest request) {
-    HttpStatusCode httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
-    ErrorDTO.CodeEnum errorCode = ErrorDTO.CodeEnum.GENERIC_ERROR;
-    if (ex instanceof ErrorResponse errorResponse) {
-      httpStatus = errorResponse.getStatusCode();
-      if (httpStatus.isSameCodeAs(HttpStatus.NOT_FOUND)) {
-        errorCode = ErrorDTO.CodeEnum.NOT_FOUND;
-      } else if (httpStatus.is4xxClientError()) {
-        errorCode = ErrorDTO.CodeEnum.BAD_REQUEST;
-      }
+    @ExceptionHandler({ValidationException.class, ServerWebInputException.class, WebExchangeBindException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity<ErrorDTO> handleViolationException(Exception ex, ServerHttpRequest request) {
+        return handleException(ex, request, HttpStatus.BAD_REQUEST, ErrorDTO.CodeEnum.BAD_REQUEST);
     }
-    return handleException(ex, request, httpStatus, errorCode);
-  }
 
-  @ExceptionHandler({RuntimeException.class})
-  public ResponseEntity<ErrorDTO> handleRuntimeException(RuntimeException ex, ServerHttpRequest request) {
-    return handleException(ex, request, HttpStatus.INTERNAL_SERVER_ERROR, ErrorDTO.CodeEnum.GENERIC_ERROR);
-  }
-
-  private ResponseEntity<ErrorDTO> handleException(Exception ex, ServerHttpRequest request, HttpStatusCode httpStatus, ErrorDTO.CodeEnum errorEnum) {
-    logException(ex, request, httpStatus);
-
-    String message = buildReturnedMessage(ex);
-
-    return ResponseEntity
-      .status(httpStatus)
-      .contentType(MediaType.APPLICATION_JSON)
-      .body(new ErrorDTO(errorEnum, message, utilities.getTraceId()));
-  }
-
-  private static void logException(Exception ex, ServerHttpRequest request, HttpStatusCode httpStatus) {
-    boolean printStackTrace = httpStatus.is5xxServerError();
-    Level logLevel = printStackTrace ? Level.ERROR : Level.INFO;
-    log.makeLoggingEventBuilder(logLevel)
-      .log("A {} occurred handling request {}: HttpStatus {} - {}",
-        ex.getClass(),
-        getRequestDetails(request),
-        httpStatus.value(),
-        ex.getMessage(),
-        printStackTrace ? ex : null
-      );
-    if (!printStackTrace && log.isDebugEnabled() && ex.getCause() != null) {
-      log.debug("CausedBy: ", ex.getCause());
+    @ExceptionHandler({ErrorResponseException.class})
+    public ResponseEntity<ErrorDTO> handleServletException(Exception ex, ServerHttpRequest request) {
+        HttpStatusCode httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+        ErrorDTO.CodeEnum errorCode = ErrorDTO.CodeEnum.GENERIC_ERROR;
+        if (ex instanceof ErrorResponse errorResponse) {
+            httpStatus = errorResponse.getStatusCode();
+            if (httpStatus.isSameCodeAs(HttpStatus.NOT_FOUND)) {
+                errorCode = ErrorDTO.CodeEnum.NOT_FOUND;
+            } else if (httpStatus.is4xxClientError()) {
+                errorCode = ErrorDTO.CodeEnum.BAD_REQUEST;
+            }
+        }
+        return handleException(ex, request, httpStatus, errorCode);
     }
-  }
 
-  private static String buildReturnedMessage(Exception ex) {
-    switch (ex) {
+    @ExceptionHandler({RuntimeException.class})
+    public ResponseEntity<ErrorDTO> handleRuntimeException(RuntimeException ex, ServerHttpRequest request) {
+        return handleException(ex, request, HttpStatus.INTERNAL_SERVER_ERROR, ErrorDTO.CodeEnum.GENERIC_ERROR);
+    }
 
-      //Web flux
-      case WebExchangeBindException webExchangeBindException -> {
+    private ResponseEntity<ErrorDTO> handleException(Exception ex, ServerHttpRequest request, HttpStatusCode httpStatus, ErrorDTO.CodeEnum errorEnum) {
+        logException(ex, request, httpStatus);
+
+        String message = buildReturnedMessage(ex);
+
+        return ResponseEntity
+        .status(httpStatus)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(new ErrorDTO(errorEnum, message, utilities.getTraceId()));
+    }
+
+    private static void logException(Exception ex, ServerHttpRequest request, HttpStatusCode httpStatus) {
+        boolean printStackTrace = httpStatus.is5xxServerError();
+        Level logLevel = printStackTrace ? Level.ERROR : Level.INFO;
+        log.makeLoggingEventBuilder(logLevel)
+        .log("A {} occurred handling request {}: HttpStatus {} - {}",
+            ex.getClass(),
+            getRequestDetails(request),
+            httpStatus.value(),
+            ex.getMessage(),
+            printStackTrace ? ex : null
+        );
+        if (!printStackTrace && log.isDebugEnabled() && ex.getCause() != null) {
+        log.debug("CausedBy: ", ex.getCause());
+        }
+    }
+
+    private static String buildReturnedMessage(Exception ex) {
+        switch (ex) {
+
+        //Web flux
+        case WebExchangeBindException webExchangeBindException -> {
+                return "Invalid request content." +
+                    webExchangeBindException.getBindingResult()
+                        .getAllErrors().stream()
+                        .map(e -> " " +
+                            (e instanceof FieldError fieldError ? fieldError.getField() : e.getObjectName()) +
+                            ": " + e.getDefaultMessage())
+                        .sorted()
+                        .collect(Collectors.joining(";"));
+        }
+
+        case HttpMessageNotReadableException httpMessageNotReadableException -> {
+            if (httpMessageNotReadableException.getCause() instanceof DatabindException jsonMappingException) {
+            return "Cannot parse body. " +
+                jsonMappingException.getPath().stream()
+                .map(JacksonException.Reference::getPropertyName)
+                .collect(Collectors.joining(".")) +
+                ": " + jsonMappingException.getOriginalMessage();
+            }
+            return "Required request body is missing";
+        }
+        case MethodArgumentNotValidException methodArgumentNotValidException -> {
             return "Invalid request content." +
-                webExchangeBindException.getBindingResult()
-                    .getAllErrors().stream()
-                    .map(e -> " " +
-                        (e instanceof FieldError fieldError ? fieldError.getField() : e.getObjectName()) +
-                        ": " + e.getDefaultMessage())
-                    .sorted()
-                    .collect(Collectors.joining(";"));
+            methodArgumentNotValidException.getBindingResult()
+                .getAllErrors().stream()
+                .map(e -> " " +
+                (e instanceof FieldError fieldError ? fieldError.getField() : e.getObjectName()) +
+                ": " + e.getDefaultMessage())
+                .sorted()
+                .collect(Collectors.joining(";"));
         }
-
-      case HttpMessageNotReadableException httpMessageNotReadableException -> {
-        if (httpMessageNotReadableException.getCause() instanceof DatabindException jsonMappingException) {
-          return "Cannot parse body. " +
-            jsonMappingException.getPath().stream()
-              .map(JacksonException.Reference::getPropertyName)
-              .collect(Collectors.joining(".")) +
-            ": " + jsonMappingException.getOriginalMessage();
+        case ConstraintViolationException constraintViolationException -> {
+            return "Invalid request content." +
+            constraintViolationException.getConstraintViolations()
+                .stream()
+                .map(e -> " " + e.getPropertyPath() + ": " + e.getMessage())
+                .sorted()
+                .collect(Collectors.joining(";"));
         }
-        return "Required request body is missing";
-      }
-      case MethodArgumentNotValidException methodArgumentNotValidException -> {
-        return "Invalid request content." +
-          methodArgumentNotValidException.getBindingResult()
-            .getAllErrors().stream()
-            .map(e -> " " +
-              (e instanceof FieldError fieldError ? fieldError.getField() : e.getObjectName()) +
-              ": " + e.getDefaultMessage())
-            .sorted()
-            .collect(Collectors.joining(";"));
-      }
-      case ConstraintViolationException constraintViolationException -> {
-        return "Invalid request content." +
-          constraintViolationException.getConstraintViolations()
-            .stream()
-            .map(e -> " " + e.getPropertyPath() + ": " + e.getMessage())
-            .sorted()
-            .collect(Collectors.joining(";"));
-      }
-      default -> {
-        return ex.getMessage();
-      }
+        default -> {
+            return ex.getMessage();
+        }
+        }
     }
-  }
 
-  static String getRequestDetails(ServerHttpRequest request) {
-    return "%s %s".formatted(request.getMethod(), request.getPath().value());
-  }
+    static String getRequestDetails(ServerHttpRequest request) {
+        return "%s %s".formatted(request.getMethod(), request.getPath().value());
+    }
 }

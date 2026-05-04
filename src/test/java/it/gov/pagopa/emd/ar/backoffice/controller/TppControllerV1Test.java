@@ -13,23 +13,46 @@ import reactor.core.publisher.Mono;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+/**
+ * Unit tests for {@link TppControllerImplV1}.
+ * <p>
+ * This class tests the REST controller layer in isolation using {@link WebTestClient}.
+ * By using the {@code bindToController} approach, the Spring application context is not loaded,
+ * resulting in faster test execution while still verifying routing and JSON serialization.
+ * </p>
+ */
 class TppControllerImplV1Test {
 
     private TppServiceImpl tppService;
     private WebTestClient webTestClient;
 
+    /**
+     * Set up the test environment before each test case.
+     * Mocks the service layer and manually binds the controller to the WebTestClient.
+     */
     @BeforeEach
     void setUp() {
-        // Mockiamo il servizio
+        // Mock the service dependency
         tppService = Mockito.mock(TppServiceImpl.class);
         
-        // Creiamo l'istanza del controller passandogli il mock
+        // Instantiate the controller with the mocked service
         TppControllerImplV1 tppController = new TppControllerImplV1(tppService);
         
-        // Bindiamo il controller manualmente al WebTestClient
+        // Manually bind the controller to WebTestClient for lightweight unit testing
         webTestClient = WebTestClient.bindToController(tppController).build();
     }
 
+    /**
+     * Test case for the health check/routing verification endpoint.
+     * <p>
+     * Verifies that:
+     * <ul>
+     *     <li>The HTTP status is 200 OK.</li>
+     *     <li>The content type is APPLICATION_JSON.</li>
+     *     <li>The response body contains the expected static status and service name.</li>
+     * </ul>
+     * </p>
+     */
     @Test
     void test_ShouldReturnHealthStatus() {
         webTestClient.get()
@@ -42,19 +65,26 @@ class TppControllerImplV1Test {
                 .jsonPath("$.service").isEqualTo("emd-ar-backoffice-bff");
     }
 
+    /**
+     * Test case for the TPP information saving endpoint.
+     * <p>
+     * Verifies that the controller correctly delegates the creation process
+     * to the service layer and returns the generated TPP ID as a response.
+     * </p>
+     */
     @Test
     void saveTpp_ShouldReturnTppId() {
-        // Preparazione dati
+        // GIVEN: Prepare request data
         TppDTOV1 dto = new TppDTOV1();
         dto.setBusinessName("Test Tpp Name");
         
         String expectedResponse = "TPP_CREATED_ID_123";
 
-        // Definizione comportamento del mock
+        // WHEN: Define mock behavior for the service call
         when(tppService.createTppAndKeycloakClient(any(TppDTOV1.class)))
                 .thenReturn(Mono.just(expectedResponse));
 
-        // Esecuzione e verifica
+        // THEN: Execute the POST request and verify the response status and body
         webTestClient.post()
                 .uri("/emd/backoffice/api/v1/tpp")
                 .contentType(MediaType.APPLICATION_JSON)

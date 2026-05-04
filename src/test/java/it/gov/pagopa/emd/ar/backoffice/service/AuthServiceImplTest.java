@@ -138,16 +138,24 @@ class AuthServiceImplTest {
 
         // Risposte sequenziali:
         // Manager Token (chiamata a bodyToMono(Map.class))
-        when(postResponseSpec.bodyToMono(eq(Map.class)))
-                .thenReturn(Mono.just(Map.of("access_token", "manager-token")));
+        // Prima chiamata (fetchAndCacheManagerToken) -> manager-token
+        // Seconda chiamata (getJwtBearerToken) -> final-kc-token
+        when(postResponseSpec.bodyToMono(any(ParameterizedTypeReference.class)))
+                .thenReturn(Mono.just(Map.of("access_token", "manager-token")))
+                .thenReturn(Mono.just(Map.of("access_token", "final-kc-token")));
 
-        // Create User (chiamata a toBodilessEntity())
+        
+        // GESTIONE toBodilessEntity (Create User e Link Identity)
+        // Prepariamo un header Location per la creazione utente
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.add(org.springframework.http.HttpHeaders.LOCATION, "/users/new-user-uuid");
+
+        // Prima chiamata (createKeycloakUser) -> 201 Created con Location
+        // Seconda chiamata (linkFederatedIdentityToUser) -> 200 OK
         when(postResponseSpec.toBodilessEntity())
+                .thenReturn(Mono.just(ResponseEntity.status(HttpStatus.CREATED).headers(headers).build()))
                 .thenReturn(Mono.just(ResponseEntity.ok().build()));
 
-        // Final Token Exchange (chiamata a bodyToMono(ParameterizedTypeReference))
-        when(postResponseSpec.bodyToMono(any(ParameterizedTypeReference.class)))
-                .thenReturn(Mono.just(Map.of("access_token", "final-kc-token")));
 
         // Mock GET per ricerca utente (getKeycloakUser)
         WebClient.RequestHeadersUriSpec getUriSpec = mock(WebClient.RequestHeadersUriSpec.class);
@@ -158,8 +166,9 @@ class AuthServiceImplTest {
         when(getUriSpec.uri(any(java.net.URI.class))).thenReturn(getHeadersSpec);
         when(getHeadersSpec.header(any(), any())).thenReturn(getHeadersSpec);
         when(getHeadersSpec.retrieve()).thenReturn(getResponseSpec);
+
         when(getResponseSpec.bodyToMono(any(ParameterizedTypeReference.class)))
-                .thenReturn(Mono.just(Collections.emptyList())); // Utente nuovo
+                .thenReturn(Mono.just(Collections.emptyList()));
 
         // ESECUZIONE
         Mono<ResponseEntity<AuthResponseV1>> result = authService.exchangeToken("test-token");
@@ -169,6 +178,7 @@ class AuthServiceImplTest {
                 .assertNext(response -> {
                     assertEquals(HttpStatus.OK, response.getStatusCode());
                     assertEquals("final-kc-token", response.getBody().getToken());
+                    assertEquals("Mario", response.getBody().getUserInfo().getName());
                 })
                 .verifyComplete();
     }

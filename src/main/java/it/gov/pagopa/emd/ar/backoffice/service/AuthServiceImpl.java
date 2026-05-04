@@ -60,6 +60,9 @@ public class AuthServiceImpl implements AuthService {
     @Value("${keycloak.idp-alias}")
     private String idpAlias;
 
+    @Value("${keycloak.groups.tpp-id}")
+    private String tppGroupId;
+
 
     private final SelfCareTokenValidator selfCareValidator;
     private WebClient webClient;
@@ -523,14 +526,19 @@ public class AuthServiceImpl implements AuthService {
                         response.bodyToMono(String.class)
                             .flatMap(body -> handleKeycloakError("Create Client Error", body)))
                     .toBodilessEntity()
-                    .map(response -> {
+                    .flatMap(response -> {
                         // Logghiamo l'ID interno per debug
                         String location = response.getHeaders().getFirst(HttpHeaders.LOCATION);
-                        if (location != null) {
-                            String internalId = location.substring(location.lastIndexOf('/') + 1);
-                            log.debug("[AR-BFF][CREATE_CLIENT] Client created successfully. Internal ID: {}", internalId);
+                        
+                        if (location == null) {
+                            return Mono.error(new RuntimeException("Create Client Error: Location header missing"));
                         }
-                        return clientId;
+                        String internalClientId = location.substring(location.lastIndexOf('/') + 1);
+                        log.debug("[AR-BFF][CREATE_CLIENT] Client created. Internal ID: {}. Proceeding with group association.", internalClientId);
+                        
+                        return getServiceAccountUserId(adminToken, internalClientId)
+                            .flatMap(serviceAccountUserId -> addUserToGroup(adminToken, serviceAccountUserId, tppGroupId))
+                            .thenReturn(clientId);
                     });
             })
             .doOnSuccess(res -> log.info("[AR-BFF][CREATE_CLIENT] Successfully created client: {}", clientId))
@@ -561,6 +569,29 @@ public class AuthServiceImpl implements AuthService {
         client.put("attributes", attributes);
         
         return client;
+    }
+
+    private Mono<String> getServiceAccountUserId(String adminToken, String internalClientId) {
+        String url = String.format("%s/admin/realms/%s/clients/%s/service-account-user", authServerUrl, realm, internalClientId);
+        return webClient.get()
+                .uri(url)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .map(user -> (String) user.get("id"));
+    }
+
+    private Mono<Void> addUserToGroup(String adminToken, String userId, String groupId) {
+        String url = String.format("%s/admin/realms/%s/users/%s/groups/%s", authServerUrl, realm, userId, groupId);
+        return webClient.put()
+                .uri(url)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> handleKeycloakError("Add User to Group Error", body)))
+                .toBodilessEntity()
+                .then();
     }
 
 }

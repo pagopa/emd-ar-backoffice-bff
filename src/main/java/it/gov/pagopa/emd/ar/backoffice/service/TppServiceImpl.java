@@ -30,6 +30,7 @@ public class TppServiceImpl implements TppService {
         log.info("[AR-BFF][TPP_CREATE] Creating new TPP: {}", tppDTO.getBusinessName());
         
         //Default field
+        tppDTO.setIdPsp("Temporary PSP ID");
         tppDTO.setPspDenomination(tppDTO.getBusinessName());
         tppDTO.setLegalAddress("Temporary Address");
         tppDTO.setContact(new ContactV1("Temporary Contact", "1234567890", "test@example.com"));

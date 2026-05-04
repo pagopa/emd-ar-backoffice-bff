@@ -90,6 +90,8 @@ keycloak:
   ar-backoffice:
     client-id: "\${KEYCLOAK_BACKOFFICE_CLIENT_ID}"
     client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
+  groups:
+    tpp-id: "\{KEYCLOAK_GROUP_ID}"
 
 
 auth:

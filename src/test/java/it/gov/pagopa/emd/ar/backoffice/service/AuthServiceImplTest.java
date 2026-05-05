@@ -61,6 +61,7 @@ class AuthServiceImplTest {
         ReflectionTestUtils.setField(authService, "backofficeClientSecret", "b-secret");
         ReflectionTestUtils.setField(authService, "idpAlias", "idp-test");
         ReflectionTestUtils.setField(authService, "objectMapper", objectMapper);
+        ReflectionTestUtils.setField(authService, "tppGroupName", "emd-tpp");
     }
 
     /**
@@ -129,6 +130,7 @@ class AuthServiceImplTest {
 
         when(webClient.post()).thenReturn(postUriSpec);
         when(postUriSpec.uri(anyString())).thenReturn(postBodySpec);
+        when(postUriSpec.uri(any(java.net.URI.class))).thenReturn(postBodySpec);
         when(postBodySpec.contentType(any())).thenReturn(postBodySpec);
         when(postBodySpec.accept(any())).thenReturn(postBodySpec);
         when(postBodySpec.header(any(), any())).thenReturn(postBodySpec);

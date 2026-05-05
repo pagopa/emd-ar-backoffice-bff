@@ -60,8 +60,8 @@ public class AuthServiceImpl implements AuthService {
     @Value("${keycloak.idp-alias}")
     private String idpAlias;
 
-    @Value("${keycloak.groups.tpp-id}")
-    private String tppGroupId;
+    @Value("${keycloak.groups.tpp-name}")
+    private String tppGroupName;
 
 
     private final SelfCareTokenValidator selfCareValidator;
@@ -343,6 +343,8 @@ public class AuthServiceImpl implements AuthService {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
                 .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                    response.bodyToMono(String.class).flatMap(body -> handleKeycloakError("Create User Error", body)))
                 .toBodilessEntity()
                 .map(response -> {
                     String location = response.getHeaders().getFirst(HttpHeaders.LOCATION);
@@ -371,6 +373,9 @@ public class AuthServiceImpl implements AuthService {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
                 .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                    response.bodyToMono(String.class)
+                            .flatMap(body -> handleKeycloakError("Update User Error", body)))
                 .toBodilessEntity()
                 .then();
     }
@@ -432,6 +437,9 @@ public class AuthServiceImpl implements AuthService {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
                 .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                    response.bodyToMono(String.class)
+                            .flatMap(body -> handleKeycloakError("Federated Identity Link failed", body)))
                 .toBodilessEntity()
                 .doOnSuccess(r -> log.info("[AR-BFF][LINK_IDENTITY] Identity linked successfully"))
                 .onErrorResume(WebClientResponseException.class, e -> {
@@ -521,14 +529,13 @@ public class AuthServiceImpl implements AuthService {
         
         return getKeycloakManagerToken()
             .flatMap(adminToken -> {
-                String createUrl = String.format("%s/admin/realms/%s/clients", authServerUrl, realm);
-                Map<String, Object> payload = buildClientPayload(clientId);
+                URI createUri = buildKeycloakUri("/admin/realms/{realm}/clients", null);
                 
                 return webClient.post()
-                    .uri(createUrl)
+                    .uri(createUri)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(payload)
+                    .bodyValue(buildClientPayload(clientId))
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
@@ -544,9 +551,12 @@ public class AuthServiceImpl implements AuthService {
                         String internalClientId = location.substring(location.lastIndexOf('/') + 1);
                         log.debug("[AR-BFF][CREATE_CLIENT] Client created. Internal ID: {}. Proceeding with group association.", internalClientId);
                         
-                        return getServiceAccountUserId(adminToken, internalClientId)
-                            .flatMap(serviceAccountUserId -> addUserToGroup(adminToken, serviceAccountUserId, tppGroupId))
-                            .thenReturn(clientId);
+                        //Execute operation in parallel: get group ID and service account user ID, then add user to group
+                        return Mono.zip(
+                            getGroupIdByName(adminToken, tppGroupName),
+                            getServiceAccountUserId(adminToken, internalClientId))
+                        .flatMap(tuple -> addUserToGroup(adminToken, tuple.getT2(), tuple.getT1()))
+                        .thenReturn(clientId);
                     });
             })
             .doOnSuccess(res -> log.info("[AR-BFF][CREATE_CLIENT] Successfully created client: {}", clientId))
@@ -587,6 +597,42 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
+     * Resolves a Keycloak Group Name to its corresponding internal unique identifier (UUID).
+     * <p>
+     * Since the Keycloak Admin API "search" parameter performs a fuzzy match, this method 
+     * retrieves a list of potential candidates and applies a strict filter to ensure 
+     * an exact match with the provided {@code groupName}.
+     * </p>
+     *
+     * @param adminToken the administrative access token required for Keycloak Admin API calls
+     * @param groupName  the exact name of the group to be resolved
+     * @return a {@code Mono<String>} emitting the internal UUID of the group if found;
+     *         otherwise, emits a {@link RuntimeException} if the group does not exist
+     *         or the search returns no exact matches.
+     */
+    private Mono<String> getGroupIdByName(String adminToken, String groupName) {
+        log.debug("[AR-BFF][GET_GROUP_ID] Searching for group: {}", groupName);
+        String groupsUrl = String.format("%s/admin/realms/%s/groups", authServerUrl, realm);
+
+        URI uri = UriComponentsBuilder.fromUriString(groupsUrl)
+        .queryParam("search", groupName)
+        .build()
+        .toUri();
+
+        return webClient.get()
+        .uri(uri)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+        .retrieve()
+        .bodyToMono(new ParameterizedTypeReference<List<Map<String, Object>>>() {})
+        .flatMap(groups -> groups.stream()
+            .filter(g -> groupName.equals(g.get("name")))
+            .map(g -> (String) g.get("id"))
+            .findFirst()
+            .map(Mono::just)
+            .orElseGet(() -> Mono.error(new RuntimeException("Group not found: " + groupName))));
+    }
+
+    /**
      * Retrieves the internal unique identifier (UUID) of the Service Account User
      * associated with a specific Keycloak client.
      *
@@ -595,11 +641,15 @@ public class AuthServiceImpl implements AuthService {
      * @return a {@code Mono<String>} containing the internal User ID of the service account
      */
     private Mono<String> getServiceAccountUserId(String adminToken, String internalClientId) {
-        String url = String.format("%s/admin/realms/%s/clients/%s/service-account-user", authServerUrl, realm, internalClientId);
+        
+        URI uri = buildKeycloakUri("/admin/realms/{realm}/clients/" + internalClientId + "/service-account-user", null);
+        
         return webClient.get()
-                .uri(url)
+                .uri(uri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
                 .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                    response.bodyToMono(String.class).flatMap(body -> handleKeycloakError("Get Service Account Error", body)))
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
                 .map(user -> (String) user.get("id"));
     }
@@ -617,9 +667,10 @@ public class AuthServiceImpl implements AuthService {
      * @return a {@code Mono<Void>} that completes when the operation is finished
      */
     private Mono<Void> addUserToGroup(String adminToken, String userId, String groupId) {
-        String url = String.format("%s/admin/realms/%s/users/%s/groups/%s", authServerUrl, realm, userId, groupId);
+        URI uri = buildKeycloakUri("/admin/realms/{realm}/users/" + userId + "/groups/" + groupId, null);
+
         return webClient.put()
-                .uri(url)
+                .uri(uri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, response ->
@@ -627,6 +678,34 @@ public class AuthServiceImpl implements AuthService {
                                 .flatMap(body -> handleKeycloakError("Add User to Group Error", body)))
                 .toBodilessEntity()
                 .then();
+    }
+
+    /**
+     * Utility method to construct a fully qualified Keycloak URI.
+     * <p>
+     * This helper ensures that the {@code authServerUrl} is always used as the absolute base,
+     * preventing issues where the {@code WebClient} might incorrectly append paths to a 
+     * pre-configured base URL. It also handles path variable expansion and query parameters.
+     * </p>
+     *
+     * @param path The relative API path, which can include placeholders like {realm}.
+     * @param queryParams An optional map of query parameters to be appended to the URI.
+     * @return A complete and encoded {@link URI} instance.
+     */
+    private URI buildKeycloakUri(String path, Map<String, String> queryParams) {
+        
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl)
+                .path(path);
+                
+        if (queryParams != null) {
+            //Add param to url
+            queryParams.forEach(builder::queryParam);
+        }
+        
+        // The buildAndExpand method is used to replace URI template variables.
+        // In this case, it resolves the "{realm}" placeholder commonly found in Keycloak
+        // administrative paths with the actual realm value configured for this service.
+        return builder.buildAndExpand(realm).toUri();
     }
 
 }

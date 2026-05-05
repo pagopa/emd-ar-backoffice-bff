@@ -91,7 +91,7 @@ keycloak:
     client-id: "\${KEYCLOAK_BACKOFFICE_CLIENT_ID}"
     client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
   groups:
-    tpp-id: "\{KEYCLOAK_TPP_GROUP_ID}"
+    tpp-name: "\${KEYCLOAK_TPP_GROUP_NAME}"
 
 
 auth:

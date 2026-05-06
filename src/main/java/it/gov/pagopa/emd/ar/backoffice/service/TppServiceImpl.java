@@ -35,16 +35,14 @@ public class TppServiceImpl implements TppService {
         tppDTO.setState(false);
         tppDTO.setIsPaymentEnabled(false);
 
-
-        return tppConnector.saveTpp(tppDTO)
-            .delayUntil(savedTpp -> {
-                return authService.createKeycloakClient(tppDTO.getBusinessName())
-                    .map(creds -> {
-                        log.info("[AR-BFF][TPP_CREATE] Keycloak client created: {}", creds);
-                        return String.format("TPP created successfully with ID: %s and Keycloak Client: %s",
-                                savedTpp, creds);
-                    });
+        //Create Keycloak client
+        return authService.createKeycloakClient(tppDTO.getBusinessName())
+            .flatMap(creds -> {
+                log.info("[AR-BFF][TPP_CREATE] Keycloak client created. Now saving TPP on Database.");
+                //Save TPP on Database
+                return tppConnector.saveTpp(tppDTO);
             })
-            .doOnError(e -> log.error("[AR-BFF][TPP_CREATE] Error: {}", e.getMessage()));
+            .doOnSuccess(tppId -> log.info("[AR-BFF][TPP_CREATE] TPP creation completed. Generated ID: {}", tppId))
+            .doOnError(e -> log.error("[AR-BFF][TPP_CREATE] Error during TPP creation process: {}", e.getMessage()));
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.gov.pagopa.emd.ar.backoffice.dto.v1.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.dto.v1.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.TppServiceImpl;
 import reactor.core.publisher.Mono;
 
@@ -33,9 +34,9 @@ public class TppControllerImplV1 implements TppControllerV1 {
      * {@inheritDoc}
      */
     @Override
-    public Mono<ResponseEntity<String>> saveTpp(TppDTOV1 tppDTO) {
+    public Mono<ResponseEntity<TppIdResponseDTOV1>> saveTpp(TppDTOV1 tppDTO) {
         log.info("[AR-BFF][TPP_SAVE] Saving TPP");
         return tppService.createTppAndKeycloakClient(tppDTO)
-                .map(ResponseEntity::ok);
+                .map(tppId -> ResponseEntity.ok(new TppIdResponseDTOV1(tppId)));
     }
 }

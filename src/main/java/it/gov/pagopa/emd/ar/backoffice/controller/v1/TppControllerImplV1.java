@@ -39,4 +39,15 @@ public class TppControllerImplV1 implements TppControllerV1 {
         return tppService.createTppAndKeycloakClient(tppDTO)
                 .map(tppId -> ResponseEntity.ok(new TppIdResponseDTOV1(tppId)));
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Mono<ResponseEntity<TppIdResponseDTOV1>> isTppOnboarded(String entityId) {
+        log.info("[AR-BFF][TPP_CHECK] Checking if TPP is onboarded");
+        return tppService.getTppIdByEntityId(entityId)
+            .map(tppId -> ResponseEntity.ok(new TppIdResponseDTOV1(tppId)))
+            .defaultIfEmpty(ResponseEntity.ok(new TppIdResponseDTOV1(null)));
+    }
 }

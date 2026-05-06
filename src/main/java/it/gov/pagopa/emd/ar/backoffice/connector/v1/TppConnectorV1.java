@@ -14,4 +14,11 @@ public interface TppConnectorV1 {
      * @return {@code Mono<String>} containing the tppId of the saved TPP or an error if the operation fails
      */
     Mono<String> saveTpp(TppDTOV1 tppDTO);
+
+    /**
+     * Retrieves the tppId of a TPP by its entityId by sending a GET request to the remote emd-tpp service.</p>
+     * @param entityId
+     * @return
+     */
+    Mono<String> getTppIdByEntityId(String entityId);
 }

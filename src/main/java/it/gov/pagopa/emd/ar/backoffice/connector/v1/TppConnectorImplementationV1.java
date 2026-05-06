@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.connector.v1;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import it.gov.pagopa.emd.ar.backoffice.dto.v1.TppDTOV1;
 import reactor.core.publisher.Mono;
@@ -44,5 +45,19 @@ public class TppConnectorImplementationV1 implements TppConnectorV1{
                 .retrieve()
                 .bodyToMono(TppDTOV1.class)
                 .map(TppDTOV1::getTppId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Mono<String> getTppIdByEntityId(String entityId) {
+        return webClient.get()
+            .uri(uriBuilder -> uriBuilder.path("/emd/tpp/entityId/{entityId}").build(entityId))
+            .retrieve()
+            .bodyToMono(TppDTOV1.class)
+            .map(TppDTOV1::getTppId)
+            .onErrorResume(WebClientResponseException.NotFound.class, e -> {
+                return Mono.empty();
+        });
     }
 }

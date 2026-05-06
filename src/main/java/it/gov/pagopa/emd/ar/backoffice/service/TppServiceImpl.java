@@ -45,4 +45,16 @@ public class TppServiceImpl implements TppService {
             .doOnSuccess(tppId -> log.info("[AR-BFF][TPP_CREATE] TPP creation completed. Generated ID: {}", tppId))
             .doOnError(e -> log.error("[AR-BFF][TPP_CREATE] Error during TPP creation process: {}", e.getMessage()));
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Mono<String> getTppIdByEntityId(String entityId) {
+        log.info("[AR-BFF][TPP_GET] Retrieving TPP ID for entityId: {}", entityId);
+        return tppConnector.getTppIdByEntityId(entityId)
+            .doOnSuccess(tppId -> log.info("[AR-BFF][TPP_GET] Retrieved TPP ID: {} for entityId: {}", tppId, entityId))
+            .doOnError(e -> log.error("[AR-BFF][TPP_GET] Error retrieving TPP ID for entityId {}: {}", entityId, e.getMessage()));
+    }
+
 }

@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono;
  * Implementation of {@link TppConnectorV1} that uses Spring's WebClient to interact with the remote emd-tpp service.</p>
  */
 @Service
-public class TppConnectorImplementationV1 {
+public class TppConnectorImplementationV1 implements TppConnectorV1{
 
     /**
      * Configured WebClient pointing to the TPP remote service base URL.</p>

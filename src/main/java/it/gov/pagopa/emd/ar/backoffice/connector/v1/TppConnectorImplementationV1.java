@@ -7,8 +7,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 import it.gov.pagopa.emd.ar.backoffice.dto.v1.TppDTOV1;
 import reactor.core.publisher.Mono;
 
+/**
+ * Implementation of {@link TppConnectorV1} that uses Spring's WebClient to interact with the remote emd-tpp service.</p>
+ */
 @Service
 public class TppConnectorImplementationV1 {
+
     /**
      * Configured WebClient pointing to the TPP remote service base URL.</p>
      */
@@ -26,13 +30,16 @@ public class TppConnectorImplementationV1 {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * <p>Saves TPP data by sending a POST request to the remote service.</p>
-     * @param tppDTO
-     * @return
+     *
+     * @param tppDTO the TPP data to save
+     * @return {@code Mono<String>} containing the tppId of the saved TPP or an error if the operation fails
      */
     public Mono<String> saveTpp(TppDTOV1 tppDTO) {
         return webClient.post()
-                .uri("/save")
+                .uri("/emd/tpp/save")
                 .bodyValue(tppDTO)
                 .retrieve()
                 .bodyToMono(TppDTOV1.class)

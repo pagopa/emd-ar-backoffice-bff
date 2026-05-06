@@ -7,5 +7,11 @@ import reactor.core.publisher.Mono;
  * Abstraction for retrieving Tpp data.</p>
  */
 public interface TppConnectorV1 {
+
+    /**
+     * Saves TPP data by sending a POST request to the remote emd-tpp service.</p>
+     * @param tppDTO the TPP data to save
+     * @return {@code Mono<String>} containing the tppId of the saved TPP or an error if the operation fails
+     */
     Mono<String> saveTpp(TppDTOV1 tppDTO);
 }

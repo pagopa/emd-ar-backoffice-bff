@@ -172,19 +172,17 @@ public class KeycloakUserService extends AbstractKeycloakService {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
                 .retrieve()
-                // 409 Conflict = already linked → skip error handling, treat as success
-                .onStatus(status -> status.isError() && status.value() != 409, response ->
+                // 409 = already linked: consume body silently, emit NO error (overrides the default 4xx handler)
+                .onStatus(status -> status.value() == 409,
+                        response -> response.bodyToMono(String.class)
+                                .doOnNext(body -> log.info("[AR-BFF][LINK_IDENTITY] Already linked (409), skipping"))
+                                .then(Mono.<Throwable>empty()))
+                .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
                                 .flatMap(body -> handleKeycloakError("linkFederatedIdentity", body)))
                 .toBodilessEntity()
                 .retryWhen(WebClientRetrySpecs.connectFailureOnly())
-                .doOnSuccess(r -> {
-                    if (r.getStatusCode() != null && r.getStatusCode().value() == 409) {
-                        log.info("[AR-BFF][LINK_IDENTITY] Already linked (409), skipping");
-                    } else {
-                        log.info("[AR-BFF][LINK_IDENTITY] Identity linked successfully");
-                    }
-                })
+                .doOnSuccess(r -> log.info("[AR-BFF][LINK_IDENTITY] Identity linked successfully"))
                 .then();
     }
 }

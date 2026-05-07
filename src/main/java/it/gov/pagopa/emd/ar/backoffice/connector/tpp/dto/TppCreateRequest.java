@@ -1,9 +1,9 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto;
 
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.TokenSectionV1;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AgentLink;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AuthenticationType;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.Contact;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import lombok.Builder;
 import lombok.Value;
 
@@ -13,11 +13,10 @@ import java.util.Map;
 /**
  * Payload sent to the remote emd-tpp service when creating a new TPP.
  * <p>
- * Deliberately separate from {@code TppDTOV1} (the API input) so that:
- * <ul>
- *   <li>Jakarta validation constraints on the API DTO do not leak into the outbound request.</li>
- *   <li>The downstream contract can evolve independently of the API contract.</li>
- * </ul>
+ * All nested types are from the {@code connector.tpp.dto} package so that this class
+ * has <strong>no dependency on the {@code api} layer</strong>.
+ * Jakarta validation constraints are enforced upstream (API layer); they are intentionally
+ * absent here.
  * </p>
  */
 @Value
@@ -31,13 +30,12 @@ public class TppCreateRequest {
     String legalAddress;
     String messageUrl;
     String authenticationUrl;
-    AuthenticationTypeV1 authenticationType;
-    ContactV1 contact;
+    AuthenticationType authenticationType;
+    Contact contact;
     Boolean state;
-    TokenSectionV1 tokenSection;
-    Map<String, AgentLinkV1> agentLinks;
+    TokenSection tokenSection;
+    Map<String, AgentLink> agentLinks;
     Boolean isPaymentEnabled;
     String messageTemplate;
     List<String> whitelistRecipient;
 }
-

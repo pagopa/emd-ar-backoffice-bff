@@ -1,9 +1,5 @@
 package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
@@ -14,6 +10,10 @@ import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Data Transfer Object representing a complete TPP entity with full configuration.
@@ -64,5 +64,4 @@ public class TppDTOV1 {
     private String messageTemplate;
 
     private List<String> whitelistRecipient;
-
 }

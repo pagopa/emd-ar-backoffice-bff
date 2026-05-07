@@ -1,8 +1,8 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
+import it.gov.pagopa.emd.ar.backoffice.domain.model.Contact;
 
 /**
  * Maps the API {@link TppDTOV1} to the outbound connector request {@link TppCreateRequest},
@@ -53,10 +53,13 @@ public final class TppConnectorMapper {
                 .idPsp(DEFAULT_ID_PSP)
                 .pspDenomination(input.getBusinessName())
                 .legalAddress(DEFAULT_LEGAL_ADDRESS)
-                .contact(new ContactV1(DEFAULT_CONTACT_NAME, DEFAULT_CONTACT_NUMBER, DEFAULT_CONTACT_EMAIL))
+                .contact(Contact.builder()
+                        .name(DEFAULT_CONTACT_NAME)
+                        .number(DEFAULT_CONTACT_NUMBER)
+                        .email(DEFAULT_CONTACT_EMAIL)
+                        .build())
                 .state(false)
                 .isPaymentEnabled(false)
                 .build();
     }
 }
-

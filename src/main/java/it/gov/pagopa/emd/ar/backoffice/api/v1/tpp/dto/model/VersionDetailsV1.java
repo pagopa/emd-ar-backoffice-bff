@@ -15,3 +15,4 @@ import lombok.experimental.SuperBuilder;
 public class VersionDetailsV1 {
     private String link;
 }
+

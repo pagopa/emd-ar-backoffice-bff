@@ -21,3 +21,4 @@ public class ContactV1 {
     @Email(message = "Email must be valid")
     private String email;
 }
+

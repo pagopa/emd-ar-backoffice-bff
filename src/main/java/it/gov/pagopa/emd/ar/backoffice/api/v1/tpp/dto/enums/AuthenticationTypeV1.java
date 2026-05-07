@@ -13,3 +13,4 @@ public enum AuthenticationTypeV1 {
 
     AuthenticationTypeV1(String type) { this.type = type; }
 }
+

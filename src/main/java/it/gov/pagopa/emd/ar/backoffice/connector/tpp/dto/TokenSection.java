@@ -1,20 +1,20 @@
-package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model;
+package it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
 
 import java.util.Map;
 
 /**
- * Represents a token section. It serves as a data model for storing token section information.
+ * Token section configuration as expected by the emd-tpp downstream service.
  */
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@SuperBuilder
-public class TokenSectionV1 {
+public class TokenSection {
     private String contentType;
     private Map<String, String> pathAdditionalProperties;
     private Map<String, String> bodyAdditionalProperties;

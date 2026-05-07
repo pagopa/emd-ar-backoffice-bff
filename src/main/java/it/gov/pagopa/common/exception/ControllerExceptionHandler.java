@@ -21,6 +21,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebInputException;
 
 import tools.jackson.core.JacksonException;
@@ -52,6 +53,8 @@ public class ControllerExceptionHandler {
             httpStatus = errorResponse.getStatusCode();
             if (httpStatus.isSameCodeAs(HttpStatus.NOT_FOUND)) {
                 errorCode = ErrorDTO.CodeEnum.NOT_FOUND;
+            } else if(httpStatus.isSameCodeAs(HttpStatus.FORBIDDEN)) {
+                errorCode = ErrorDTO.CodeEnum.BAD_REQUEST;
             } else if (httpStatus.is4xxClientError()) {
                 errorCode = ErrorDTO.CodeEnum.BAD_REQUEST;
             }
@@ -116,6 +119,12 @@ public class ControllerExceptionHandler {
             }
             return "Required request body is missing";
         }
+
+        // Exception with explicit message and status code from microservices (TPP_ALREADY_ONBOARDED)
+        case ResponseStatusException rse -> {
+            return rse.getReason();
+        }
+
         case MethodArgumentNotValidException methodArgumentNotValidException -> {
             return "Invalid request content." +
             methodArgumentNotValidException.getBindingResult()

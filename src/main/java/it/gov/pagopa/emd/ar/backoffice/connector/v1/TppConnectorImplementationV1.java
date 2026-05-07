@@ -1,8 +1,12 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.v1;
 
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ResponseStatusException;
 
 import it.gov.pagopa.emd.ar.backoffice.dto.v1.TppDTOV1;
 import reactor.core.publisher.Mono;
@@ -42,6 +46,18 @@ public class TppConnectorImplementationV1 implements TppConnectorV1{
                 .uri("/emd/tpp/save")
                 .bodyValue(tppDTO)
                 .retrieve()
+                .onStatus(status -> status.isSameCodeAs(HttpStatus.FORBIDDEN), response ->
+                    response.bodyToMono(Map.class).flatMap(errorBody -> {
+                        // Extract the business code from the error response body
+                        String businessCode = (String) errorBody.get("code");
+                        
+                        // Return a Mono error with a ResponseStatusException containing the business code as the message
+                        return Mono.error(new ResponseStatusException(
+                            HttpStatus.FORBIDDEN,
+                            businessCode
+                        ));
+                    })
+                )
                 .bodyToMono(TppDTOV1.class)
                 .map(TppDTOV1::getTppId);
     }

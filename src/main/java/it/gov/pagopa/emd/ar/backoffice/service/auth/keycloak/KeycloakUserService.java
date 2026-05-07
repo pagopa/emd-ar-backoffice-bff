@@ -4,16 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.User;
-import org.springframework.web.reactive.function.client.WebClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
@@ -174,21 +172,18 @@ public class KeycloakUserService extends AbstractKeycloakService {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
                 .retrieve()
-                .onStatus(HttpStatusCode::isError, response ->
+                // 409 Conflict = already linked → skip error handling, treat as success
+                .onStatus(status -> status.isError() && status.value() != 409, response ->
                         response.bodyToMono(String.class)
                                 .flatMap(body -> handleKeycloakError("linkFederatedIdentity", body)))
                 .toBodilessEntity()
                 .retryWhen(WebClientRetrySpecs.connectFailureOnly())
-                .doOnSuccess(r -> log.info("[AR-BFF][LINK_IDENTITY] Identity linked successfully"))
-                // 409 Conflict = already linked → idempotent, skip gracefully
-                .onErrorResume(WebClientResponseException.class, e -> {
-                    if (e.getStatusCode() == HttpStatus.CONFLICT) {
+                .doOnSuccess(r -> {
+                    if (r.getStatusCode() != null && r.getStatusCode().value() == 409) {
                         log.info("[AR-BFF][LINK_IDENTITY] Already linked (409), skipping");
-                        return Mono.empty();
+                    } else {
+                        log.info("[AR-BFF][LINK_IDENTITY] Identity linked successfully");
                     }
-                    log.error("[AR-BFF][LINK_IDENTITY] Failed: {}", e.getResponseBodyAsString());
-                    return Mono.error(new ExternalServiceException("KEYCLOAK", "linkFederatedIdentity",
-                            e.getResponseBodyAsString()));
                 })
                 .then();
     }

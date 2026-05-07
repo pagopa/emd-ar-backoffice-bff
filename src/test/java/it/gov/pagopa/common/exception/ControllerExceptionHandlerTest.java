@@ -2,6 +2,7 @@ package it.gov.pagopa.common.exception;
 
 import it.gov.pagopa.common.utils.TestUtils;
 import it.gov.pagopa.common.utils.Utilities;
+import it.gov.pagopa.emd.ar.backoffice.api.handler.ControllerExceptionHandler;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
@@ -59,7 +60,7 @@ class ControllerExceptionHandlerTest {
     @BeforeEach
     void setUp() {
         TestUtils.clearDefaultTimezone();
-        
+
         // Configuriamo il WebTestClient agganciando il controller e l'handler manualmente
         // Evita errori di caricamento del contesto Spring
         this.webTestClient = WebTestClient.bindToController(testControllerMock)
@@ -109,7 +110,8 @@ class ControllerExceptionHandlerTest {
                 .expectStatus().is5xxServerError()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("GENERIC_ERROR")
-                .jsonPath("$.message").isEqualTo("Error");
+                // The internal exception message is NOT returned to the client (security: avoids leaking internals)
+                .jsonPath("$.message").isEqualTo("An unexpected error occurred. Please retry or contact support.");
     }
 
     @Test
@@ -120,7 +122,7 @@ class ControllerExceptionHandlerTest {
         when(path.toString()).thenReturn("fieldName");
         when(violation.getPropertyPath()).thenReturn(path);
         when(violation.getMessage()).thenReturn("resolved message");
-        
+
         ConstraintViolationException ex = new ConstraintViolationException("Error", Set.of(violation));
         when(testControllerMock.testEndpoint(any(), any())).thenReturn(Mono.error(ex));
 

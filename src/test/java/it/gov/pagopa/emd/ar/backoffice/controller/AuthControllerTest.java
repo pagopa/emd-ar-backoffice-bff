@@ -1,9 +1,9 @@
 package it.gov.pagopa.emd.ar.backoffice.controller;
 
-import it.gov.pagopa.emd.ar.backoffice.controller.v1.AuthControllerImplV1;
-import it.gov.pagopa.emd.ar.backoffice.dto.v1.AuthRequestDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.dto.v1.AuthResponseV1;
-import it.gov.pagopa.emd.ar.backoffice.service.AuthServiceImpl;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.controller.AuthControllerImplV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
+import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

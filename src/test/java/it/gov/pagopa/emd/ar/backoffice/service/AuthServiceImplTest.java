@@ -1,103 +1,63 @@
 package it.gov.pagopa.emd.ar.backoffice.service;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.gov.pagopa.emd.ar.backoffice.dto.v1.AuthResponseV1;
-import org.junit.jupiter.api.BeforeEach;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
+import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthServiceImpl;
+import it.gov.pagopa.emd.ar.backoffice.service.auth.SelfCareTokenValidator;
+import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakTokenService;
+import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakUserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
 
     @Mock
-    private WebClient webClient;
-
-    @Mock
     private SelfCareTokenValidator selfCareValidator;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Mock
+    private KeycloakTokenService tokenService;
+
+    @Mock
+    private KeycloakUserService userService;
 
     @InjectMocks
     private AuthServiceImpl authService;
 
-    /**
-     * Inizializzazione dell'ambiente di test prima di ogni esecuzione.
-     * <p>
-     * Poiché il test non carica il contesto Spring, i campi annotati con {@code @Value} nella classe
-     * {@link AuthServiceImpl} risulterebbero null. Viene utilizzato  {@link ReflectionTestUtils}
-     * per iniettare manualmente i valori di configurazione necessari (URL, credenziali Keycloak, alias IdP).
-     * Viene inoltre iniettata un'istanza reale di {@link ObjectMapper} per garantire una conversione fedele dei claim JSON.
-     * </p>
-     */
-    @BeforeEach
-    void setUp() {
-        // Iniezione manuale delle configurazioni di ambiente
-        ReflectionTestUtils.setField(authService, "authServerUrl", "http://localhost:8080");
-        ReflectionTestUtils.setField(authService, "realm", "test-realm");
-        ReflectionTestUtils.setField(authService, "managerClientId", "m-id");
-        ReflectionTestUtils.setField(authService, "managerClientSecret", "m-secret");
-        ReflectionTestUtils.setField(authService, "backofficeClientId", "b-id");
-        ReflectionTestUtils.setField(authService, "backofficeClientSecret", "b-secret");
-        ReflectionTestUtils.setField(authService, "idpAlias", "idp-test");
-        ReflectionTestUtils.setField(authService, "objectMapper", objectMapper);
-    }
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * Testa il caso di successo del metodo {@code exchangeToken} per un nuovo utente.
-     * <p>
-     * Lo scenario prevede:
-     * <ol>
-     *     <li>Validazione corretta del token AR e decodifica dei relativi Claim (UserInfo).</li>
-     *     <li>Simulazione della chiamata a Keycloak per la ricerca dell'utente, che restituisce una lista vuota (utente non censito).</li>
-     *     <li>Ottenimento del token di management tramite Client Credentials.</li>
-     *     <li>Creazione del nuovo utente su Keycloak tramite chiamata POST.</li>
-     *     <li>Esecuzione finale dello scambio token tramite JWT Bearer Grant.</li>
-     * </ol>
-     * </p>
-     * <p>
-     * Il test utilizza {@link StepVerifier} per gestire la natura asincrona del flusso Reactor,
-     * verificando che il risultato sia un {@link ResponseEntity} con stato HTTP 200 (OK)
-     * e contenente il token Keycloak finale.
-     * </p>
-     *
-     * @see AuthServiceImpl#exchangeToken(String)
-     */
-    @Test
-    @SuppressWarnings("unchecked")
-    void exchangeToken_Success_NewUser() {
-        // PREPARAZIONE MOCK DEI CLAIM - Devono essere completati PRIMA del JWT
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
-        // Claim Organizzazione
+    private DecodedJWT buildValidJwt() {
+        DecodedJWT jwt = mock(DecodedJWT.class);
+
         Claim orgClaim = mock(Claim.class);
-        Map<String, Object> orgData = Map.of(
-            "id", "ORG1",
-            "name", "Org Name",
-            "roles", List.of(Map.of("role", "admin"))
-        );
-        when(orgClaim.asMap()).thenReturn(orgData);
+        when(orgClaim.asMap()).thenReturn(Map.of(
+                "id", "ORG1",
+                "name", "Org Name",
+                "roles", List.of(Map.of("role", "admin"))
+        ));
 
-        // Claim Stringa
         Claim nameClaim = mock(Claim.class);
         when(nameClaim.asString()).thenReturn("Mario");
 
@@ -110,66 +70,126 @@ class AuthServiceImplTest {
         Claim uidClaim = mock(Claim.class);
         when(uidClaim.asString()).thenReturn("mario_uid");
 
-        // CONFIGURAZIONE JWT (Usa i mock pronti sopra)
-        DecodedJWT decodedJWT = mock(DecodedJWT.class);
-        when(selfCareValidator.validate(anyString())).thenReturn(Mono.just(decodedJWT));
+        when(jwt.getClaim("organization")).thenReturn(orgClaim);
+        when(jwt.getClaim("name")).thenReturn(nameClaim);
+        when(jwt.getClaim("family_name")).thenReturn(familyNameClaim);
+        when(jwt.getClaim("email")).thenReturn(emailClaim);
+        when(jwt.getClaim("uid")).thenReturn(uidClaim);
+        when(jwt.getKeyId()).thenReturn("kid-test");
 
-        when(decodedJWT.getClaim("organization")).thenReturn(orgClaim);
-        when(decodedJWT.getClaim("name")).thenReturn(nameClaim);
-        when(decodedJWT.getClaim("family_name")).thenReturn(familyNameClaim);
-        when(decodedJWT.getClaim("email")).thenReturn(emailClaim);
-        when(decodedJWT.getClaim("uid")).thenReturn(uidClaim);
-        when(decodedJWT.getSubject()).thenReturn("mario_uid");
+        return jwt;
+    }
 
-        // CONFIGURAZIONE WEBCLIENT
-        WebClient.RequestBodyUriSpec postUriSpec = mock(WebClient.RequestBodyUriSpec.class);
-        WebClient.RequestBodySpec postBodySpec = mock(WebClient.RequestBodySpec.class);
-        WebClient.RequestHeadersSpec postHeadersSpec = mock(WebClient.RequestHeadersSpec.class);
-        WebClient.ResponseSpec postResponseSpec = mock(WebClient.ResponseSpec.class);
+    // ── Tests ─────────────────────────────────────────────────────────────────
 
-        when(webClient.post()).thenReturn(postUriSpec);
-        when(postUriSpec.uri(anyString())).thenReturn(postBodySpec);
-        when(postBodySpec.contentType(any())).thenReturn(postBodySpec);
-        when(postBodySpec.accept(any())).thenReturn(postBodySpec);
-        when(postBodySpec.header(any(), any())).thenReturn(postBodySpec);
-        when(postBodySpec.bodyValue(any())).thenReturn(postHeadersSpec);
-        when(postHeadersSpec.retrieve()).thenReturn(postResponseSpec);
-        when(postResponseSpec.onStatus(any(), any())).thenReturn(postResponseSpec);
+    /**
+     * Happy path: valid token, user upsert succeeds, JWT-Bearer exchange returns a Keycloak token.
+     */
+    @Test
+    void exchangeToken_Success() {
+        ReflectionTestUtils.setField(authService, "objectMapper", objectMapper);
 
-        // Risposte sequenziali:
-        // Manager Token (chiamata a bodyToMono(Map.class))
-        when(postResponseSpec.bodyToMono(eq(Map.class)))
-                .thenReturn(Mono.just(Map.of("access_token", "manager-token")));
+        DecodedJWT jwt = buildValidJwt();
+        when(selfCareValidator.validate("test-token")).thenReturn(Mono.just(jwt));
+        when(tokenService.getManagerToken()).thenReturn(Mono.just("manager-token"));
+        when(userService.upsertKeycloakUser(anyString(), any())).thenReturn(Mono.empty());
+        when(tokenService.getJwtBearerToken("test-token")).thenReturn(Mono.just("kc-token"));
 
-        // Create User (chiamata a toBodilessEntity())
-        when(postResponseSpec.toBodilessEntity())
-                .thenReturn(Mono.just(ResponseEntity.ok().build()));
-
-        // Final Token Exchange (chiamata a bodyToMono(ParameterizedTypeReference))
-        when(postResponseSpec.bodyToMono(any(ParameterizedTypeReference.class)))
-                .thenReturn(Mono.just(Map.of("access_token", "final-kc-token")));
-
-        // Mock GET per ricerca utente (getKeycloakUser)
-        WebClient.RequestHeadersUriSpec getUriSpec = mock(WebClient.RequestHeadersUriSpec.class);
-        WebClient.RequestHeadersSpec getHeadersSpec = mock(WebClient.RequestHeadersSpec.class);
-        WebClient.ResponseSpec getResponseSpec = mock(WebClient.ResponseSpec.class);
-
-        when(webClient.get()).thenReturn(getUriSpec);
-        when(getUriSpec.uri(any(java.net.URI.class))).thenReturn(getHeadersSpec);
-        when(getHeadersSpec.header(any(), any())).thenReturn(getHeadersSpec);
-        when(getHeadersSpec.retrieve()).thenReturn(getResponseSpec);
-        when(getResponseSpec.bodyToMono(any(ParameterizedTypeReference.class)))
-                .thenReturn(Mono.just(Collections.emptyList())); // Utente nuovo
-
-        // ESECUZIONE
-        Mono<ResponseEntity<AuthResponseV1>> result = authService.exchangeToken("test-token");
-
-        // VERIFICA
-        StepVerifier.create(result)
+        StepVerifier.create(authService.exchangeToken("test-token"))
                 .assertNext(response -> {
                     assertEquals(HttpStatus.OK, response.getStatusCode());
-                    assertEquals("final-kc-token", response.getBody().getToken());
+                    assertEquals("kc-token", response.getBody().getToken());
+                    assertEquals("Mario", response.getBody().getUserInfo().getName());
                 })
                 .verifyComplete();
+
+        verify(userService, times(1)).upsertKeycloakUser(eq("manager-token"), any());
+        verify(tokenService, times(1)).getJwtBearerToken("test-token");
+    }
+
+    /**
+     * Null token → immediate 401 without hitting any downstream service.
+     */
+    @Test
+    void exchangeToken_NullToken_ReturnsUnauthorized() {
+        StepVerifier.create(authService.exchangeToken(null))
+                .assertNext(response -> {
+                    assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+                    assertEquals("ERROR", response.getBody().getStatus());
+                })
+                .verifyComplete();
+
+        verifyNoInteractions(selfCareValidator, tokenService, userService);
+    }
+
+    /**
+     * Blank token → immediate 401 without hitting any downstream service.
+     */
+    @Test
+    void exchangeToken_BlankToken_ReturnsUnauthorized() {
+        StepVerifier.create(authService.exchangeToken("  "))
+                .assertNext(response -> assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode()))
+                .verifyComplete();
+
+        verifyNoInteractions(selfCareValidator, tokenService, userService);
+    }
+
+    /**
+     * Token validation failure (bad signature) → 401.
+     * Uses a proper JWTVerificationException — the type explicitly handled as 401.
+     */
+    @Test
+    void exchangeToken_ValidationFailure_ReturnsUnauthorized() {
+        when(selfCareValidator.validate(anyString()))
+                .thenReturn(Mono.error(new JWTVerificationException("Signature invalid")));
+
+        StepVerifier.create(authService.exchangeToken("bad-token"))
+                .assertNext(response -> {
+                    assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+                    assertEquals("Authentication failed", response.getBody().getMessage());
+                })
+                .verifyComplete();
+
+        verifyNoInteractions(tokenService, userService);
+    }
+
+    /**
+     * Missing organization claim → 401.
+     */
+    @Test
+    void exchangeToken_MissingOrganizationClaim_ReturnsUnauthorized() {
+        ReflectionTestUtils.setField(authService, "objectMapper", objectMapper);
+
+        DecodedJWT jwt = mock(DecodedJWT.class);
+        Claim missingClaim = mock(Claim.class);
+        when(missingClaim.asMap()).thenReturn(null);
+        when(jwt.getClaim("organization")).thenReturn(missingClaim);
+        when(selfCareValidator.validate(anyString())).thenReturn(Mono.just(jwt));
+
+        StepVerifier.create(authService.exchangeToken("test-token"))
+                .assertNext(response -> assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode()))
+                .verifyComplete();
+    }
+
+    /**
+     * Keycloak manager token fetch failure → error propagates (NOT 401).
+     * Keycloak being unavailable is an infrastructure error (→ 502 via global handler),
+     * not a user authentication error. The selective onErrorResume correctly lets it propagate.
+     */
+    @Test
+    void exchangeToken_ManagerTokenFailure_PropagatesError() {
+        ReflectionTestUtils.setField(authService, "objectMapper", objectMapper);
+
+        DecodedJWT jwt = buildValidJwt();
+        when(selfCareValidator.validate(anyString())).thenReturn(Mono.just(jwt));
+        when(tokenService.getManagerToken())
+                .thenReturn(Mono.error(new RuntimeException("Keycloak unavailable")));
+
+        StepVerifier.create(authService.exchangeToken("test-token"))
+                .expectErrorMatches(e -> e instanceof RuntimeException
+                        && e.getMessage().equals("Keycloak unavailable"))
+                .verify();
+
+        verifyNoInteractions(userService);
     }
 }

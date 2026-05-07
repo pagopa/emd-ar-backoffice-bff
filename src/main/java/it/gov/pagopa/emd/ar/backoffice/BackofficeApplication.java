@@ -8,7 +8,7 @@ import it.gov.pagopa.common.utils.Constants;
 
 import java.util.TimeZone;
 
-@SpringBootApplication(exclude = {ErrorWebFluxAutoConfiguration.class})
+@SpringBootApplication(exclude = {ErrorWebFluxAutoConfiguration.class}, scanBasePackages = "it.gov.pagopa")
 public class BackofficeApplication {
 
 	public static void main(String[] args) {

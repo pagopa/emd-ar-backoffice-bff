@@ -1,0 +1,210 @@
+package it.gov.pagopa.emd.ar.backoffice.api.handler;
+
+import it.gov.pagopa.common.utils.Utilities;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
+import it.gov.pagopa.emd.ar.backoffice.dto.generated.ErrorDTO;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.ValidationException;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.event.Level;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
+import org.springframework.web.ErrorResponseException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ServerWebInputException;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DatabindException;
+
+import java.util.stream.Collectors;
+
+@RestControllerAdvice
+@Slf4j
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class ControllerExceptionHandler {
+
+    private final Utilities utilities;
+
+    public ControllerExceptionHandler(Utilities utilities) {
+        this.utilities = utilities;
+    }
+
+    @ExceptionHandler({ValidationException.class, ServerWebInputException.class, WebExchangeBindException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity<ErrorDTO> handleViolationException(Exception ex, ServerHttpRequest request) {
+        return handleException(ex, request, HttpStatus.BAD_REQUEST, ErrorDTO.CodeEnum.BAD_REQUEST);
+    }
+
+    @ExceptionHandler({ErrorResponseException.class})
+    public ResponseEntity<ErrorDTO> handleServletException(Exception ex, ServerHttpRequest request) {
+        HttpStatusCode httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+        ErrorDTO.CodeEnum errorCode = ErrorDTO.CodeEnum.GENERIC_ERROR;
+        if (ex instanceof ErrorResponse errorResponse) {
+            httpStatus = errorResponse.getStatusCode();
+            if (httpStatus.isSameCodeAs(HttpStatus.NOT_FOUND)) {
+                errorCode = ErrorDTO.CodeEnum.NOT_FOUND;
+            } else if (httpStatus.is4xxClientError()) {
+                errorCode = ErrorDTO.CodeEnum.BAD_REQUEST;
+            }
+        }
+        return handleException(ex, request, httpStatus, errorCode);
+    }
+
+    /**
+     * Maps {@link InvalidTokenException} → HTTP 401 Unauthorized.
+     * The internal detail is logged but never returned to the client.
+     */
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<ErrorDTO> handleInvalidTokenException(InvalidTokenException ex, ServerHttpRequest request) {
+        logException(ex, request, HttpStatus.UNAUTHORIZED);
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ErrorDTO(ErrorDTO.CodeEnum.UNAUTHORIZED, "Authentication failed", utilities.getTraceId()));
+    }
+
+    /**
+     * Maps {@link ResourceNotFoundException} → HTTP 404 Not Found.
+     */
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorDTO> handleResourceNotFoundException(ResourceNotFoundException ex, ServerHttpRequest request) {
+        return handleException(ex, request, HttpStatus.NOT_FOUND, ErrorDTO.CodeEnum.NOT_FOUND);
+    }
+
+    /**
+     * Maps {@link ExternalServiceException} → HTTP 502 Bad Gateway.
+     * Internal service details are logged but never exposed to the client.
+     */
+    @ExceptionHandler(ExternalServiceException.class)
+    public ResponseEntity<ErrorDTO> handleExternalServiceException(ExternalServiceException ex, ServerHttpRequest request) {
+        logException(ex, request, HttpStatus.BAD_GATEWAY);
+        return ResponseEntity
+                .status(HttpStatus.BAD_GATEWAY)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ErrorDTO(ErrorDTO.CodeEnum.GENERIC_ERROR,
+                        "An external service is temporarily unavailable. Please retry later.",
+                        utilities.getTraceId()));
+    }
+
+    /**
+     * Safety net for any {@link WebClientResponseException} not already converted to
+     * {@link ExternalServiceException} by the connector layer.
+     * <p>
+     * 4xx from downstream → 502 (not the caller's fault; the upstream is misbehaving).
+     * 5xx from downstream → 502 (upstream unavailable).
+     * Internal details (URL, body) are logged but never exposed to the client.
+     */
+    @ExceptionHandler(WebClientResponseException.class)
+    public ResponseEntity<ErrorDTO> handleWebClientResponseException(WebClientResponseException ex, ServerHttpRequest request) {
+        logException(ex, request, HttpStatus.BAD_GATEWAY);
+        return ResponseEntity
+                .status(HttpStatus.BAD_GATEWAY)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ErrorDTO(ErrorDTO.CodeEnum.GENERIC_ERROR,
+                        "An external service returned an unexpected response. Please retry later.",
+                        utilities.getTraceId()));
+    }
+
+    @ExceptionHandler({RuntimeException.class})
+    public ResponseEntity<ErrorDTO> handleRuntimeException(RuntimeException ex, ServerHttpRequest request) {
+        // Log the real cause internally; return a generic message to never expose internal details
+        logException(ex, request, HttpStatus.INTERNAL_SERVER_ERROR);
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ErrorDTO(ErrorDTO.CodeEnum.GENERIC_ERROR,
+                        "An unexpected error occurred. Please retry or contact support.",
+                        utilities.getTraceId()));
+    }
+
+    private ResponseEntity<ErrorDTO> handleException(Exception ex, ServerHttpRequest request, HttpStatusCode httpStatus, ErrorDTO.CodeEnum errorEnum) {
+        logException(ex, request, httpStatus);
+        String message = buildReturnedMessage(ex);
+        return ResponseEntity
+                .status(httpStatus)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ErrorDTO(errorEnum, message, utilities.getTraceId()));
+    }
+
+    private static void logException(Exception ex, ServerHttpRequest request, HttpStatusCode httpStatus) {
+        boolean printStackTrace = httpStatus.is5xxServerError();
+        Level logLevel = printStackTrace ? Level.ERROR : Level.INFO;
+        log.makeLoggingEventBuilder(logLevel)
+                .log("A {} occurred handling request {}: HttpStatus {} - {}",
+                        ex.getClass(),
+                        getRequestDetails(request),
+                        httpStatus.value(),
+                        ex.getMessage(),
+                        printStackTrace ? ex : null
+                );
+        if (!printStackTrace && log.isDebugEnabled() && ex.getCause() != null) {
+            log.debug("CausedBy: ", ex.getCause());
+        }
+    }
+
+    private static String buildReturnedMessage(Exception ex) {
+        switch (ex) {
+            case WebExchangeBindException webExchangeBindException -> {
+                return "Invalid request content." +
+                        webExchangeBindException.getBindingResult()
+                                .getAllErrors().stream()
+                                .map(e -> " " +
+                                        (e instanceof FieldError fieldError ? fieldError.getField() : e.getObjectName()) +
+                                        ": " + e.getDefaultMessage())
+                                .sorted()
+                                .collect(Collectors.joining(";"));
+            }
+            case HttpMessageNotReadableException httpMessageNotReadableException -> {
+                if (httpMessageNotReadableException.getCause() instanceof DatabindException jsonMappingException) {
+                    return "Cannot parse body. " +
+                            jsonMappingException.getPath().stream()
+                                    .map(JacksonException.Reference::getPropertyName)
+                                    .collect(Collectors.joining(".")) +
+                            ": " + jsonMappingException.getOriginalMessage();
+                }
+                return "Required request body is missing";
+            }
+            case MethodArgumentNotValidException methodArgumentNotValidException -> {
+                return "Invalid request content." +
+                        methodArgumentNotValidException.getBindingResult()
+                                .getAllErrors().stream()
+                                .map(e -> " " +
+                                        (e instanceof FieldError fieldError ? fieldError.getField() : e.getObjectName()) +
+                                        ": " + e.getDefaultMessage())
+                                .sorted()
+                                .collect(Collectors.joining(";"));
+            }
+            case ConstraintViolationException constraintViolationException -> {
+                return "Invalid request content." +
+                        constraintViolationException.getConstraintViolations()
+                                .stream()
+                                .map(e -> " " + e.getPropertyPath() + ": " + e.getMessage())
+                                .sorted()
+                                .collect(Collectors.joining(";"));
+            }
+            default -> {
+                // Return the exception's own message for framework/Spring exceptions
+                // that have user-facing messages by design.
+                // NOTE: raw RuntimeException is intercepted by handleRuntimeException() before reaching here.
+                return ex.getMessage();
+            }
+        }
+    }
+
+    static String getRequestDetails(ServerHttpRequest request) {
+        return "%s %s".formatted(request.getMethod(), request.getPath().value());
+    }
+}

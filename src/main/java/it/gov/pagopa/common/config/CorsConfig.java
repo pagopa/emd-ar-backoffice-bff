@@ -16,7 +16,9 @@ public class CorsConfig implements WebFluxConfigurer {
     registry.addMapping("/**")
         .allowedOrigins(allowedOrigins.split(","))
         .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
-        .allowedHeaders("*")
+        // Explicit header list required when allowCredentials=true (CORS spec).
+        // Using wildcard "*" with credentials is rejected by browsers.
+        .allowedHeaders("Content-Type", "Authorization", "X-Trace-Id", "X-Request-Id")
         .allowCredentials(true)
         .maxAge(3600);
   }

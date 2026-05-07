@@ -3,8 +3,10 @@ package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.SaveTppResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -50,6 +52,10 @@ public class TppConnectorImpl implements TppConnector {
                 .uri(SAVE_TPP_PATH)
                 .bodyValue(request)
                 .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ExternalServiceException("TPP_SERVICE", "saveTpp", body))))
                 .bodyToMono(SaveTppResponse.class)
                 .map(SaveTppResponse::tppId)
                 .retryWhen(WebClientRetrySpecs.connectFailureOnly())
@@ -68,6 +74,10 @@ public class TppConnectorImpl implements TppConnector {
         return webClient.delete()
                 .uri(DELETE_TPP_PATH, tppId)
                 .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ExternalServiceException("TPP_SERVICE", "deleteTpp", body))))
                 .bodyToMono(Void.class)
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
                 .doOnError(ex -> log.error(

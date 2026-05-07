@@ -50,9 +50,16 @@ public class HttpClientConfig {
     public static class HttpClientTimeoutConfig {
         /** TCP handshake timeout (ms). */
         private long connectMillis;
-        /** Netty pipeline read/write inactivity timeout (ms). */
+        /** Netty pipeline read inactivity timeout (ms). */
         private long readMillis;
+        /** Netty pipeline write inactivity timeout (ms). Defaults to readMillis if not set. */
+        private long writeMillis;
         /** End-to-end response timeout — hard cap for the whole request (ms). */
         private long responseMillis;
+
+        /** Returns writeMillis, falling back to readMillis if writeMillis is not configured. */
+        public long effectiveWriteMillis() {
+            return writeMillis > 0 ? writeMillis : readMillis;
+        }
     }
 }

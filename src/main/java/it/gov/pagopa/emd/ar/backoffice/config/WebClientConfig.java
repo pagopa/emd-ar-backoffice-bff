@@ -101,7 +101,7 @@ public class WebClientConfig {
                 // Read / Write inactivity guards injected into the Netty pipeline
                 .doOnConnected(conn -> conn
                         .addHandlerLast(new ReadTimeoutHandler(timeout.getReadMillis(), TimeUnit.MILLISECONDS))
-                        .addHandlerLast(new WriteTimeoutHandler(timeout.getReadMillis(), TimeUnit.MILLISECONDS)));
+                        .addHandlerLast(new WriteTimeoutHandler(timeout.effectiveWriteMillis(), TimeUnit.MILLISECONDS)));
     }
 
     /**

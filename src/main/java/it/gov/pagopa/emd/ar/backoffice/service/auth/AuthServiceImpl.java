@@ -70,8 +70,15 @@ public class AuthServiceImpl implements AuthService {
                                     .token(finalToken)
                                     .build()));
                 })
-                .onErrorResume(e -> {
-                    log.error("[AR-BFF][EXCHANGE_TOKEN] Failed: {}", e.getMessage());
+                // Only authentication/token errors return 401 — all others propagate to the
+                // global ControllerExceptionHandler (ExternalServiceException → 502, etc.)
+                .onErrorResume(InvalidTokenException.class, e -> {
+                    log.warn("[AR-BFF][EXCHANGE_TOKEN] Token invalid: {}", e.getMessage());
+                    return unauthorizedResponse();
+                })
+                .onErrorResume(e -> e instanceof com.auth0.jwt.exceptions.JWTVerificationException
+                        || e instanceof com.auth0.jwk.JwkException, e -> {
+                    log.warn("[AR-BFF][EXCHANGE_TOKEN] JWT/JWK verification failed: {}", e.getMessage());
                     return unauthorizedResponse();
                 });
     }

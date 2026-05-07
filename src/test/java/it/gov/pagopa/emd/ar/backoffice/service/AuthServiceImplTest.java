@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.service;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -134,12 +135,13 @@ class AuthServiceImplTest {
     }
 
     /**
-     * Token validation failure → 401.
+     * Token validation failure (bad signature) → 401.
+     * Uses a proper JWTVerificationException — the type explicitly handled as 401.
      */
     @Test
     void exchangeToken_ValidationFailure_ReturnsUnauthorized() {
         when(selfCareValidator.validate(anyString()))
-                .thenReturn(Mono.error(new RuntimeException("Signature invalid")));
+                .thenReturn(Mono.error(new JWTVerificationException("Signature invalid")));
 
         StepVerifier.create(authService.exchangeToken("bad-token"))
                 .assertNext(response -> {
@@ -170,10 +172,12 @@ class AuthServiceImplTest {
     }
 
     /**
-     * Keycloak manager token fetch failure → 401.
+     * Keycloak manager token fetch failure → error propagates (NOT 401).
+     * Keycloak being unavailable is an infrastructure error (→ 502 via global handler),
+     * not a user authentication error. The selective onErrorResume correctly lets it propagate.
      */
     @Test
-    void exchangeToken_ManagerTokenFailure_ReturnsUnauthorized() {
+    void exchangeToken_ManagerTokenFailure_PropagatesError() {
         ReflectionTestUtils.setField(authService, "objectMapper", objectMapper);
 
         DecodedJWT jwt = buildValidJwt();
@@ -182,8 +186,9 @@ class AuthServiceImplTest {
                 .thenReturn(Mono.error(new RuntimeException("Keycloak unavailable")));
 
         StepVerifier.create(authService.exchangeToken("test-token"))
-                .assertNext(response -> assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode()))
-                .verifyComplete();
+                .expectErrorMatches(e -> e instanceof RuntimeException
+                        && e.getMessage().equals("Keycloak unavailable"))
+                .verify();
 
         verifyNoInteractions(userService);
     }

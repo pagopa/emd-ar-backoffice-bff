@@ -90,9 +90,11 @@ rest:
     timeout:
       # TCP handshake timeout.
       connect-millis: "\${WEBCLIENT_TIMEOUT_CONNECT_MILLIS:5000}"
-      # Netty pipeline read/write inactivity guard (per-event, not end-to-end).
+      # Netty pipeline read inactivity guard (per-event, not end-to-end).
       # Should be >= response-millis so the inactivity guard never fires before the end-to-end cap.
       read-millis: "\${WEBCLIENT_TIMEOUT_IO_MILLIS:8000}"
+      # Netty pipeline write inactivity guard. Defaults to read-millis if not set.
+      write-millis: "\${WEBCLIENT_TIMEOUT_WRITE_MILLIS:8000}"
       # End-to-end response timeout — hard cap for the entire request/response cycle.
       # Constraint for graceful shutdown: N_sequential_calls × response-millis + db_overhead ≤ spring.lifecycle.timeout (20s).
       # Here N=1 (single WebClient call per pipeline) → 1×8s + 2s DB = 10s ≤ 20s.

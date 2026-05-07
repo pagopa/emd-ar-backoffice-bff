@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -13,8 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -141,13 +144,31 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
     /**
      * Schedules a background token refresh after {@code delaySeconds}.
      * Cancels any previously scheduled refresh to prevent duplicate chains.
+     * <p>
+     * Retries up to 3 times with exponential backoff (10 s → 60 s) on transient
+     * Keycloak/transport errors. If all retries are exhausted, the cache is invalidated
+     * so the next real request triggers a synchronous re-fetch instead of serving
+     * a stale or expired token.
+     * </p>
      */
     private void scheduleProactiveTokenRefresh(long delaySeconds) {
+        Retry retrySpec = Retry.backoff(3, Duration.ofSeconds(10))
+                .maxBackoff(Duration.ofSeconds(60))
+                .jitter(WebClientRetrySpecs.JITTER)
+                .filter(ex -> ex instanceof ExternalServiceException || ex instanceof WebClientRequestException)
+                .doBeforeRetry(sig -> log.warn(
+                        "[AR-BFF][KC_TOKEN_SERVICE] Proactive refresh retry #{} after error: {}",
+                        sig.totalRetries() + 1, sig.failure().getMessage()));
+
         Disposable newRefresh = Mono.delay(Duration.ofSeconds(delaySeconds))
-                .flatMap(ignored -> fetchAndCacheManagerToken())
+                .flatMap(ignored -> fetchAndCacheManagerToken().retryWhen(retrySpec))
                 .subscribe(
                         token -> log.info("[AR-BFF][KC_TOKEN_SERVICE] Token proactively refreshed"),
-                        e -> log.warn("[AR-BFF][KC_TOKEN_SERVICE] Proactive refresh failed, will retry on next request: {}", e.getMessage())
+                        e -> {
+                            log.error("[AR-BFF][KC_TOKEN_SERVICE] Proactive refresh failed permanently after retries, " +
+                                    "invalidating cache to force re-fetch on next request: {}", e.getMessage());
+                            managerTokenCache.set(null);
+                        }
                 );
         Disposable existing = scheduledRefresh.getAndSet(newRefresh);
         if (existing != null && !existing.isDisposed()) {

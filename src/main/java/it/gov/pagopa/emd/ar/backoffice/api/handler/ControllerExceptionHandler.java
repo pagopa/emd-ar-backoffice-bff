@@ -24,6 +24,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ServerWebInputException;
 
 import tools.jackson.core.JacksonException;
@@ -72,7 +73,7 @@ public class ControllerExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new ErrorDTO(ErrorDTO.CodeEnum.BAD_REQUEST, "Authentication failed", utilities.getTraceId()));
+                .body(new ErrorDTO(ErrorDTO.CodeEnum.UNAUTHORIZED, "Authentication failed", utilities.getTraceId()));
     }
 
     /**
@@ -95,6 +96,25 @@ public class ControllerExceptionHandler {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new ErrorDTO(ErrorDTO.CodeEnum.GENERIC_ERROR,
                         "An external service is temporarily unavailable. Please retry later.",
+                        utilities.getTraceId()));
+    }
+
+    /**
+     * Safety net for any {@link WebClientResponseException} not already converted to
+     * {@link ExternalServiceException} by the connector layer.
+     * <p>
+     * 4xx from downstream → 502 (not the caller's fault; the upstream is misbehaving).
+     * 5xx from downstream → 502 (upstream unavailable).
+     * Internal details (URL, body) are logged but never exposed to the client.
+     */
+    @ExceptionHandler(WebClientResponseException.class)
+    public ResponseEntity<ErrorDTO> handleWebClientResponseException(WebClientResponseException ex, ServerHttpRequest request) {
+        logException(ex, request, HttpStatus.BAD_GATEWAY);
+        return ResponseEntity
+                .status(HttpStatus.BAD_GATEWAY)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ErrorDTO(ErrorDTO.CodeEnum.GENERIC_ERROR,
+                        "An external service returned an unexpected response. Please retry later.",
                         utilities.getTraceId()));
     }
 

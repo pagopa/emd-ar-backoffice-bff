@@ -6,6 +6,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -27,6 +28,7 @@ import org.springframework.http.HttpStatusCode;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.springframework.http.MediaType;
 
+import static it.gov.pagopa.emd.ar.backoffice.constants.BackofficeConstants.ExceptionCode.KEYCLOAK_CLIENT_ALREADY_EXISTS;
 import it.gov.pagopa.emd.ar.backoffice.dto.v1.OrganizationDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.dto.v1.AuthResponseV1;
 import it.gov.pagopa.emd.ar.backoffice.dto.v1.UserDTOV1;
@@ -534,6 +536,10 @@ public class AuthServiceImpl implements AuthService {
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(buildClientPayload(clientId))
                     .retrieve()
+                    .onStatus(status -> status.isSameCodeAs(HttpStatus.CONFLICT), response ->
+                        // Client already exists
+                        Mono.error(new ResponseStatusException(
+                            HttpStatus.CONFLICT, KEYCLOAK_CLIENT_ALREADY_EXISTS)))
                     .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
                             .flatMap(body -> handleKeycloakError("Create Client Error", body)))

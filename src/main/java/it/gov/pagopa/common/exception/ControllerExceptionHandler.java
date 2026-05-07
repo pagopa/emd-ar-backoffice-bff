@@ -53,9 +53,14 @@ public class ControllerExceptionHandler {
             httpStatus = errorResponse.getStatusCode();
             if (httpStatus.isSameCodeAs(HttpStatus.NOT_FOUND)) {
                 errorCode = ErrorDTO.CodeEnum.NOT_FOUND;
-            } else if(httpStatus.isSameCodeAs(HttpStatus.FORBIDDEN)) {
+            }
+            else if(httpStatus.isSameCodeAs(HttpStatus.FORBIDDEN)) {
                 errorCode = ErrorDTO.CodeEnum.BAD_REQUEST;
-            } else if (httpStatus.is4xxClientError()) {
+            }
+            else if (httpStatus.isSameCodeAs(HttpStatus.CONFLICT)) {
+                errorCode = ErrorDTO.CodeEnum.BAD_REQUEST;
+            }
+            else if (httpStatus.is4xxClientError()) {
                 errorCode = ErrorDTO.CodeEnum.BAD_REQUEST;
             }
         }

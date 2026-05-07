@@ -437,9 +437,6 @@ public class AuthServiceImpl implements AuthService {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
                 .retrieve()
-                .onStatus(HttpStatusCode::isError, response ->
-                    response.bodyToMono(String.class)
-                            .flatMap(body -> handleKeycloakError("Federated Identity Link failed", body)))
                 .toBodilessEntity()
                 .doOnSuccess(r -> log.info("[AR-BFF][LINK_IDENTITY] Identity linked successfully"))
                 .onErrorResume(WebClientResponseException.class, e -> {

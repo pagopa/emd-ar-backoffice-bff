@@ -26,9 +26,21 @@ public class HttpClientConfig {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class HttpClientConnectionPoolConfig {
+        /** Maximum live connections per remote host. */
         private int size;
         private int sizePerRoute;
+        /** Kept for backward-compat — prefer maxIdleTimeSeconds. */
         private long timeToLiveMinutes;
+        /** Max idle time before a pooled connection is evicted (seconds). */
+        private long maxIdleTimeSeconds;
+        /** Absolute max lifetime of a connection regardless of activity (seconds). */
+        private long maxLifeTimeSeconds;
+        /** Max requests queued when the pool for a host is full. */
+        private int pendingAcquireMaxCount;
+        /** Fail-fast timeout waiting for a free connection (seconds). */
+        private long pendingAcquireTimeoutSeconds;
+        /** Period of the background eviction task (seconds). */
+        private long evictInBackgroundSeconds;
     }
 
     @Data
@@ -36,7 +48,11 @@ public class HttpClientConfig {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class HttpClientTimeoutConfig {
+        /** TCP handshake timeout (ms). */
         private long connectMillis;
+        /** Netty pipeline read/write inactivity timeout (ms). */
         private long readMillis;
+        /** End-to-end response timeout — hard cap for the whole request (ms). */
+        private long responseMillis;
     }
 }

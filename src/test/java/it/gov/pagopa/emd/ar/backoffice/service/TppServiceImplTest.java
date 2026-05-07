@@ -1,107 +1,152 @@
 package it.gov.pagopa.emd.ar.backoffice.service;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
+import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
+import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import it.gov.pagopa.emd.ar.backoffice.connector.v1.TppConnectorImplementationV1;
-import it.gov.pagopa.emd.ar.backoffice.dto.v1.TppDTOV1;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link TppServiceImpl}.
  * <p>
- * This class validates the service layer logic using Mockito for dependency isolation
- * and Project Reactor's {@link StepVerifier} to test reactive streams. It ensures 
- * the correct orchestration between TPP data persistence and Keycloak client management.
+ * Validates the service orchestration: TPP persistence happens first (obtaining the tppId),
+ * followed by Keycloak client creation using that tppId as the client identifier.
+ * The mapper (TppConnectorMapper) is NOT mocked — it is pure logic with no side effects.
  * </p>
  */
 @ExtendWith(MockitoExtension.class)
 public class TppServiceImplTest {
-    
-    @Mock
-    private TppConnectorImplementationV1 tppConnector;
 
     @Mock
-    private AuthServiceImpl authService;
+    private TppConnector tppConnector;
+
+    @Mock
+    private KeycloakClientService keycloakClientService;
 
     private TppServiceImpl tppService;
 
-    /**
-     * Initializes the service under test with mocked dependencies before each test execution.
-     */
     @BeforeEach
     void setUp() {
-        tppService = new TppServiceImpl(tppConnector, authService);
+        tppService = new TppServiceImpl(tppConnector, keycloakClientService);
     }
 
     /**
-     * Tests the successful scenario for TPP and Keycloak client creation.
-     * <p>
-     * Verifies that:
-     * <ol>
-     *     <li>The TPP is saved via the connector.</li>
-     *     <li>The Keycloak client creation is triggered upon success.</li>
-     *     <li>The final Mono emits the expected TPP ID and completes normally.</li>
-     * </ol>
-     * </p>
+     * Happy path: the mapper converts the API DTO to a TppCreateRequest,
+     * the connector persists it and returns a tppId, then the KC client is created.
      */
     @Test
     void createTppAndKeycloakClient_Success() {
-        // GIVEN: Prepare input DTO and mock successful responses
         TppDTOV1 dto = new TppDTOV1();
         dto.setBusinessName("Pagopa TPP");
-        
+
         String savedTppId = "INTERNAL_ID_001";
-        String keycloakClientId = "Pagopa TPP";
 
-        when(tppConnector.saveTpp(any(TppDTOV1.class))).thenReturn(Mono.just(savedTppId));
-        when(authService.createKeycloakClient(anyString())).thenReturn(Mono.just(keycloakClientId));
+        when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(savedTppId));
+        when(keycloakClientService.createKeycloakClient(savedTppId)).thenReturn(Mono.just(savedTppId));
 
-        // WHEN: Calling the orchestration method
-        Mono<String> result = tppService.createTppAndKeycloakClient(dto);
-
-        // THEN: Validate the reactive stream behavior and emitted values
-        StepVerifier.create(result)
+        StepVerifier.create(tppService.createTppAndKeycloakClient(dto))
                 .expectNext(savedTppId)
                 .verifyComplete();
 
-        // Verify that internal services were interacted with exactly once
-        verify(tppConnector, times(1)).saveTpp(dto);
-        verify(authService, times(1)).createKeycloakClient("Pagopa TPP");
+        verify(tppConnector, times(1)).saveTpp(any(TppCreateRequest.class));
+        verify(keycloakClientService, times(1)).createKeycloakClient(savedTppId);
+        verify(tppConnector, never()).deleteTpp(anyString());
     }
 
     /**
-     * Tests the failure scenario when the TPP connector returns an error.
-     * <p>
-     * Verifies that the reactive chain is interrupted and the authentication service 
-     * is never invoked if the initial TPP save fails, ensuring data consistency.
-     * </p>
+     * Input DTO is NOT mutated: the mapper creates a new object; the original stays unchanged.
      */
     @Test
-    void createTppAndKeycloakClient_ErrorOnConnector() {
-        // GIVEN: Mock a failure in the persistence layer
+    void createTppAndKeycloakClient_DoesNotMutateInputDto() {
+        TppDTOV1 original = new TppDTOV1();
+        original.setBusinessName("Test TPP");
+
+        when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just("tpp-id"));
+        when(keycloakClientService.createKeycloakClient(anyString())).thenReturn(Mono.just("tpp-id"));
+
+        tppService.createTppAndKeycloakClient(original).block();
+
+        assert original.getIdPsp() == null : "Original DTO must not be mutated";
+        assert original.getLegalAddress() == null : "Original DTO must not be mutated";
+    }
+
+    /**
+     * Connector failure: if TPP persistence fails, Keycloak must never be called.
+     */
+    @Test
+    void createTppAndKeycloakClient_ErrorOnConnector_KeycloakNeverCalled() {
         TppDTOV1 dto = new TppDTOV1();
         dto.setBusinessName("Fail TPP");
 
-        when(tppConnector.saveTpp(any())).thenReturn(Mono.error(new RuntimeException("Database error")));
+        when(tppConnector.saveTpp(any(TppCreateRequest.class)))
+                .thenReturn(Mono.error(new RuntimeException("Database error")));
 
-        // WHEN: Calling the orchestration method
-        Mono<String> result = tppService.createTppAndKeycloakClient(dto);
-
-        // THEN: Verify that the error is propagated and the stream terminates
-        StepVerifier.create(result)
+        StepVerifier.create(tppService.createTppAndKeycloakClient(dto))
                 .expectError(RuntimeException.class)
                 .verify();
 
-        // Verify that the Keycloak client creation was skipped due to the upstream error
-        verify(authService, never()).createKeycloakClient(anyString());
+        verify(keycloakClientService, never()).createKeycloakClient(anyString());
+        verify(tppConnector, never()).deleteTpp(anyString());
     }
 
+    /**
+     * Keycloak failure after DB save: compensation kicks in (deleteTpp is called),
+     * then the original Keycloak exception is propagated.
+     */
+    @Test
+    void createTppAndKeycloakClient_ErrorOnKeycloak_CompensationTriggered() {
+        TppDTOV1 dto = new TppDTOV1();
+        dto.setBusinessName("KC Fail TPP");
+
+        String savedTppId = "tpp-123";
+        RuntimeException kcException = new RuntimeException("Keycloak unavailable");
+
+        when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(savedTppId));
+        when(keycloakClientService.createKeycloakClient(savedTppId)).thenReturn(Mono.error(kcException));
+        when(tppConnector.deleteTpp(savedTppId)).thenReturn(Mono.empty());
+
+        StepVerifier.create(tppService.createTppAndKeycloakClient(dto))
+                .expectError(RuntimeException.class)
+                .verify();
+
+        verify(tppConnector, times(1)).saveTpp(any(TppCreateRequest.class));
+        verify(keycloakClientService, times(1)).createKeycloakClient(savedTppId);
+        // Compensation must have been attempted
+        verify(tppConnector, times(1)).deleteTpp(savedTppId);
+    }
+
+    /**
+     * Double failure: Keycloak fails AND the compensating delete also fails.
+     * The original Keycloak exception must still be propagated (not the delete exception).
+     */
+    @Test
+    void createTppAndKeycloakClient_ErrorOnKeycloak_CompensationAlsoFails_OriginalErrorPropagated() {
+        TppDTOV1 dto = new TppDTOV1();
+        dto.setBusinessName("Double Fail TPP");
+
+        String savedTppId = "tpp-456";
+        RuntimeException kcException = new RuntimeException("Keycloak unavailable");
+
+        when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(savedTppId));
+        when(keycloakClientService.createKeycloakClient(savedTppId)).thenReturn(Mono.error(kcException));
+        when(tppConnector.deleteTpp(savedTppId))
+                .thenReturn(Mono.error(new RuntimeException("DB also down")));
+
+        StepVerifier.create(tppService.createTppAndKeycloakClient(dto))
+                .expectErrorMatches(ex -> ex.getMessage().equals("Keycloak unavailable"))
+                .verify();
+
+        verify(tppConnector, times(1)).deleteTpp(savedTppId);
+    }
 }

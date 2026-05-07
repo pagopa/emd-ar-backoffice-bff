@@ -70,12 +70,33 @@ logging:
 rest:
   defaults:
     connection-pool:
-      size: "\${DEFAULT_REST_CONNECTION_POOL_SIZE:10}"
-      size-per-route: "\${DEFAULT_REST_CONNECTION_POOL_SIZE_PER_ROUTE:5}"
-      time-to-live-minutes: "\${DEFAULT_REST_CONNECTION_POOL_TIME_TO_LIVE_MINUTES:10}"
+      # Maximum live connections per remote host.
+      # Reactor Netty isolates one bucket per (host, port) — N connectors → N independent buckets.
+      size: "\${WEBCLIENT_POOL_MAX_CONNECTIONS:300}"
+      size-per-route: "\${WEBCLIENT_POOL_MAX_CONNECTIONS_PER_ROUTE:50}"
+      # Azure LB silently closes TCP connections idle for >4 min.
+      # Keep maxIdleTime below that threshold so the pool evicts stale connections first.
+      max-idle-time-seconds: "\${WEBCLIENT_POOL_MAX_IDLE_TIME_SECONDS:20}"
+      # Hard upper bound on connection lifetime regardless of activity.
+      max-life-time-seconds: "\${WEBCLIENT_POOL_MAX_LIFE_TIME_SECONDS:60}"
+      # Cap the waiting queue: 2x maxConnections avoids unbounded memory growth under backpressure.
+      pending-acquire-max-count: "\${WEBCLIENT_POOL_PENDING_ACQUIRE_MAX_COUNT:600}"
+      # Fail-fast when pool is fully saturated — prevents cascading latency.
+      pending-acquire-timeout-seconds: "\${WEBCLIENT_POOL_PENDING_ACQUIRE_TIMEOUT_SECONDS:5}"
+      # Background eviction task period — proactively removes idle/expired connections.
+      evict-in-background-seconds: "\${WEBCLIENT_POOL_EVICT_IN_BACKGROUND_SECONDS:30}"
+      # Kept for backward-compat (no longer used by the pool builder).
+      time-to-live-minutes: "\${WEBCLIENT_POOL_TIME_TO_LIVE_MINUTES:1}"
     timeout:
-      connect-millis: "\${DEFAULT_REST_TIMEOUT_CONNECT_MILLIS:120000}"
-      read-millis: "\${DEFAULT_REST_TIMEOUT_READ_MILLIS:120000}"
+      # TCP handshake timeout.
+      connect-millis: "\${WEBCLIENT_TIMEOUT_CONNECT_MILLIS:5000}"
+      # Netty pipeline read/write inactivity guard (per-event, not end-to-end).
+      # Should be >= response-millis so the inactivity guard never fires before the end-to-end cap.
+      read-millis: "\${WEBCLIENT_TIMEOUT_IO_MILLIS:8000}"
+      # End-to-end response timeout — hard cap for the entire request/response cycle.
+      # Constraint for graceful shutdown: N_sequential_calls × response-millis + db_overhead ≤ spring.lifecycle.timeout (20s).
+      # Here N=1 (single WebClient call per pipeline) → 1×8s + 2s DB = 10s ≤ 20s.
+      response-millis: "\${WEBCLIENT_TIMEOUT_RESPONSE_MILLIS:8000}"
   client:
     tpp:
       base-url: "\${EMD_TPP}"

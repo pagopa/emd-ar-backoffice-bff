@@ -1,14 +1,17 @@
 package it.gov.pagopa.emd.ar.backoffice.controller;
 
-import it.gov.pagopa.emd.ar.backoffice.controller.v1.TppControllerImplV1;
-import it.gov.pagopa.emd.ar.backoffice.dto.v1.TppDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.service.TppServiceImpl;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller.TppControllerImplV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
+import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
+
+import java.util.HashMap;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -23,7 +26,7 @@ import static org.mockito.Mockito.when;
  */
 class TppControllerImplV1Test {
 
-    private TppServiceImpl tppService;
+    private TppService tppService;
     private WebTestClient webTestClient;
 
     /**
@@ -33,11 +36,11 @@ class TppControllerImplV1Test {
     @BeforeEach
     void setUp() {
         // Mock the service dependency
-        tppService = Mockito.mock(TppServiceImpl.class);
-        
+        tppService = Mockito.mock(TppService.class);
+
         // Instantiate the controller with the mocked service
         TppControllerImplV1 tppController = new TppControllerImplV1(tppService);
-        
+
         // Manually bind the controller to WebTestClient for lightweight unit testing
         webTestClient = WebTestClient.bindToController(tppController).build();
     }
@@ -74,24 +77,25 @@ class TppControllerImplV1Test {
      */
     @Test
     void saveTpp_ShouldReturnTppId() {
-        // GIVEN: Prepare request data
+        // GIVEN: a valid TPP DTO (all @NotNull / @NotBlank fields populated)
         TppDTOV1 dto = new TppDTOV1();
+        dto.setEntityId("12345678901");                      // 11 digits — matches the regex
         dto.setBusinessName("Test Tpp Name");
-        
-        String expectedResponse = "TPP_CREATED_ID_123";
+        dto.setAuthenticationType(AuthenticationTypeV1.OAUTH2);
+        dto.setAgentLinks(new HashMap<>());                  // @NotNull — empty map is valid
 
-        // WHEN: Define mock behavior for the service call
+        String expectedTppId = "TPP_CREATED_ID_123";
+
         when(tppService.createTppAndKeycloakClient(any(TppDTOV1.class)))
-                .thenReturn(Mono.just(expectedResponse));
+                .thenReturn(Mono.just(expectedTppId));
 
-        // THEN: Execute the POST request and verify the response status and body
         webTestClient.post()
                 .uri("/emd/backoffice/api/v1/tpp")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(dto)
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(String.class)
-                .isEqualTo(expectedResponse);
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo(expectedTppId);
     }
 }

@@ -45,7 +45,7 @@ public class TppServiceImpl implements TppService {
         return tppConnector.saveTpp(TppConnectorMapper.toCreateRequest(tppDTO))
                 .flatMap(tppId -> {
                     log.info("[AR-BFF][TPP_CREATE] TPP persisted with id={}. Creating Keycloak client.", tppId);
-                    return keycloakClientService.createKeycloakClient(tppId)
+                    return keycloakClientService.createKeycloakClient(tppId, tppDTO.getEntityId())
                             .thenReturn(tppId)
                             .onErrorResume(ex -> compensateDelete(tppId, ex));
                 })

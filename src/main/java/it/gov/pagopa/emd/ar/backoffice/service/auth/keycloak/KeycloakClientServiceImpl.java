@@ -31,6 +31,13 @@ import java.util.concurrent.atomic.AtomicReference;
  * the existing client by {@code clientId} and proceeds with the group-linking step.
  * This makes the whole TPP creation flow safe to retry without leaving duplicate clients.
  *
+ * <p><strong>Atomicity / compensation:</strong> if the post-creation steps (group linking
+ * or entityId mapper) fail after a <em>newly created</em> client, the client is deleted
+ * from Keycloak so no orphan client is left behind. If the compensation itself fails, the
+ * error is logged and the original exception is still propagated (worst case: a single
+ * inert client, subject to manual reconciliation). Pre-existing clients (409 path) are
+ * never deleted during compensation.
+ *
  * <p>The TPP group ID is resolved once and cached for the lifetime of the application,
  * since the group name is static configuration.
  */
@@ -60,24 +67,38 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
 
     /** {@inheritDoc} */
     @Override
-    public Mono<String> createKeycloakClient(String clientId) {
+    public Mono<String> createKeycloakClient(String clientId, String entityId) {
         log.info("[AR-BFF][CREATE_CLIENT] Starting process for clientId={}", clientId);
 
         return tokenService.getManagerToken()
                 .flatMap(adminToken -> resolveInternalClientId(adminToken, clientId)
-                        .flatMap(internalId -> linkClientToGroup(adminToken, internalId, clientId)))
+                        .flatMap(resolution -> {
+                            if (!resolution.newlyCreated()) {
+                                log.info("[AR-BFF][CREATE_CLIENT] Client already existed, skipping group/mapper setup for clientId={}", clientId);
+                                return Mono.empty();
+                            }
+                            return Mono.when(
+                                    linkClientToGroup(adminToken, resolution.internalId(), clientId),
+                                    addEntityIdMapper(adminToken, resolution.internalId(), entityId)
+                            ).onErrorResume(ex ->
+                                    compensateDeleteKcClient(adminToken, resolution.internalId(), clientId, ex)
+                            );
+                        })
+                )
+                .thenReturn(clientId)
                 .doOnSuccess(res -> log.info("[AR-BFF][CREATE_CLIENT] Successfully created client: {}", clientId))
                 .doOnError(e -> log.error("[AR-BFF][CREATE_CLIENT] Failed: {}", e.getMessage()));
     }
 
     /**
-     * Creates the Keycloak client and returns its internal UUID.
+     * Creates the Keycloak client and returns a {@link ClientResolution} carrying the
+     * internal UUID and a flag indicating whether the client was freshly created.
      * <p>
-     * If Keycloak returns 409 Conflict (the client already exists — e.g., after a partial
-     * failure followed by a retry), the method transparently looks up and returns the
-     * existing client's internal UUID, making the whole operation idempotent.
+     * If Keycloak returns 409 Conflict (the client already exists), the method transparently
+     * looks up and returns the existing client's internal UUID with {@code newlyCreated=false},
+     * making the whole operation idempotent.
      */
-    private Mono<String> resolveInternalClientId(String adminToken, String clientId) {
+    private Mono<ClientResolution> resolveInternalClientId(String adminToken, String clientId) {
         return webClient.post()
                 .uri(adminUri("/clients"))
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
@@ -97,13 +118,14 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                     }
                     String internalId = location.substring(location.lastIndexOf('/') + 1);
                     log.debug("[AR-BFF][CREATE_CLIENT] Client created, internalId={}", internalId);
-                    return Mono.just(internalId);
+                    return Mono.just(new ClientResolution(internalId, true));
                 })
-                // 409: client already exists — idempotency path
+                // 409: client already exists — idempotency path, newlyCreated=false
                 .onErrorResume(WebClientResponseException.class, ex -> {
                     if (ex.getStatusCode() == HttpStatus.CONFLICT) {
                         log.warn("[AR-BFF][CREATE_CLIENT] 409 for clientId={} — resolving existing internal ID", clientId);
-                        return findClientInternalId(adminToken, clientId);
+                        return findClientInternalId(adminToken, clientId)
+                                .map(internalId -> new ClientResolution(internalId, false));
                     }
                     return Mono.error(ex);
                 });
@@ -135,6 +157,31 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                         .findFirst()
                         .map(Mono::just)
                         .orElseGet(() -> Mono.error(new ResourceNotFoundException("Keycloak client", clientId))));
+    }
+
+    /**
+     * Compensating transaction: deletes the newly-created Keycloak client when a post-creation
+     * step (group linking or mapper setup) fails. Always re-propagates the original exception
+     * after compensation, regardless of whether the delete succeeded or not.
+     */
+    private <T> Mono<T> compensateDeleteKcClient(String adminToken, String internalId, String clientId, Throwable cause) {
+        log.warn("[AR-BFF][CREATE_CLIENT] Post-create step failed for clientId={}, " +
+                "attempting KC client compensation delete. Cause: {}", clientId, cause.getMessage());
+        return webClient.delete()
+                .uri(adminUri("/clients/{id}", internalId))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> handleKeycloakError("deleteClientCompensation", body)))
+                .toBodilessEntity()
+                .doOnSuccess(v -> log.info("[AR-BFF][CREATE_CLIENT] KC client compensation delete succeeded for clientId={}", clientId))
+                .onErrorResume(deleteEx -> {
+                    log.error("[AR-BFF][CREATE_CLIENT] KC client compensation delete FAILED for clientId={}. " +
+                            "Manual reconciliation required. deleteError={}", clientId, deleteEx.getMessage());
+                    return Mono.empty();
+                })
+                .then(Mono.error(cause));
     }
 
     /**
@@ -231,5 +278,55 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
                 .then();
     }
-}
 
+    /**
+     * Adds a hardcoded-claim protocol mapper to the given client so that every token it
+     * issues carries the TPP {@code entityId} as a top-level JSON claim named
+     * {@code "entityId"} in the access token, ID token, and userinfo endpoint.
+     *
+     * <p>The operation is <strong>idempotent</strong>: a 409 Conflict response (mapper
+     * already exists) is silently ignored, keeping the whole TPP creation flow safe to retry.
+     */
+    private Mono<Void> addEntityIdMapper(String adminToken, String internalClientId, String entityId) {
+        Map<String, Object> config = new HashMap<>();
+        config.put("claim.value", entityId);
+        config.put("claim.name", "entityId");
+        config.put("jsonType.label", "String");
+        config.put("id.token.claim", "true");
+        config.put("access.token.claim", "true");
+        config.put("userinfo.token.claim", "true");
+        config.put("access.tokenResponse.claim", "false");
+
+        Map<String, Object> mapper = new HashMap<>();
+        mapper.put("name", "entityId");
+        mapper.put("protocol", "openid-connect");
+        mapper.put("protocolMapper", "oidc-hardcoded-claim-mapper");
+        mapper.put("consentRequired", false);
+        mapper.put("config", config);
+
+        return webClient.post()
+                .uri(adminUri("/clients/{clientId}/protocol-mappers/models", internalClientId))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(mapper)
+                .retrieve()
+                .onStatus(status -> status.isError() && status.value() != 409, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> handleKeycloakError("addEntityIdMapper", body)))
+                .onStatus(status -> status.value() == 409, response ->
+                        response.bodyToMono(String.class)
+                                .doOnNext(body -> log.warn(
+                                        "[AR-BFF][CREATE_CLIENT] entityId mapper already exists " +
+                                        "for internalClientId={}, skipping", internalClientId))
+                                .then(Mono.<Throwable>empty()))
+                .toBodilessEntity()
+                .retryWhen(WebClientRetrySpecs.connectFailureOnly())
+                .then();
+    }
+
+    /**
+     * Tracks whether a Keycloak client was freshly created or already existed (409 idempotency path).
+     * Used to decide whether compensation (DELETE) is needed on post-creation failure.
+     */
+    private record ClientResolution(String internalId, boolean newlyCreated) {}
+}

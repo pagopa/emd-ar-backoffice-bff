@@ -43,24 +43,26 @@ public class TppServiceImplTest {
 
     /**
      * Happy path: the mapper converts the API DTO to a TppCreateRequest,
-     * the connector persists it and returns a tppId, then the KC client is created.
+     * the connector persists it and returns a tppId, then the KC client is created
+     * with both tppId (as clientId) and entityId for the hardcoded-claim mapper.
      */
     @Test
     void createTppAndKeycloakClient_Success() {
         TppDTOV1 dto = new TppDTOV1();
         dto.setBusinessName("Pagopa TPP");
+        dto.setEntityId("12345678901");
 
         String savedTppId = "INTERNAL_ID_001";
 
         when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(savedTppId));
-        when(keycloakClientService.createKeycloakClient(savedTppId)).thenReturn(Mono.just(savedTppId));
+        when(keycloakClientService.createKeycloakClient(savedTppId, "12345678901")).thenReturn(Mono.just(savedTppId));
 
         StepVerifier.create(tppService.createTppAndKeycloakClient(dto))
                 .expectNext(savedTppId)
                 .verifyComplete();
 
         verify(tppConnector, times(1)).saveTpp(any(TppCreateRequest.class));
-        verify(keycloakClientService, times(1)).createKeycloakClient(savedTppId);
+        verify(keycloakClientService, times(1)).createKeycloakClient(savedTppId, "12345678901");
         verify(tppConnector, never()).deleteTpp(anyString());
     }
 
@@ -73,7 +75,7 @@ public class TppServiceImplTest {
         original.setBusinessName("Test TPP");
 
         when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just("tpp-id"));
-        when(keycloakClientService.createKeycloakClient(anyString())).thenReturn(Mono.just("tpp-id"));
+        when(keycloakClientService.createKeycloakClient(anyString(), any())).thenReturn(Mono.just("tpp-id"));
 
         tppService.createTppAndKeycloakClient(original).block();
 
@@ -96,7 +98,7 @@ public class TppServiceImplTest {
                 .expectError(RuntimeException.class)
                 .verify();
 
-        verify(keycloakClientService, never()).createKeycloakClient(anyString());
+        verify(keycloakClientService, never()).createKeycloakClient(anyString(), any());
         verify(tppConnector, never()).deleteTpp(anyString());
     }
 
@@ -108,12 +110,13 @@ public class TppServiceImplTest {
     void createTppAndKeycloakClient_ErrorOnKeycloak_CompensationTriggered() {
         TppDTOV1 dto = new TppDTOV1();
         dto.setBusinessName("KC Fail TPP");
+        dto.setEntityId("12345678901");
 
         String savedTppId = "tpp-123";
         RuntimeException kcException = new RuntimeException("Keycloak unavailable");
 
         when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(savedTppId));
-        when(keycloakClientService.createKeycloakClient(savedTppId)).thenReturn(Mono.error(kcException));
+        when(keycloakClientService.createKeycloakClient(savedTppId, "12345678901")).thenReturn(Mono.error(kcException));
         when(tppConnector.deleteTpp(savedTppId)).thenReturn(Mono.empty());
 
         StepVerifier.create(tppService.createTppAndKeycloakClient(dto))
@@ -121,7 +124,7 @@ public class TppServiceImplTest {
                 .verify();
 
         verify(tppConnector, times(1)).saveTpp(any(TppCreateRequest.class));
-        verify(keycloakClientService, times(1)).createKeycloakClient(savedTppId);
+        verify(keycloakClientService, times(1)).createKeycloakClient(savedTppId, "12345678901");
         // Compensation must have been attempted
         verify(tppConnector, times(1)).deleteTpp(savedTppId);
     }
@@ -134,12 +137,13 @@ public class TppServiceImplTest {
     void createTppAndKeycloakClient_ErrorOnKeycloak_CompensationAlsoFails_OriginalErrorPropagated() {
         TppDTOV1 dto = new TppDTOV1();
         dto.setBusinessName("Double Fail TPP");
+        dto.setEntityId("12345678901");
 
         String savedTppId = "tpp-456";
         RuntimeException kcException = new RuntimeException("Keycloak unavailable");
 
         when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(savedTppId));
-        when(keycloakClientService.createKeycloakClient(savedTppId)).thenReturn(Mono.error(kcException));
+        when(keycloakClientService.createKeycloakClient(savedTppId, "12345678901")).thenReturn(Mono.error(kcException));
         when(tppConnector.deleteTpp(savedTppId))
                 .thenReturn(Mono.error(new RuntimeException("DB also down")));
 

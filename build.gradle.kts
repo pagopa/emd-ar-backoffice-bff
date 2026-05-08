@@ -85,8 +85,8 @@ dependencies {
   // Utilities
   implementation("org.springframework.boot:spring-boot-starter-validation")
   implementation("org.codehaus.janino:janino:$janinoVersion")
-  
-  
+
+
 
   // CVE fix
   implementation("tools.jackson.core:jackson-core:$jackson3CoreVersion")
@@ -99,7 +99,7 @@ dependencies {
   annotationProcessor("org.projectlombok:lombok")
   testAnnotationProcessor("org.projectlombok:lombok")
 
-  //	Testing
+	//	Testing
   testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("io.projectreactor:reactor-test")
   testImplementation("org.projectlombok:lombok")

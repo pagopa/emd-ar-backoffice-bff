@@ -1,0 +1,14 @@
+package it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class AuthRequestDTOV1 {
+    @NotBlank(message = "Token must not be blank")
+    private String token;
+}

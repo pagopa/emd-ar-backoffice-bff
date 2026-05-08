@@ -2,6 +2,11 @@ package it.gov.pagopa.common.exception;
 
 import it.gov.pagopa.common.utils.TestUtils;
 import it.gov.pagopa.common.utils.Utilities;
+import it.gov.pagopa.emd.ar.backoffice.api.handler.ControllerExceptionHandler;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
@@ -25,6 +30,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
@@ -59,7 +65,7 @@ class ControllerExceptionHandlerTest {
     @BeforeEach
     void setUp() {
         TestUtils.clearDefaultTimezone();
-        
+
         // Configuriamo il WebTestClient agganciando il controller e l'handler manualmente
         // Evita errori di caricamento del contesto Spring
         this.webTestClient = WebTestClient.bindToController(testControllerMock)
@@ -109,7 +115,8 @@ class ControllerExceptionHandlerTest {
                 .expectStatus().is5xxServerError()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("GENERIC_ERROR")
-                .jsonPath("$.message").isEqualTo("Error");
+                // The internal exception message is NOT returned to the client (security: avoids leaking internals)
+                .jsonPath("$.message").isEqualTo("An unexpected error occurred. Please retry or contact support.");
     }
 
     @Test
@@ -120,7 +127,7 @@ class ControllerExceptionHandlerTest {
         when(path.toString()).thenReturn("fieldName");
         when(violation.getPropertyPath()).thenReturn(path);
         when(violation.getMessage()).thenReturn("resolved message");
-        
+
         ConstraintViolationException ex = new ConstraintViolationException("Error", Set.of(violation));
         when(testControllerMock.testEndpoint(any(), any())).thenReturn(Mono.error(ex));
 
@@ -229,5 +236,84 @@ class ControllerExceptionHandlerTest {
                 .expectStatus().isEqualTo(HttpStatus.METHOD_NOT_ALLOWED)
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST");
+    }
+
+    @Test
+    void handleTppAlreadyOnboardedException_Returns409() {
+        when(testControllerMock.testEndpoint(any(), any()))
+                .thenReturn(Mono.error(new TppAlreadyOnboardedException("{\"code\":\"TPP_ALREADY_ONBOARDED\"}")));
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new TestRequestBody("val", null, "abc", LocalDateTime.now()))
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.CONFLICT)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("GENERIC_ERROR")
+                .jsonPath("$.message").isEqualTo("TPP already onboarded.");
+    }
+
+    @Test
+    void handleExternalServiceException_Returns502() {
+        when(testControllerMock.testEndpoint(any(), any()))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "saveTpp", "Connection refused")));
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new TestRequestBody("val", null, "abc", LocalDateTime.now()))
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("GENERIC_ERROR")
+                .jsonPath("$.message").isEqualTo("An external service is temporarily unavailable. Please retry later.");
+    }
+
+    @Test
+    void handleWebClientResponseException_Returns502() {
+        when(testControllerMock.testEndpoint(any(), any()))
+                .thenReturn(Mono.error(WebClientResponseException.create(503, "Service Unavailable", null, null, null)));
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new TestRequestBody("val", null, "abc", LocalDateTime.now()))
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("GENERIC_ERROR")
+                .jsonPath("$.message").isEqualTo("An external service returned an unexpected response. Please retry later.");
+    }
+
+    @Test
+    void handleResourceNotFoundException_Returns404() {
+        when(testControllerMock.testEndpoint(any(), any()))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", "tpp-123")));
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new TestRequestBody("val", null, "abc", LocalDateTime.now()))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void handleInvalidTokenException_Returns401() {
+        when(testControllerMock.testEndpoint(any(), any()))
+                .thenReturn(Mono.error(new InvalidTokenException("Token expired")));
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new TestRequestBody("val", null, "abc", LocalDateTime.now()))
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("UNAUTHORIZED")
+                .jsonPath("$.message").isEqualTo("Authentication failed");
     }
 }

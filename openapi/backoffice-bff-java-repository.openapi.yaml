@@ -42,6 +42,7 @@ components:
           enum:
             - NOT_FOUND
             - BAD_REQUEST
+            - UNAUTHORIZED
             - GENERIC_ERROR
         message:
           type: string

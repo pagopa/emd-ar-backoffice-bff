@@ -202,7 +202,7 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
     private Map<String, Object> buildClientPayload(String clientId, String businessName) {
         Map<String, Object> client = new HashMap<>();
         client.put("clientId", clientId);
-        client.put("name", businessName);
+        client.put("name", "[TPP] " + businessName);
         client.put("enabled", true);
         client.put("protocol", "openid-connect");
         client.put("standardFlowEnabled", false);

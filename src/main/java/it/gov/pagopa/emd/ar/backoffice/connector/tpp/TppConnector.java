@@ -1,6 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import reactor.core.publisher.Mono;
 
 /**
@@ -27,4 +28,14 @@ public interface TppConnector {
      * @return {@code Mono<Void>} completing when the TPP is deleted, or an error
      */
     Mono<Void> deleteTpp(String tppId);
+
+    /**
+     * Retrieves a TPP by its {@code entityId} (CF or P.IVA).
+     *
+     * @param entityId the fiscal code or VAT number of the TPP
+     * @return {@code Mono<TppEntityIdResponse>} containing at least the {@code tppId}, or
+     *         a {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException}
+     *         if the TPP does not exist (upstream 404)
+     */
+    Mono<TppEntityIdResponse> getTppByEntityId(String entityId);
 }

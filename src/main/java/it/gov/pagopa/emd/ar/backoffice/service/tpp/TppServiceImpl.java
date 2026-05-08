@@ -1,6 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper.TppConnectorMapper;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
@@ -51,6 +52,16 @@ public class TppServiceImpl implements TppService {
                 })
                 .doOnSuccess(tppId -> log.info("[AR-BFF][TPP_CREATE] TPP creation completed. id={}", tppId))
                 .doOnError(e -> log.error("[AR-BFF][TPP_CREATE] Error during TPP creation: {}", e.getMessage()));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<TppIdResponseDTOV1> getTppByEntityId(String entityId) {
+        log.info("[AR-BFF][TPP_GET] Looking up TPP by entityId={}", entityId);
+        return tppConnector.getTppByEntityId(entityId)
+                .map(response -> new TppIdResponseDTOV1(response.tppId()))
+                .doOnSuccess(r -> log.info("[AR-BFF][TPP_GET] Found TPP tppId={} for entityId={}", r.getTppId(), entityId))
+                .doOnError(e -> log.warn("[AR-BFF][TPP_GET] TPP not found for entityId={}: {}", entityId, e.getMessage()));
     }
 
     /**

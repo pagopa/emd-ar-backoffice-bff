@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.7.0...v0.8.0) (2026-05-08)
+
+
+### Features
+
+* [MMC-502] add tpp creation endpoint ([#18](https://github.com/pagopa/emd-ar-backoffice-bff/issues/18)) ([b28309a](https://github.com/pagopa/emd-ar-backoffice-bff/commit/b28309a8dffe996e60a008a31b664c62925f4217))
+* [MMC-505] add get tpp by entityId endpoint ([#20](https://github.com/pagopa/emd-ar-backoffice-bff/issues/20)) ([8cf56c4](https://github.com/pagopa/emd-ar-backoffice-bff/commit/8cf56c41685b66bed9b663cb2c940e77b031c86a))
+
+
+### Bug Fixes
+
+* [MMC-550] add custom kc attributes on user creation ([#21](https://github.com/pagopa/emd-ar-backoffice-bff/issues/21)) ([c5834d1](https://github.com/pagopa/emd-ar-backoffice-bff/commit/c5834d119741bf9432dd0a91b0d0af5d8e1d9ce1))
+
 ## [0.7.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.6.0...v0.7.0) (2026-04-24)
 
 

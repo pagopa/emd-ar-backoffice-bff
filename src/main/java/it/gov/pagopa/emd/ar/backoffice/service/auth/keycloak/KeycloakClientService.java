@@ -12,10 +12,11 @@ public interface KeycloakClientService {
      * with the configured TPP group, and attaches a hardcoded-claim protocol mapper so that
      * every token issued for this client carries the TPP {@code entityId} as a claim.
      *
-     * @param clientId the identifier for the new Keycloak client (typically the TPP ID)
-     * @param entityId the TPP entity ID to embed as a hardcoded claim in the client's token mapper
+     * @param clientId     the identifier for the new Keycloak client (typically the TPP ID)
+     * @param entityId     the TPP entity ID to embed as a hardcoded claim in the client's token mapper
+     * @param businessName the human-readable TPP business name used as the Keycloak client display name
      * @return {@code Mono<String>} emitting the {@code clientId} upon successful creation
      */
-    Mono<String> createKeycloakClient(String clientId, String entityId);
+    Mono<String> createKeycloakClient(String clientId, String entityId, String businessName);
 }
 

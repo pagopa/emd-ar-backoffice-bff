@@ -66,11 +66,11 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
 
     /** {@inheritDoc} */
     @Override
-    public Mono<String> createKeycloakClient(String clientId, String entityId) {
+    public Mono<String> createKeycloakClient(String clientId, String entityId, String businessName) {
         log.info("[AR-BFF][CREATE_CLIENT] Starting process for clientId={}", clientId);
 
         return tokenService.getManagerToken()
-                .flatMap(adminToken -> resolveInternalClientId(adminToken, clientId)
+                .flatMap(adminToken -> resolveInternalClientId(adminToken, clientId, businessName)
                         .flatMap(resolution -> {
                             if (!resolution.newlyCreated()) {
                                 log.info("[AR-BFF][CREATE_CLIENT] Client already existed, skipping group/mapper setup for clientId={}", clientId);
@@ -98,12 +98,12 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
      * looks up and returns the existing client's internal UUID with {@code newlyCreated=false},
      * making the whole operation idempotent.
      */
-    private Mono<ClientResolution> resolveInternalClientId(String adminToken, String clientId) {
+    private Mono<ClientResolution> resolveInternalClientId(String adminToken, String clientId, String businessName) {
         return webClient.post()
                 .uri(adminUri("/clients"))
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(buildClientPayload(clientId))
+                .bodyValue(buildClientPayload(clientId, businessName))
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
@@ -199,10 +199,10 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
-    private Map<String, Object> buildClientPayload(String clientId) {
+    private Map<String, Object> buildClientPayload(String clientId, String businessName) {
         Map<String, Object> client = new HashMap<>();
         client.put("clientId", clientId);
-        client.put("name", clientId);
+        client.put("name", businessName);
         client.put("enabled", true);
         client.put("protocol", "openid-connect");
         client.put("standardFlowEnabled", false);

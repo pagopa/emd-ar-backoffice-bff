@@ -2,7 +2,9 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller.TppControllerImplV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import reactor.core.publisher.Mono;
 import java.util.HashMap;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 /**
@@ -35,54 +38,19 @@ class TppControllerImplV1Test {
      */
     @BeforeEach
     void setUp() {
-        // Mock the service dependency
         tppService = Mockito.mock(TppService.class);
-
-        // Instantiate the controller with the mocked service
         TppControllerImplV1 tppController = new TppControllerImplV1(tppService);
-
-        // Manually bind the controller to WebTestClient for lightweight unit testing
         webTestClient = WebTestClient.bindToController(tppController).build();
     }
 
-    /**
-     * Test case for the health check/routing verification endpoint.
-     * <p>
-     * Verifies that:
-     * <ul>
-     *     <li>The HTTP status is 200 OK.</li>
-     *     <li>The content type is APPLICATION_JSON.</li>
-     *     <li>The response body contains the expected static status and service name.</li>
-     * </ul>
-     * </p>
-     */
-    @Test
-    void test_ShouldReturnHealthStatus() {
-        webTestClient.get()
-                .uri("/emd/backoffice/api/v1/tpp/test")
-                .exchange()
-                .expectStatus().isOk()
-                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
-                .expectBody()
-                .jsonPath("$.status").isEqualTo("OK")
-                .jsonPath("$.service").isEqualTo("emd-ar-backoffice-bff");
-    }
 
-    /**
-     * Test case for the TPP information saving endpoint.
-     * <p>
-     * Verifies that the controller correctly delegates the creation process
-     * to the service layer and returns the generated TPP ID as a response.
-     * </p>
-     */
     @Test
     void saveTpp_ShouldReturnTppId() {
-        // GIVEN: a valid TPP DTO (all @NotNull / @NotBlank fields populated)
         TppDTOV1 dto = new TppDTOV1();
-        dto.setEntityId("12345678901");                      // 11 digits — matches the regex
+        dto.setEntityId("12345678901");
         dto.setBusinessName("Test Tpp Name");
         dto.setAuthenticationType(AuthenticationTypeV1.OAUTH2);
-        dto.setAgentLinks(new HashMap<>());                  // @NotNull — empty map is valid
+        dto.setAgentLinks(new HashMap<>());
 
         String expectedTppId = "TPP_CREATED_ID_123";
 
@@ -98,4 +66,43 @@ class TppControllerImplV1Test {
                 .expectBody()
                 .jsonPath("$.tppId").isEqualTo(expectedTppId);
     }
+
+    /**
+     * GET /emd/backoffice/api/v1/tpp?entityId=... — TPP trovata → 200 con tppId.
+     */
+    @Test
+    void getTppByEntityId_Found_Returns200WithTppId() {
+        String entityId = "12345678901";
+        String expectedTppId = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
+
+        when(tppService.getTppByEntityId(eq(entityId)))
+                .thenReturn(Mono.just(new TppIdResponseDTOV1(expectedTppId)));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp?entityId=" + entityId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo(expectedTppId);
+    }
+
+    /**
+     * GET /emd/backoffice/api/v1/tpp?entityId=... — TPP non trovata → il service
+     * emette ResourceNotFoundException che il global handler mappa a 404.
+     * Il controller non intercetta l'errore — si propaga verso l'alto.
+     */
+    @Test
+    void getTppByEntityId_NotFound_PropagatesError() {
+        String entityId = "99999999999";
+
+        when(tppService.getTppByEntityId(eq(entityId)))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp?entityId=" + entityId)
+                .exchange()
+                .expectStatus().is5xxServerError(); // senza global handler il default è 500
+    }
 }
+

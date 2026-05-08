@@ -79,7 +79,8 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                             }
                             return Mono.when(
                                     linkClientToGroup(adminToken, resolution.internalId(), clientId),
-                                    addEntityIdMapper(adminToken, resolution.internalId(), entityId)
+                                    addEntityIdMapper(adminToken, resolution.internalId(), entityId),
+                                    moveServiceAccountScopeToOptional(adminToken, resolution.internalId())
                             ).onErrorResume(ex ->
                                     compensateDeleteKcClient(adminToken, resolution.internalId(), clientId, ex)
                             );
@@ -326,6 +327,71 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                                 .then(Mono.<Throwable>empty()))
                 .toBodilessEntity()
                 .retryWhen(WebClientRetrySpecs.connectFailureOnly())
+                .then();
+    }
+
+    /**
+     * Moves the {@code service_account} client scope from default to optional on the newly created
+     * client. Keycloak automatically re-assigns it as a default scope when
+     * {@code serviceAccountsEnabled=true}, ignoring the {@code optionalClientScopes} array in the
+     * creation payload — so this post-creation fixup is required.
+     *
+     * <p>Steps:
+     * <ol>
+     *   <li>Fetch the client's current default client scopes.</li>
+     *   <li>Find {@code service_account} by name.</li>
+     *   <li>Remove it from defaults (DELETE) then add to optional (PUT).</li>
+     * </ol>
+     * If the scope is not found among the defaults (already optional or absent), the step is a no-op.
+     */
+    private Mono<Void> moveServiceAccountScopeToOptional(String adminToken, String internalClientId) {
+        return webClient.get()
+                .uri(adminUri("/clients/{id}/default-client-scopes", internalClientId))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> handleKeycloakError("getDefaultClientScopes", body)))
+                .bodyToMono(new ParameterizedTypeReference<List<Map<String, Object>>>() {})
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .flatMap(scopes -> scopes.stream()
+                        .filter(s -> "service_account".equals(s.get("name")))
+                        .map(s -> (String) s.get("id"))
+                        .findFirst()
+                        .map(scopeId -> removeFromDefaultScopes(adminToken, internalClientId, scopeId)
+                                .then(addToOptionalScopes(adminToken, internalClientId, scopeId)))
+                        .orElseGet(() -> {
+                            log.debug("[AR-BFF][CREATE_CLIENT] service_account not found in default scopes for internalClientId={}, no-op", internalClientId);
+                            return Mono.empty();
+                        })
+                );
+    }
+
+    private Mono<Void> removeFromDefaultScopes(String adminToken, String internalClientId, String scopeId) {
+        return webClient.delete()
+                .uri(adminUri("/clients/{id}/default-client-scopes/{scopeId}", internalClientId, scopeId))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> handleKeycloakError("removeDefaultScope", body)))
+                .toBodilessEntity()
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .doOnSuccess(v -> log.debug("[AR-BFF][CREATE_CLIENT] Removed service_account from default scopes for internalClientId={}", internalClientId))
+                .then();
+    }
+
+    private Mono<Void> addToOptionalScopes(String adminToken, String internalClientId, String scopeId) {
+        return webClient.put()
+                .uri(adminUri("/clients/{id}/optional-client-scopes/{scopeId}", internalClientId, scopeId))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> handleKeycloakError("addOptionalScope", body)))
+                .toBodilessEntity()
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .doOnSuccess(v -> log.info("[AR-BFF][CREATE_CLIENT] Moved service_account to optional scopes for internalClientId={}", internalClientId))
                 .then();
     }
 

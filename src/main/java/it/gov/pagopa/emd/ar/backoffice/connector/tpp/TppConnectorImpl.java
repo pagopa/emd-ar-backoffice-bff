@@ -4,6 +4,7 @@ import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.SaveTppResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
@@ -52,6 +53,9 @@ public class TppConnectorImpl implements TppConnector {
                 .uri(SAVE_TPP_PATH)
                 .bodyValue(request)
                 .retrieve()
+                .onStatus(status -> status.value() == 409, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(new TppAlreadyOnboardedException(body))))
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
                                 .flatMap(body -> Mono.error(

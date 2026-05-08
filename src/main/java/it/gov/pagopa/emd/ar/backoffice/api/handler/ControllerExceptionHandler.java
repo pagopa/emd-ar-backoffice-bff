@@ -4,6 +4,7 @@ import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
 import it.gov.pagopa.emd.ar.backoffice.dto.generated.ErrorDTO;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.ValidationException;
@@ -74,6 +75,20 @@ public class ControllerExceptionHandler {
                 .status(HttpStatus.UNAUTHORIZED)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new ErrorDTO(ErrorDTO.CodeEnum.UNAUTHORIZED, "Authentication failed", utilities.getTraceId()));
+    }
+
+    /**
+     * Maps {@link TppAlreadyOnboardedException} → HTTP 409 Conflict.
+     * The TPP service returned {@code TPP_ALREADY_ONBOARDED} — the caller is trying
+     * to create a TPP that already exists.
+     */
+    @ExceptionHandler(TppAlreadyOnboardedException.class)
+    public ResponseEntity<ErrorDTO> handleTppAlreadyOnboardedException(TppAlreadyOnboardedException ex, ServerHttpRequest request) {
+        logException(ex, request, HttpStatus.CONFLICT);
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ErrorDTO(ErrorDTO.CodeEnum.GENERIC_ERROR, "TPP already onboarded.", utilities.getTraceId()));
     }
 
     /**

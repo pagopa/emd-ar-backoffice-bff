@@ -3,6 +3,8 @@ package it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.model.Organization;
+import it.gov.pagopa.emd.ar.backoffice.domain.model.Role;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.User;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -146,12 +148,28 @@ public class KeycloakUserService extends AbstractKeycloakService {
         body.put("enabled", true);
         body.put("emailVerified", true);
 
+        Organization org = userDTO.getOrganization();
         Map<String, List<String>> attributes = new HashMap<>();
-        attributes.put("org_id", List.of(userDTO.getOrganization().getId()));
 
-        if (userDTO.getOrganization().getRoles() != null && !userDTO.getOrganization().getRoles().isEmpty()) {
-                    String role = userDTO.getOrganization().getRoles().getFirst().getRole();
-            attributes.put("org_role", List.of(role));
+        // orgId — single-value attribute
+        if (org.getId() != null) {
+            attributes.put("orgId", List.of(org.getId()));
+        }
+
+        // orgRoles — multi-valued: collect all role values from the list
+        if (org.getRoles() != null && !org.getRoles().isEmpty()) {
+            List<String> roles = org.getRoles().stream()
+                    .map(Role::getRole)
+                    .filter(r -> r != null && !r.isBlank())
+                    .toList();
+            if (!roles.isEmpty()) {
+                attributes.put("orgRoles", roles);
+            }
+        }
+
+        // orgFiscalCode — single-value attribute
+        if (org.getFiscalCode() != null) {
+            attributes.put("orgFiscalCode", List.of(org.getFiscalCode()));
         }
 
         body.put("attributes", attributes);

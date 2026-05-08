@@ -212,6 +212,11 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
         client.put("serviceAccountsEnabled", true);
         client.put("redirectUris", List.of());
         client.put("attributes", Map.of("use.refresh.tokens", "true"));
+        // Only mdc-claims is assigned as default scope.
+        // profile, roles, service_account and web-origins are moved to optional
+        // so they are not included in tokens unless explicitly requested.
+        client.put("defaultClientScopes", List.of("mdc-claims"));
+        client.put("optionalClientScopes", List.of("profile", "roles", "service_account", "web-origins"));
         return client;
     }
 

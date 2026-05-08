@@ -20,6 +20,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -60,6 +61,7 @@ class KeycloakUserServiceTest {
         Organization org = new Organization();
         org.setId("ORG-001");
         org.setName("Test Org");
+        org.setFiscalCode("12345678901");
         org.setRoles(List.of(role));
         User user = new User();
         user.setUid(USER_UID);
@@ -233,6 +235,137 @@ class KeycloakUserServiceTest {
 
         assertThat(calls).hasSize(1);
         assertThat(calls.getFirst()).startsWith("GET");
+    }
+
+    // ── Attribute mapping tests ────────────────────────────────────────────────
+
+    /**
+     * Verifies that the Keycloak user payload contains all three custom attributes:
+     * {@code orgId}, {@code orgRoles}, and {@code orgFiscalCode}, when the User has all fields.
+     * Uses a new user path (POST /users) to capture the request body via MockClientHttpRequest.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void upsertKeycloakUser_AllOrgFieldsPresent_AttributesMappedCorrectly() throws Exception {
+        AtomicReference<String> bodyRef = new AtomicReference<>();
+
+        ExchangeFunction capturingExchange = request -> {
+            if (request.method() == HttpMethod.GET) return Mono.just(ok("[]"));
+            if (request.method() == HttpMethod.POST && request.url().getPath().endsWith("/users")) {
+                org.springframework.mock.http.client.reactive.MockClientHttpRequest mockReq =
+                        new org.springframework.mock.http.client.reactive.MockClientHttpRequest(
+                                request.method(), request.url());
+                return request.writeTo(mockReq, org.springframework.web.reactive.function.client.ExchangeStrategies.withDefaults())
+                        .doOnSuccess(v -> bodyRef.set(mockReq.getBodyAsString().block()))
+                        .thenReturn(created(KC_ID));
+            }
+            return Mono.just(noContent()); // POST /federated-identity
+        };
+
+        User user = buildUser(); // orgId=ORG-001, fiscalCode=12345678901, roles=[admin]
+        StepVerifier.create(serviceWith(capturingExchange).upsertKeycloakUser(ADMIN_TOKEN, user))
+                .verifyComplete();
+
+        java.util.Map<String, Object> payload = new ObjectMapper().readValue(bodyRef.get(), java.util.Map.class);
+        java.util.Map<String, Object> attrs = (java.util.Map<String, Object>) payload.get("attributes");
+
+        assertThat(attrs).containsKey("orgId");
+        List<String> orgId = (List<String>) attrs.get("orgId");
+        assertThat(orgId).containsExactly("ORG-001");
+
+        assertThat(attrs).containsKey("orgRoles");
+        List<String> orgRoles = (List<String>) attrs.get("orgRoles");
+        assertThat(orgRoles).containsExactly("admin");
+
+        assertThat(attrs).containsKey("orgFiscalCode");
+        List<String> orgFiscalCode = (List<String>) attrs.get("orgFiscalCode");
+        assertThat(orgFiscalCode).containsExactly("12345678901");
+    }
+
+    /**
+     * Verifies that {@code orgRoles} is multi-valued: if the User has multiple roles,
+     * all of them are sent in the attribute list (not just the first one).
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void upsertKeycloakUser_MultipleRoles_AllRolesMappedToOrgRoles() throws Exception {
+        AtomicReference<String> bodyRef = new AtomicReference<>();
+
+        ExchangeFunction capturingExchange = request -> {
+            if (request.method() == HttpMethod.GET) return Mono.just(ok("[]"));
+            if (request.method() == HttpMethod.POST && request.url().getPath().endsWith("/users")) {
+                org.springframework.mock.http.client.reactive.MockClientHttpRequest mockReq =
+                        new org.springframework.mock.http.client.reactive.MockClientHttpRequest(
+                                request.method(), request.url());
+                return request.writeTo(mockReq, org.springframework.web.reactive.function.client.ExchangeStrategies.withDefaults())
+                        .doOnSuccess(v -> bodyRef.set(mockReq.getBodyAsString().block()))
+                        .thenReturn(created(KC_ID));
+            }
+            return Mono.just(noContent());
+        };
+
+        Role r1 = new Role(); r1.setRole("admin");
+        Role r2 = new Role(); r2.setRole("operator");
+        Role r3 = new Role(); r3.setRole("viewer");
+        Organization org = new Organization();
+        org.setId("ORG-002");
+        org.setRoles(List.of(r1, r2, r3));
+        User user = new User();
+        user.setUid(USER_UID);
+        user.setName("Luigi");
+        user.setFamilyName("Verdi");
+        user.setEmail("luigi@verdi.it");
+        user.setOrganization(org);
+
+        StepVerifier.create(serviceWith(capturingExchange).upsertKeycloakUser(ADMIN_TOKEN, user))
+                .verifyComplete();
+
+        java.util.Map<String, Object> payload = new ObjectMapper().readValue(bodyRef.get(), java.util.Map.class);
+        java.util.Map<String, Object> attrs = (java.util.Map<String, Object>) payload.get("attributes");
+
+        List<String> orgRolesMulti = (List<String>) attrs.get("orgRoles");
+        assertThat(orgRolesMulti).containsExactlyInAnyOrder("admin", "operator", "viewer");
+    }
+
+    /**
+     * Verifies that null org fields (id, fiscalCode, roles) are omitted from the payload
+     * instead of causing a NullPointerException or sending null values to Keycloak.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void upsertKeycloakUser_NullOrgFields_AttributesOmitted() throws Exception {
+        AtomicReference<String> bodyRef = new AtomicReference<>();
+
+        ExchangeFunction capturingExchange = request -> {
+            if (request.method() == HttpMethod.GET) return Mono.just(ok("[]"));
+            if (request.method() == HttpMethod.POST && request.url().getPath().endsWith("/users")) {
+                org.springframework.mock.http.client.reactive.MockClientHttpRequest mockReq =
+                        new org.springframework.mock.http.client.reactive.MockClientHttpRequest(
+                                request.method(), request.url());
+                return request.writeTo(mockReq, org.springframework.web.reactive.function.client.ExchangeStrategies.withDefaults())
+                        .doOnSuccess(v -> bodyRef.set(mockReq.getBodyAsString().block()))
+                        .thenReturn(created(KC_ID));
+            }
+            return Mono.just(noContent());
+        };
+
+        Organization org = new Organization(); // id=null, fiscalCode=null, roles=null
+        User user = new User();
+        user.setUid(USER_UID);
+        user.setName("Anna");
+        user.setFamilyName("Bianchi");
+        user.setEmail("anna@bianchi.it");
+        user.setOrganization(org);
+
+        StepVerifier.create(serviceWith(capturingExchange).upsertKeycloakUser(ADMIN_TOKEN, user))
+                .verifyComplete();
+
+        java.util.Map<String, Object> payload = new ObjectMapper().readValue(bodyRef.get(), java.util.Map.class);
+        java.util.Map<String, Object> attrs = (java.util.Map<String, Object>) payload.get("attributes");
+
+        assertThat(attrs).doesNotContainKey("orgId");
+        assertThat(attrs).doesNotContainKey("orgRoles");
+        assertThat(attrs).doesNotContainKey("orgFiscalCode");
     }
 }
 

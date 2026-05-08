@@ -3,7 +3,6 @@ package it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
-import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -157,7 +156,8 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                         .filter(id -> id != null)
                         .findFirst()
                         .map(Mono::just)
-                        .orElseGet(() -> Mono.error(new ResourceNotFoundException("Keycloak client", clientId))));
+                        .orElseGet(() -> Mono.error(new ExternalServiceException("KEYCLOAK", "findClientByClientId",
+                                "Client not found after 409 Conflict — inconsistent Keycloak state for clientId: " + clientId))));
     }
 
     /**
@@ -256,7 +256,8 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                         .map(g -> (String) g.get("id"))
                         .findFirst()
                         .map(Mono::just)
-                        .orElseGet(() -> Mono.error(new ResourceNotFoundException("Keycloak group", groupName))));
+                        .orElseGet(() -> Mono.error(new ExternalServiceException("KEYCLOAK", "resolveGroupByName",
+                                "Keycloak TPP group not found — check KEYCLOAK_TPP_GROUP_NAME config: " + groupName))));
     }
 
     private Mono<String> getServiceAccountUserId(String adminToken, String internalClientId) {

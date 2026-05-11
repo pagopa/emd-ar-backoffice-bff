@@ -143,19 +143,19 @@ class TppControllerImplV1Test {
     // ── getTppPagopaCredentials ───────────────────────────────────────────────
 
     /**
-     * GET /emd/backoffice/api/v1/tpp/{tppId}/credentials/pagopa — happy path → 200 con clientId e clientSecret.
-     * Verifica anche che il JSON contenga esattamente i campi attesi.
+     * GET /emd/backoffice/api/v1/tpp/{entityId}/credentials/pagopa — happy path → 200 con clientId e clientSecret.
      */
     @Test
     void getTppPagopaCredentials_Found_Returns200WithCredentials() {
-        String tppId = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
-        String secret = "xYz123AbC456DeF789GhI012JkL345Mn";
+        String entityId = "12345678901";
+        String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
+        String secret   = "xYz123AbC456DeF789GhI012JkL345Mn";
 
-        when(tppService.getTppPagopaCredentials(eq(tppId)))
+        when(tppService.getTppPagopaCredentials(eq(entityId)))
                 .thenReturn(Mono.just(new TppPagopaCredentialsDTOV1(tppId, secret)));
 
         webTestClient.get()
-                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/credentials/pagopa")
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials/pagopa")
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
@@ -165,18 +165,18 @@ class TppControllerImplV1Test {
     }
 
     /**
-     * GET .../credentials/pagopa — client Keycloak non trovato.
-     * Il service emette {@link ResourceNotFoundException} che si propaga (nessun handler globale nel test).
+     * GET .../credentials/pagopa — TPP non trovata su emd-tpp.
+     * Il service emette {@link ResourceNotFoundException} che si propaga.
      */
     @Test
     void getTppPagopaCredentials_NotFound_PropagatesError() {
-        String tppId = "non-existent-tpp";
+        String entityId = "99999999999";
 
-        when(tppService.getTppPagopaCredentials(eq(tppId)))
-                .thenReturn(Mono.error(new ResourceNotFoundException("Keycloak client", tppId)));
+        when(tppService.getTppPagopaCredentials(eq(entityId)))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
 
         webTestClient.get()
-                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/credentials/pagopa")
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials/pagopa")
                 .exchange()
                 .expectStatus().is5xxServerError(); // senza global handler il default è 500
     }
@@ -187,13 +187,13 @@ class TppControllerImplV1Test {
      */
     @Test
     void getTppPagopaCredentials_KeycloakUnavailable_PropagatesError() {
-        String tppId = "tpp-kc-down";
+        String entityId = "12345678901";
 
-        when(tppService.getTppPagopaCredentials(eq(tppId)))
+        when(tppService.getTppPagopaCredentials(eq(entityId)))
                 .thenReturn(Mono.error(new ExternalServiceException("KEYCLOAK", "fetchClientSecret", "timeout")));
 
         webTestClient.get()
-                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/credentials/pagopa")
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials/pagopa")
                 .exchange()
                 .expectStatus().is5xxServerError();
     }

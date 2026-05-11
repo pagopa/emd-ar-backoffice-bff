@@ -45,9 +45,9 @@ public class TppControllerImplV1 implements TppControllerV1 {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<TppPagopaCredentialsDTOV1>> getTppPagopaCredentials(String tppId) {
-        log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Getting PagoPA credentials for tppId={}", tppId);
-        return tppService.getTppPagopaCredentials(tppId)
+    public Mono<ResponseEntity<TppPagopaCredentialsDTOV1>> getTppPagopaCredentials(String entityId) {
+        log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Getting PagoPA credentials for entityId={}", entityId);
+        return tppService.getTppPagopaCredentials(entityId)
                 .map(ResponseEntity::ok);
     }
 }

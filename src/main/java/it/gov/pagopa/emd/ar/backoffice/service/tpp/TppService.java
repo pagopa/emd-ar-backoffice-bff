@@ -38,14 +38,19 @@ public interface TppService {
     Mono<Void> deleteTppAndKeycloakClient(String tppId);
 
     /**
-     * Retrieves the PagoPA credentials (Keycloak client ID and secret) associated with the
-     * given {@code tppId}. No caching or persistence is performed.
+     * Retrieves the PagoPA credentials (Keycloak client ID and secret) for the TPP
+     * identified by {@code entityId} (CF o P.IVA).
      *
-     * <p>Delegates directly to Keycloak — the emd-tpp microservice is not involved.</p>
+     * <p>Execution order:
+     * <ol>
+     *   <li>Resolves the {@code tppId} from the emd-tpp service via {@code entityId}.</li>
+     *   <li>Fetches the Keycloak client credentials using the resolved {@code tppId}.</li>
+     * </ol>
+     * No caching or persistence is performed.</p>
      *
-     * @param tppId the TPP identifier (equals the Keycloak {@code clientId})
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) of the TPP
      * @return {@code Mono<TppPagopaCredentialsDTOV1>} with the resolved credentials,
-     *         or 404 if no Keycloak client exists for that {@code tppId}
+     *         or 404 if no TPP or Keycloak client exists for that {@code entityId}
      */
-    Mono<TppPagopaCredentialsDTOV1> getTppPagopaCredentials(String tppId);
+    Mono<TppPagopaCredentialsDTOV1> getTppPagopaCredentials(String entityId);
 }

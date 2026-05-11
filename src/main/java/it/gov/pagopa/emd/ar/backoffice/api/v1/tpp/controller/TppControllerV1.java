@@ -56,17 +56,17 @@ public interface TppControllerV1 {
 
     /**
      * Retrieves the PagoPA credentials (Keycloak OIDC client ID and secret) for the TPP
-     * identified by {@code tppId}.
+     * identified by {@code entityId} (CF o P.IVA).
      *
-     * <p>The BFF resolves the Keycloak internal UUID from the {@code tppId} (used as
-     * {@code clientId}) and then fetches the client secret. No intermediate storage or
-     * caching is performed.</p>
+     * <p>The BFF first resolves the {@code tppId} from the emd-tpp service using the
+     * {@code entityId}, then queries Keycloak for the client credentials using that
+     * {@code tppId}. No intermediate storage or caching is performed.</p>
      *
-     * @param tppId the TPP identifier (equals the Keycloak {@code clientId})
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) of the TPP
      * @return {@code Mono<ResponseEntity<TppPagopaCredentialsDTOV1>>} HTTP 200 with credentials,
-     *         404 if no Keycloak client exists for that {@code tppId}
+     *         404 if no TPP or Keycloak client exists for that {@code entityId}
      */
-    @GetMapping(value = "tpp/{tppId}/credentials/pagopa", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "tpp/{entityId}/credentials/pagopa", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TppPagopaCredentialsDTOV1>> getTppPagopaCredentials(
-            @PathVariable("tppId") String tppId);
+            @PathVariable("entityId") String entityId);
 }

@@ -77,11 +77,15 @@ public class TppServiceImpl implements TppService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<TppPagopaCredentialsDTOV1> getTppPagopaCredentials(String tppId) {
-        log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Retrieving PagoPA credentials for tppId={}", tppId);
-        return keycloakClientService.getPagopaClientCredentials(tppId)
-                .doOnSuccess(c -> log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] PagoPA credentials retrieved for tppId={}", tppId))
-                .doOnError(e -> log.error("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Failed to retrieve PagoPA credentials for tppId={}: {}", tppId, e.getMessage()));
+    public Mono<TppPagopaCredentialsDTOV1> getTppPagopaCredentials(String entityId) {
+        log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Retrieving PagoPA credentials for entityId={}", entityId);
+        return tppConnector.getTppByEntityId(entityId)
+                .flatMap(response -> {
+                    log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Resolved tppId={} for entityId={}", response.tppId(), entityId);
+                    return keycloakClientService.getPagopaClientCredentials(response.tppId());
+                })
+                .doOnSuccess(c -> log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] PagoPA credentials retrieved for entityId={}", entityId))
+                .doOnError(e -> log.error("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Failed to retrieve PagoPA credentials for entityId={}: {}", entityId, e.getMessage()));
     }
 
     /**

@@ -1,8 +1,11 @@
 package it.gov.pagopa.emd.ar.backoffice.service;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -208,5 +211,89 @@ public class TppServiceImplTest {
 
         verify(keycloakClientService, times(1)).deleteKeycloakClient(tppId);
         verify(tppConnector, times(1)).deleteTpp(tppId);
+    }
+
+    // ── getTppPagopaCredentials ────────────────────────────────────────────────
+
+    /**
+     * Happy path: il service delega a keycloakClientService e restituisce le credenziali.
+     * Verifica che clientId e clientSecret vengano restituiti correttamente.
+     */
+    @Test
+    void getTppPagopaCredentials_Success_ReturnCredentials() {
+        String tppId = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
+        String secret = "xYz123AbC456DeF789GhI012JkL345Mn";
+        TppPagopaCredentialsDTOV1 expected = new TppPagopaCredentialsDTOV1(tppId, secret);
+
+        when(keycloakClientService.getPagopaClientCredentials(tppId))
+                .thenReturn(Mono.just(expected));
+
+        StepVerifier.create(tppService.getTppPagopaCredentials(tppId))
+                .assertNext(result -> {
+                    assert result.getClientId().equals(tppId);
+                    assert result.getClientSecret().equals(secret);
+                })
+                .verifyComplete();
+
+        verify(keycloakClientService, times(1)).getPagopaClientCredentials(tppId);
+        verify(tppConnector, never()).saveTpp(any());
+        verify(tppConnector, never()).deleteTpp(anyString());
+    }
+
+    /**
+     * Client Keycloak non trovato: {@link ResourceNotFoundException} emessa da Keycloak service
+     * deve propagarsi invariata attraverso il service layer.
+     */
+    @Test
+    void getTppPagopaCredentials_ClientNotFound_PropagatesResourceNotFoundException() {
+        String tppId = "non-existent-tpp";
+
+        when(keycloakClientService.getPagopaClientCredentials(tppId))
+                .thenReturn(Mono.error(new ResourceNotFoundException("Keycloak client", tppId)));
+
+        StepVerifier.create(tppService.getTppPagopaCredentials(tppId))
+                .expectErrorMatches(ex -> ex instanceof ResourceNotFoundException
+                        && ex.getMessage().contains(tppId))
+                .verify();
+
+        verify(keycloakClientService, times(1)).getPagopaClientCredentials(tppId);
+    }
+
+    /**
+     * Keycloak non raggiungibile: {@link ExternalServiceException} (502) deve propagarsi
+     * invariata attraverso il service layer.
+     */
+    @Test
+    void getTppPagopaCredentials_KeycloakUnavailable_PropagatesExternalServiceException() {
+        String tppId = "tpp-kc-down";
+        ExternalServiceException kcException =
+                new ExternalServiceException("KEYCLOAK", "fetchClientSecret", "timeout");
+
+        when(keycloakClientService.getPagopaClientCredentials(tppId))
+                .thenReturn(Mono.error(kcException));
+
+        StepVerifier.create(tppService.getTppPagopaCredentials(tppId))
+                .expectErrorMatches(ex -> ex instanceof ExternalServiceException
+                        && ex.getMessage().contains("KEYCLOAK"))
+                .verify();
+
+        verify(keycloakClientService, times(1)).getPagopaClientCredentials(tppId);
+    }
+
+    /**
+     * Verifica che getTppPagopaCredentials NON interagisca mai con il connettore emd-tpp
+     * (né save, né delete, né get): le credenziali PagoPA risiedono solo su Keycloak.
+     */
+    @Test
+    void getTppPagopaCredentials_NeverInteractsWithTppConnector() {
+        String tppId = "tpp-no-connector";
+        TppPagopaCredentialsDTOV1 credentials = new TppPagopaCredentialsDTOV1(tppId, "secret");
+
+        when(keycloakClientService.getPagopaClientCredentials(tppId))
+                .thenReturn(Mono.just(credentials));
+
+        tppService.getTppPagopaCredentials(tppId).block();
+
+        verifyNoInteractions(tppConnector);
     }
 }

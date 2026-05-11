@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import reactor.core.publisher.Mono;
 
 /**
@@ -27,5 +28,25 @@ public interface KeycloakClientService {
      * @return {@code Mono<Void>} completing when the client has been deleted
      */
     Mono<Void> deleteKeycloakClient(String clientId);
+
+    /**
+     * Retrieves the PagoPA credentials (client ID and client secret) for the Keycloak OIDC
+     * client identified by {@code clientId} (i.e. the TPP ID).
+     *
+     * <p>Internally performs two sequential calls to Keycloak Admin API:
+     * <ol>
+     *   <li>Resolves the Keycloak internal UUID via {@code GET /clients?clientId=…&exact=true}</li>
+     *   <li>Fetches the secret via {@code GET /clients/{internalId}/client-secret}</li>
+     * </ol>
+     * If no client is found for {@code clientId}, a
+     * {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException} (404)
+     * is emitted.</p>
+     *
+     * <p><strong>Privacy:</strong> the returned {@code clientSecret} must never be logged.</p>
+     *
+     * @param clientId the Keycloak {@code clientId} (equals the TPP ID)
+     * @return {@code Mono<TppPagopaCredentialsDTOV1>} with the resolved credentials
+     */
+    Mono<TppPagopaCredentialsDTOV1> getPagopaClientCredentials(String clientId);
 }
 

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
 
@@ -52,4 +53,20 @@ public interface TppControllerV1 {
      */
     @DeleteMapping(value = "tpp/{tppId}")
     Mono<ResponseEntity<Void>> deleteTpp(@PathVariable("tppId") String tppId);
+
+    /**
+     * Retrieves the PagoPA credentials (Keycloak OIDC client ID and secret) for the TPP
+     * identified by {@code tppId}.
+     *
+     * <p>The BFF resolves the Keycloak internal UUID from the {@code tppId} (used as
+     * {@code clientId}) and then fetches the client secret. No intermediate storage or
+     * caching is performed.</p>
+     *
+     * @param tppId the TPP identifier (equals the Keycloak {@code clientId})
+     * @return {@code Mono<ResponseEntity<TppPagopaCredentialsDTOV1>>} HTTP 200 with credentials,
+     *         404 if no Keycloak client exists for that {@code tppId}
+     */
+    @GetMapping(value = "tpp/{tppId}/credentials/pagopa", produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<TppPagopaCredentialsDTOV1>> getTppPagopaCredentials(
+            @PathVariable("tppId") String tppId);
 }

@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import reactor.core.publisher.Mono;
 
 public interface TppService {
@@ -35,4 +36,16 @@ public interface TppService {
      *         have been removed
      */
     Mono<Void> deleteTppAndKeycloakClient(String tppId);
+
+    /**
+     * Retrieves the PagoPA credentials (Keycloak client ID and secret) associated with the
+     * given {@code tppId}. No caching or persistence is performed.
+     *
+     * <p>Delegates directly to Keycloak — the emd-tpp microservice is not involved.</p>
+     *
+     * @param tppId the TPP identifier (equals the Keycloak {@code clientId})
+     * @return {@code Mono<TppPagopaCredentialsDTOV1>} with the resolved credentials,
+     *         or 404 if no Keycloak client exists for that {@code tppId}
+     */
+    Mono<TppPagopaCredentialsDTOV1> getTppPagopaCredentials(String tppId);
 }

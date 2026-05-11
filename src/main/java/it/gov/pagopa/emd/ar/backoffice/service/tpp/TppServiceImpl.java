@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper.TppConnectorMapper;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
@@ -72,6 +73,15 @@ public class TppServiceImpl implements TppService {
                 .then(Mono.defer(() -> tppConnector.deleteTpp(tppId)))
                 .doOnSuccess(v -> log.info("[AR-BFF][TPP_DELETE] TPP and Keycloak client deleted for tppId={}", tppId))
                 .doOnError(e -> log.error("[AR-BFF][TPP_DELETE] Error during TPP deletion for tppId={}: {}", tppId, e.getMessage()));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<TppPagopaCredentialsDTOV1> getTppPagopaCredentials(String tppId) {
+        log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Retrieving PagoPA credentials for tppId={}", tppId);
+        return keycloakClientService.getPagopaClientCredentials(tppId)
+                .doOnSuccess(c -> log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] PagoPA credentials retrieved for tppId={}", tppId))
+                .doOnError(e -> log.error("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Failed to retrieve PagoPA credentials for tppId={}: {}", tppId, e.getMessage()));
     }
 
     /**

@@ -67,12 +67,17 @@ public class TppServiceImpl implements TppService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<Void> deleteTppAndKeycloakClient(String tppId) {
-        log.info("[AR-BFF][TPP_DELETE] Deleting TPP and Keycloak client for tppId={}", tppId);
-        return keycloakClientService.deleteKeycloakClient(tppId)
-                .then(Mono.defer(() -> tppConnector.deleteTpp(tppId)))
-                .doOnSuccess(v -> log.info("[AR-BFF][TPP_DELETE] TPP and Keycloak client deleted for tppId={}", tppId))
-                .doOnError(e -> log.error("[AR-BFF][TPP_DELETE] Error during TPP deletion for tppId={}: {}", tppId, e.getMessage()));
+    public Mono<Void> deleteTppAndKeycloakClient(String entityId) {
+        log.info("[AR-BFF][TPP_DELETE] Deleting TPP and Keycloak client for entityId={}", entityId);
+        return tppConnector.getTppByEntityId(entityId)
+                .flatMap(response -> {
+                    String tppId = response.tppId();
+                    log.info("[AR-BFF][TPP_DELETE] Resolved tppId={} for entityId={}", tppId, entityId);
+                    return keycloakClientService.deleteKeycloakClient(tppId)
+                            .then(Mono.defer(() -> tppConnector.deleteTpp(tppId)));
+                })
+                .doOnSuccess(v -> log.info("[AR-BFF][TPP_DELETE] TPP and Keycloak client deleted for entityId={}", entityId))
+                .doOnError(e -> log.error("[AR-BFF][TPP_DELETE] Error during TPP deletion for entityId={}: {}", entityId, e.getMessage()));
     }
 
     /** {@inheritDoc} */

@@ -90,6 +90,36 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                 .doOnError(e -> log.error("[AR-BFF][CREATE_CLIENT] Failed: {}", e.getMessage()));
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Mono<Void> deleteKeycloakClient(String clientId) {
+        log.info("[AR-BFF][DELETE_CLIENT] Deleting Keycloak client for clientId={}", clientId);
+        return tokenService.getManagerToken()
+                .flatMap(adminToken -> findClientInternalId(adminToken, clientId)
+                        .flatMap(internalId -> webClient.delete()
+                                .uri(adminUri("/clients/{id}", internalId))
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                                .retrieve()
+                                .onStatus(HttpStatusCode::isError, response ->
+                                        response.bodyToMono(String.class)
+                                                .flatMap(body -> handleKeycloakError("deleteClient", body)))
+                                .toBodilessEntity()
+                                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                                .then()
+                        )
+                        .onErrorResume(ExternalServiceException.class, ex -> {
+                            // findClientInternalId throws ExternalServiceException when not found
+                            if (ex.getMessage() != null && ex.getMessage().contains("Client not found")) {
+                                log.warn("[AR-BFF][DELETE_CLIENT] Client not found in Keycloak for clientId={}, treating as no-op", clientId);
+                                return Mono.empty();
+                            }
+                            return Mono.error(ex);
+                        })
+                )
+                .doOnSuccess(v -> log.info("[AR-BFF][DELETE_CLIENT] Keycloak client deleted for clientId={}", clientId))
+                .doOnError(e -> log.error("[AR-BFF][DELETE_CLIENT] Failed to delete Keycloak client for clientId={}: {}", clientId, e.getMessage()));
+    }
+
     /**
      * Creates the Keycloak client and returns a {@link ClientResolution} carrying the
      * internal UUID and a flag indicating whether the client was freshly created.

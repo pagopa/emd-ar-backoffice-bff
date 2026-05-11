@@ -16,7 +16,7 @@ public interface TppService {
     Mono<String> createTppAndKeycloakClient(TppDTOV1 tppDTO);
 
     /**
-     * Looks up an existing TPP by its {@code entityId} (CF or P.IVA).
+     * Looks up an existing TPP by its {@code entityId} (CF o P.IVA).
      *
      * @param entityId the fiscal code or VAT number
      * @return {@code Mono<TppIdResponseDTOV1>} with the tppId if found,
@@ -24,4 +24,15 @@ public interface TppService {
      *         (HTTP 404) if no TPP exists for that entityId
      */
     Mono<TppIdResponseDTOV1> getTppByEntityId(String entityId);
+
+    /**
+     * Deletes a TPP from the emd-tpp service and its associated Keycloak client.
+     * <p><strong>NOTE:</strong> This operation is intended for testing purposes only
+     * and must not be exposed on APIM.</p>
+     *
+     * @param tppId the identifier of the TPP to delete
+     * @return {@code Mono<Void>} completing when both the TPP record and the Keycloak client
+     *         have been removed
+     */
+    Mono<Void> deleteTppAndKeycloakClient(String tppId);
 }

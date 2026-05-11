@@ -33,4 +33,12 @@ public class TppControllerImplV1 implements TppControllerV1 {
         return tppService.getTppByEntityId(entityId)
                 .map(ResponseEntity::ok);
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<Void>> deleteTpp(String tppId) {
+        log.info("[AR-BFF][TPP_DELETE] Deleting TPP and Keycloak client for tppId={}", tppId);
+        return tppService.deleteTppAndKeycloakClient(tppId)
+                .thenReturn(ResponseEntity.<Void>noContent().build());
+    }
 }

@@ -2,7 +2,9 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -38,4 +40,16 @@ public interface TppControllerV1 {
     @GetMapping(value = "tpp", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TppIdResponseDTOV1>> getTppByEntityId(
             @RequestParam("entityId") String entityId);
+
+    /**
+     * <strong>TEST ONLY — NOT exposed on APIM.</strong>
+     *
+     * <p>Permanently deletes the TPP identified by {@code tppId} from the emd-tpp service
+     * and removes the associated Keycloak OIDC client.</p>
+     *
+     * @param tppId the identifier of the TPP to delete
+     * @return {@code Mono<ResponseEntity<Void>>} with HTTP 204 No Content on success
+     */
+    @DeleteMapping(value = "tpp/{tppId}")
+    Mono<ResponseEntity<Void>> deleteTpp(@PathVariable("tppId") String tppId);
 }

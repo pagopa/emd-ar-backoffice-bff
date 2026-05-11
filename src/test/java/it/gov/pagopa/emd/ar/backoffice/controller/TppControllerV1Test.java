@@ -104,5 +104,38 @@ class TppControllerImplV1Test {
                 .exchange()
                 .expectStatus().is5xxServerError(); // senza global handler il default è 500
     }
+
+    /**
+     * DELETE /emd/backoffice/api/v1/tpp/{tppId} — cancellazione riuscita → 204 No Content.
+     */
+    @Test
+    void deleteTpp_Success_Returns204() {
+        String tppId = "tpp-id-to-delete";
+
+        when(tppService.deleteTppAndKeycloakClient(eq(tppId)))
+                .thenReturn(Mono.empty());
+
+        webTestClient.delete()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId)
+                .exchange()
+                .expectStatus().isNoContent()
+                .expectBody().isEmpty();
+    }
+
+    /**
+     * DELETE /emd/backoffice/api/v1/tpp/{tppId} — il service emette un errore → si propaga.
+     */
+    @Test
+    void deleteTpp_ServiceError_PropagatesError() {
+        String tppId = "tpp-id-failing";
+
+        when(tppService.deleteTppAndKeycloakClient(eq(tppId)))
+                .thenReturn(Mono.error(new RuntimeException("Deletion failed")));
+
+        webTestClient.delete()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId)
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
 }
 

@@ -64,6 +64,16 @@ public class TppServiceImpl implements TppService {
                 .doOnError(e -> log.warn("[AR-BFF][TPP_GET] TPP not found for entityId={}: {}", entityId, e.getMessage()));
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Mono<Void> deleteTppAndKeycloakClient(String tppId) {
+        log.info("[AR-BFF][TPP_DELETE] Deleting TPP and Keycloak client for tppId={}", tppId);
+        return keycloakClientService.deleteKeycloakClient(tppId)
+                .then(Mono.defer(() -> tppConnector.deleteTpp(tppId)))
+                .doOnSuccess(v -> log.info("[AR-BFF][TPP_DELETE] TPP and Keycloak client deleted for tppId={}", tppId))
+                .doOnError(e -> log.error("[AR-BFF][TPP_DELETE] Error during TPP deletion for tppId={}: {}", tppId, e.getMessage()));
+    }
+
     /**
      * Compensating transaction: deletes the already-persisted TPP when Keycloak fails.
      * Always re-propagates the original Keycloak exception after compensation, regardless

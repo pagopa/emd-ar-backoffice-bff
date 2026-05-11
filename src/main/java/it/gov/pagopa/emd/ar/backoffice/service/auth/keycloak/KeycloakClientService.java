@@ -18,5 +18,14 @@ public interface KeycloakClientService {
      * @return {@code Mono<String>} emitting the {@code clientId} upon successful creation
      */
     Mono<String> createKeycloakClient(String clientId, String entityId, String businessName);
+
+    /**
+     * Deletes the Keycloak OIDC client identified by the given {@code clientId} (i.e. the TPP ID).
+     * If no client with that {@code clientId} exists in Keycloak the operation completes as a no-op.
+     *
+     * @param clientId the Keycloak {@code clientId} to delete (equals the TPP ID)
+     * @return {@code Mono<Void>} completing when the client has been deleted
+     */
+    Mono<Void> deleteKeycloakClient(String clientId);
 }
 

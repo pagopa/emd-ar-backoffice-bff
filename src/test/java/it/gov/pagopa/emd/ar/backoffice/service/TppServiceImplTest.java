@@ -153,4 +153,60 @@ public class TppServiceImplTest {
 
         verify(tppConnector, times(1)).deleteTpp(savedTppId);
     }
+
+    // ── deleteTppAndKeycloakClient ─────────────────────────────────────────────
+
+    /**
+     * Happy path: il client Keycloak viene eliminato, poi il TPP viene eliminato. Nessun errore.
+     */
+    @Test
+    void deleteTppAndKeycloakClient_Success() {
+        String tppId = "tpp-to-delete";
+
+        when(keycloakClientService.deleteKeycloakClient(tppId)).thenReturn(Mono.empty());
+        when(tppConnector.deleteTpp(tppId)).thenReturn(Mono.empty());
+
+        StepVerifier.create(tppService.deleteTppAndKeycloakClient(tppId))
+                .verifyComplete();
+
+        verify(keycloakClientService, times(1)).deleteKeycloakClient(tppId);
+        verify(tppConnector, times(1)).deleteTpp(tppId);
+    }
+
+    /**
+     * Se la cancellazione Keycloak fallisce, l'errore si propaga e il connector NON viene chiamato.
+     */
+    @Test
+    void deleteTppAndKeycloakClient_KeycloakFails_ErrorPropagated_ConnectorNotCalled() {
+        String tppId = "tpp-kc-fail";
+        RuntimeException kcException = new RuntimeException("Keycloak delete failed");
+
+        when(keycloakClientService.deleteKeycloakClient(tppId)).thenReturn(Mono.error(kcException));
+
+        StepVerifier.create(tppService.deleteTppAndKeycloakClient(tppId))
+                .expectError(RuntimeException.class)
+                .verify();
+
+        verify(keycloakClientService, times(1)).deleteKeycloakClient(tppId);
+        verify(tppConnector, never()).deleteTpp(anyString());
+    }
+
+    /**
+     * Se Keycloak ha successo ma il connector fallisce, l'errore del connector si propaga.
+     */
+    @Test
+    void deleteTppAndKeycloakClient_ConnectorFails_ErrorPropagated() {
+        String tppId = "tpp-connector-fail";
+        RuntimeException connectorException = new RuntimeException("TPP service unavailable");
+
+        when(keycloakClientService.deleteKeycloakClient(tppId)).thenReturn(Mono.empty());
+        when(tppConnector.deleteTpp(tppId)).thenReturn(Mono.error(connectorException));
+
+        StepVerifier.create(tppService.deleteTppAndKeycloakClient(tppId))
+                .expectErrorMatches(ex -> ex.getMessage().equals("TPP service unavailable"))
+                .verify();
+
+        verify(keycloakClientService, times(1)).deleteKeycloakClient(tppId);
+        verify(tppConnector, times(1)).deleteTpp(tppId);
+    }
 }

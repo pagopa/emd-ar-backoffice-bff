@@ -58,6 +58,11 @@ logging:
     root: "\${LOG_LEVEL_ROOT:INFO}"
     it.gov.pagopa: "\${LOG_LEVEL_PAGOPA:INFO}"
     org.springframework: "\${LOG_LEVEL_SPRING:INFO}"
+    # Suppresses false-positive WARN logs from ObservationThreadLocalAccessor when
+    # Hooks.enableAutomaticContextPropagation() is active. Reactor restores the HTTP server
+    # Observation snapshot on reused Netty/boundedElastic threads, causing spurious
+    # parent-scope mismatch warnings. Tracing works correctly despite these messages.
+    io.micrometer.observation.contextpropagation.ObservationThreadLocalAccessor: "\${LOG_LEVEL_MICROMETER_OBSERVATION_TL_ACCESSOR:ERROR}"
     org.springframework.boot.availability: "\${LOG_LEVEL_SPRING_BOOT_AVAILABILITY:DEBUG}"
     it.gov.pagopa.template.exception.ControllerExceptionHandler: "\${LOGGING_LEVEL_API_REQUEST_EXCEPTION:INFO}"
     org.springdoc.core.utils.SpringDocAnnotationsUtils: "\${LOG_LEVEL_SPRING_DOC:ERROR}"

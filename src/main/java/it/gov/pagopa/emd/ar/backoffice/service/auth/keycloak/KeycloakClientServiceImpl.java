@@ -1,8 +1,10 @@
 package it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -47,6 +49,8 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
     private final WebClient webClient;
     private final KeycloakTokenService tokenService;
     private final String tppGroupName;
+
+    private static final String KEYCLOAK = "KEYCLOAK";
 
     /** Lazy cache for the TPP group UUID — resolved once, never changes at runtime. */
     private final AtomicReference<String> cachedTppGroupId = new AtomicReference<>();
@@ -120,6 +124,51 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                 .doOnError(e -> log.error("[AR-BFF][DELETE_CLIENT] Failed to delete Keycloak client for clientId={}: {}", clientId, e.getMessage()));
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Mono<TppPagopaCredentialsDTOV1> getPagopaClientCredentials(String clientId) {
+        log.info("[AR-BFF][GET_PAGOPA_CREDENTIALS] Retrieving PagoPA credentials for clientId={}", clientId);
+        return tokenService.getManagerToken()
+                .flatMap(adminToken -> findClientInternalId(adminToken, clientId)
+                        .onErrorMap(
+                                ex -> ex instanceof ExternalServiceException
+                                        && ex.getMessage() != null
+                                        && ex.getMessage().contains("Client not found"),
+                                ex -> new ResourceNotFoundException("Keycloak client", clientId)
+                        )
+                        .flatMap(internalId -> fetchClientSecret(adminToken, internalId, clientId))
+                )
+                .map(secret -> new TppPagopaCredentialsDTOV1(clientId, secret))
+                .doOnSuccess(c -> log.info("[AR-BFF][GET_PAGOPA_CREDENTIALS] PagoPA credentials retrieved successfully for clientId={}", clientId))
+                .doOnError(e -> log.error("[AR-BFF][GET_PAGOPA_CREDENTIALS] Failed to retrieve PagoPA credentials for clientId={}: {}", clientId, e.getMessage()));
+    }
+
+    /**
+     * Calls {@code GET /admin/realms/{realm}/clients/{internalId}/client-secret} and returns
+     * the plain-text secret value.
+     *
+     * <p><strong>Privacy:</strong> the secret is deliberately never logged here or in callers.</p>
+     */
+    private Mono<String> fetchClientSecret(String adminToken, String internalId, String clientId) {
+        return webClient.get()
+                .uri(adminUri("/clients/{id}/client-secret", internalId))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> handleKeycloakError("fetchClientSecret", body)))
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .flatMap(body -> {
+                    String secret = (String) body.get("value");
+                    if (secret == null) {
+                        return Mono.error(new ExternalServiceException(KEYCLOAK, "fetchClientSecret",
+                                "client-secret response missing 'value' field for clientId: " + clientId));
+                    }
+                    return Mono.just(secret);
+                });
+    }
+
     /**
      * Creates the Keycloak client and returns a {@link ClientResolution} carrying the
      * internal UUID and a flag indicating whether the client was freshly created.
@@ -143,7 +192,7 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                 .flatMap(response -> {
                     String location = response.getHeaders().getFirst(HttpHeaders.LOCATION);
                     if (location == null) {
-                        return Mono.error(new ExternalServiceException("KEYCLOAK", "createClient",
+                        return Mono.error(new ExternalServiceException(KEYCLOAK, "createClient",
                                 "Location header missing in response"));
                     }
                     String internalId = location.substring(location.lastIndexOf('/') + 1);
@@ -186,7 +235,7 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                         .filter(id -> id != null)
                         .findFirst()
                         .map(Mono::just)
-                        .orElseGet(() -> Mono.error(new ExternalServiceException("KEYCLOAK", "findClientByClientId",
+                        .orElseGet(() -> Mono.error(new ExternalServiceException(KEYCLOAK, "findClientByClientId",
                                 "Client not found after 409 Conflict — inconsistent Keycloak state for clientId: " + clientId))));
     }
 
@@ -286,7 +335,7 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                         .map(g -> (String) g.get("id"))
                         .findFirst()
                         .map(Mono::just)
-                        .orElseGet(() -> Mono.error(new ExternalServiceException("KEYCLOAK", "resolveGroupByName",
+                        .orElseGet(() -> Mono.error(new ExternalServiceException(KEYCLOAK, "resolveGroupByName",
                                 "Keycloak TPP group not found — check KEYCLOAK_TPP_GROUP_NAME config: " + groupName))));
     }
 

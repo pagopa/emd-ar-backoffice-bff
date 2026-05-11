@@ -3,7 +3,9 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller.TppControllerImplV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import org.junit.jupiter.api.BeforeEach;
@@ -134,6 +136,64 @@ class TppControllerImplV1Test {
 
         webTestClient.delete()
                 .uri("/emd/backoffice/api/v1/tpp/" + tppId)
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    // ── getTppPagopaCredentials ───────────────────────────────────────────────
+
+    /**
+     * GET /emd/backoffice/api/v1/tpp/{entityId}/credentials/pagopa — happy path → 200 con clientId e clientSecret.
+     */
+    @Test
+    void getTppPagopaCredentials_Found_Returns200WithCredentials() {
+        String entityId = "12345678901";
+        String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
+        String secret   = "xYz123AbC456DeF789GhI012JkL345Mn";
+
+        when(tppService.getTppPagopaCredentials(eq(entityId)))
+                .thenReturn(Mono.just(new TppPagopaCredentialsDTOV1(tppId, secret)));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials/pagopa")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.clientId").isEqualTo(tppId)
+                .jsonPath("$.clientSecret").isEqualTo(secret);
+    }
+
+    /**
+     * GET .../credentials/pagopa — TPP non trovata su emd-tpp.
+     * Il service emette {@link ResourceNotFoundException} che si propaga.
+     */
+    @Test
+    void getTppPagopaCredentials_NotFound_PropagatesError() {
+        String entityId = "99999999999";
+
+        when(tppService.getTppPagopaCredentials(eq(entityId)))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials/pagopa")
+                .exchange()
+                .expectStatus().is5xxServerError(); // senza global handler il default è 500
+    }
+
+    /**
+     * GET .../credentials/pagopa — Keycloak non raggiungibile.
+     * Il service emette {@link ExternalServiceException} (502) che si propaga.
+     */
+    @Test
+    void getTppPagopaCredentials_KeycloakUnavailable_PropagatesError() {
+        String entityId = "12345678901";
+
+        when(tppService.getTppPagopaCredentials(eq(entityId)))
+                .thenReturn(Mono.error(new ExternalServiceException("KEYCLOAK", "fetchClientSecret", "timeout")));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials/pagopa")
                 .exchange()
                 .expectStatus().is5xxServerError();
     }

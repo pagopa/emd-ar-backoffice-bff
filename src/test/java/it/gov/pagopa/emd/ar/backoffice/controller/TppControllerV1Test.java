@@ -70,7 +70,7 @@ class TppControllerImplV1Test {
     }
 
     /**
-     * GET /emd/backoffice/api/v1/tpp?entityId=... — TPP trovata → 200 con tppId.
+     * GET /emd/backoffice/api/v1/tpp/{entityId} — TPP trovata → 200 con tppId.
      */
     @Test
     void getTppByEntityId_Found_Returns200WithTppId() {
@@ -81,7 +81,7 @@ class TppControllerImplV1Test {
                 .thenReturn(Mono.just(new TppIdResponseDTOV1(expectedTppId)));
 
         webTestClient.get()
-                .uri("/emd/backoffice/api/v1/tpp?entityId=" + entityId)
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId)
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
@@ -90,7 +90,7 @@ class TppControllerImplV1Test {
     }
 
     /**
-     * GET /emd/backoffice/api/v1/tpp?entityId=... — TPP non trovata → il service
+     * GET /emd/backoffice/api/v1/tpp/{entityId} — TPP non trovata → il service
      * emette ResourceNotFoundException che il global handler mappa a 404.
      * Il controller non intercetta l'errore — si propaga verso l'alto.
      */
@@ -102,7 +102,7 @@ class TppControllerImplV1Test {
                 .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
 
         webTestClient.get()
-                .uri("/emd/backoffice/api/v1/tpp?entityId=" + entityId)
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId)
                 .exchange()
                 .expectStatus().is5xxServerError(); // senza global handler il default è 500
     }

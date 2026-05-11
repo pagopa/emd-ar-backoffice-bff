@@ -28,14 +28,23 @@ public interface TppService {
 
     /**
      * Deletes a TPP from the emd-tpp service and its associated Keycloak client.
+     *
+     * <p>Execution order:
+     * <ol>
+     *   <li>Resolves the {@code tppId} from the emd-tpp service via {@code entityId}.</li>
+     *   <li>Deletes the Keycloak OIDC client using the resolved {@code tppId}.</li>
+     *   <li>Deletes the TPP record from emd-tpp using the resolved {@code tppId}.</li>
+     * </ol>
+     * </p>
+     *
      * <p><strong>NOTE:</strong> This operation is intended for testing purposes only
      * and must not be exposed on APIM.</p>
      *
-     * @param tppId the identifier of the TPP to delete
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) of the TPP to delete
      * @return {@code Mono<Void>} completing when both the TPP record and the Keycloak client
      *         have been removed
      */
-    Mono<Void> deleteTppAndKeycloakClient(String tppId);
+    Mono<Void> deleteTppAndKeycloakClient(String entityId);
 
     /**
      * Retrieves the PagoPA credentials (Keycloak client ID and secret) for the TPP

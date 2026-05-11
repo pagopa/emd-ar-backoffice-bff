@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
@@ -38,21 +37,21 @@ public interface TppControllerV1 {
      * @param entityId the fiscal code (11 digits) or VAT number (up to 16 alphanumeric chars)
      * @return {@code Mono<ResponseEntity<TppIdResponseDTOV1>>} with the tppId, or 404
      */
-    @GetMapping(value = "tpp", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "tpp/{entityId}", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TppIdResponseDTOV1>> getTppByEntityId(
-            @RequestParam("entityId") String entityId);
+            @PathVariable("entityId") String entityId);
 
     /**
      * <strong>TEST ONLY — NOT exposed on APIM.</strong>
      *
-     * <p>Permanently deletes the TPP identified by {@code tppId} from the emd-tpp service
-     * and removes the associated Keycloak OIDC client.</p>
+     * <p>Permanently deletes the TPP identified by {@code entityId} (CF o P.IVA) from the
+     * emd-tpp service and removes the associated Keycloak OIDC client.</p>
      *
-     * @param tppId the identifier of the TPP to delete
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) of the TPP to delete
      * @return {@code Mono<ResponseEntity<Void>>} with HTTP 204 No Content on success
      */
-    @DeleteMapping(value = "tpp/{tppId}")
-    Mono<ResponseEntity<Void>> deleteTpp(@PathVariable("tppId") String tppId);
+    @DeleteMapping(value = "tpp/{entityId}")
+    Mono<ResponseEntity<Void>> deleteTpp(@PathVariable("entityId") String entityId);
 
     /**
      * Retrieves the PagoPA credentials (Keycloak OIDC client ID and secret) for the TPP

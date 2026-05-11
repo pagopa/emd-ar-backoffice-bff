@@ -50,6 +50,8 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
     private final KeycloakTokenService tokenService;
     private final String tppGroupName;
 
+    private static final String KEYCLOAK = "KEYCLOAK";
+
     /** Lazy cache for the TPP group UUID — resolved once, never changes at runtime. */
     private final AtomicReference<String> cachedTppGroupId = new AtomicReference<>();
 
@@ -160,7 +162,7 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                 .flatMap(body -> {
                     String secret = (String) body.get("value");
                     if (secret == null) {
-                        return Mono.error(new ExternalServiceException("KEYCLOAK", "fetchClientSecret",
+                        return Mono.error(new ExternalServiceException(KEYCLOAK, "fetchClientSecret",
                                 "client-secret response missing 'value' field for clientId: " + clientId));
                     }
                     return Mono.just(secret);
@@ -190,7 +192,7 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                 .flatMap(response -> {
                     String location = response.getHeaders().getFirst(HttpHeaders.LOCATION);
                     if (location == null) {
-                        return Mono.error(new ExternalServiceException("KEYCLOAK", "createClient",
+                        return Mono.error(new ExternalServiceException(KEYCLOAK, "createClient",
                                 "Location header missing in response"));
                     }
                     String internalId = location.substring(location.lastIndexOf('/') + 1);
@@ -233,7 +235,7 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                         .filter(id -> id != null)
                         .findFirst()
                         .map(Mono::just)
-                        .orElseGet(() -> Mono.error(new ExternalServiceException("KEYCLOAK", "findClientByClientId",
+                        .orElseGet(() -> Mono.error(new ExternalServiceException(KEYCLOAK, "findClientByClientId",
                                 "Client not found after 409 Conflict — inconsistent Keycloak state for clientId: " + clientId))));
     }
 
@@ -333,7 +335,7 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                         .map(g -> (String) g.get("id"))
                         .findFirst()
                         .map(Mono::just)
-                        .orElseGet(() -> Mono.error(new ExternalServiceException("KEYCLOAK", "resolveGroupByName",
+                        .orElseGet(() -> Mono.error(new ExternalServiceException(KEYCLOAK, "resolveGroupByName",
                                 "Keycloak TPP group not found — check KEYCLOAK_TPP_GROUP_NAME config: " + groupName))));
     }
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.1](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.8.0...v0.8.1) (2026-05-11)
+
+
+### Bug Fixes
+
+* [MMC-551] enable trace id auto propagation ([#22](https://github.com/pagopa/emd-ar-backoffice-bff/issues/22)) ([8a9eee7](https://github.com/pagopa/emd-ar-backoffice-bff/commit/8a9eee7e72346e8a839df8bea3a095a6afb02002))
+* [MMC-554] add delete tpp endpoint ([a7b4fdf](https://github.com/pagopa/emd-ar-backoffice-bff/commit/a7b4fdf108420e64ea2d840ddd76cde3cb631a81))
+
 ## [0.8.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.7.0...v0.8.0) (2026-05-08)
 
 

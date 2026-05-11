@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
 
@@ -67,5 +68,21 @@ public interface TppControllerV1 {
      */
     @GetMapping(value = "tpp/{entityId}/credentials/pagopa", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TppPagopaCredentialsDTOV1>> getTppPagopaCredentials(
+            @PathVariable("entityId") String entityId);
+
+    /**
+     * Retrieves the token-section credentials stored in the database for the TPP
+     * identified by {@code entityId} (CF o P.IVA).
+     *
+     * <p>The BFF resolves the {@code tppId} from the emd-tpp service using the
+     * {@code entityId}, then fetches the token section via
+     * {@code GET /emd/tpp/{tppId}/token}. No intermediate storage or caching is performed.</p>
+     *
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) of the TPP
+     * @return {@code Mono<ResponseEntity<TokenSectionDTOV1>>} HTTP 200 with the token
+     *         configuration, or 404 if no TPP exists for that {@code entityId}
+     */
+    @GetMapping(value = "tpp/{entityId}/credentials", produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<TokenSectionDTOV1>> getTppCredentials(
             @PathVariable("entityId") String entityId);
 }

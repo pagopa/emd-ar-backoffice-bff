@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -48,6 +49,14 @@ public class TppControllerImplV1 implements TppControllerV1 {
     public Mono<ResponseEntity<TppPagopaCredentialsDTOV1>> getTppPagopaCredentials(String entityId) {
         log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Getting PagoPA credentials for entityId={}", entityId);
         return tppService.getTppPagopaCredentials(entityId)
+                .map(ResponseEntity::ok);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<TokenSectionDTOV1>> getTppCredentials(String entityId) {
+        log.info("[AR-BFF][TPP_CREDENTIALS] Getting token-section credentials for entityId={}", entityId);
+        return tppService.getTppCredentials(entityId)
                 .map(ResponseEntity::ok);
     }
 }

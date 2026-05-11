@@ -4,6 +4,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller.TppControllerImplV1
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
@@ -197,5 +198,64 @@ class TppControllerImplV1Test {
                 .exchange()
                 .expectStatus().is5xxServerError();
     }
-}
 
+    // ── getTppCredentials ─────────────────────────────────────────────────────
+
+    /**
+     * GET /emd/backoffice/api/v1/tpp/{entityId}/credentials — happy path →
+     * 200 con il token-section completo serializzato in JSON.
+     */
+    @Test
+    void getTppCredentials_Found_Returns200WithTokenSection() {
+        String entityId = "12345678901";
+        TokenSectionDTOV1 response = new TokenSectionDTOV1(
+                "application/json",
+                java.util.Map.of("scope", "openid"),
+                java.util.Map.of("client_id", "my-client", "client_secret", "s3cr3t"));
+
+        when(tppService.getTppCredentials(eq(entityId)))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.contentType").isEqualTo("application/json")
+                .jsonPath("$.pathAdditionalProperties.scope").isEqualTo("openid")
+                .jsonPath("$.bodyAdditionalProperties.client_secret").isEqualTo("s3cr3t");
+    }
+
+    /**
+     * GET .../credentials — TPP non trovata su emd-tpp → errore propagato.
+     */
+    @Test
+    void getTppCredentials_NotFound_PropagatesError() {
+        String entityId = "99999999999";
+
+        when(tppService.getTppCredentials(eq(entityId)))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials")
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    /**
+     * GET .../credentials — emd-tpp non raggiungibile → {@link ExternalServiceException} propagata.
+     */
+    @Test
+    void getTppCredentials_ServiceUnavailable_PropagatesError() {
+        String entityId = "12345678901";
+
+        when(tppService.getTppCredentials(eq(entityId)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "getTppToken", "timeout")));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials")
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+}

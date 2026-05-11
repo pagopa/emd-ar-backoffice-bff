@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import reactor.core.publisher.Mono;
@@ -38,4 +39,15 @@ public interface TppConnector {
      *         if the TPP does not exist (upstream 404)
      */
     Mono<TppEntityIdResponse> getTppByEntityId(String entityId);
+
+    /**
+     * Retrieves the token-section credentials for the TPP identified by {@code tppId},
+     * calling {@code GET /emd/tpp/{tppId}/token} on the emd-tpp service.
+     *
+     * @param tppId the identifier of the TPP
+     * @return {@code Mono<TokenSection>} with the token configuration, or a
+     *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException}
+     *         if no TPP exists for that {@code tppId} (upstream 404)
+     */
+    Mono<TokenSection> getTppToken(String tppId);
 }

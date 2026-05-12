@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>Happy path: 200 → {@code Mono<Void>} che completa correttamente</li>
  *   <li>404 → {@link ResourceNotFoundException} con tppId nel messaggio</li>
  *   <li>500 → {@link ExternalServiceException}</li>
- *   <li>Correttezza metodo HTTP (PUT) e URL: {@code PUT /update/{tppId}/token}</li>
+ *   <li>Correttezza metodo HTTP (PUT) e URL: {@code PUT /emd/tpp/update/{tppId}/token}</li>
  *   <li>Il body viene inviato (Content-Type: application/json)</li>
  *   <li>Privacy: verifica che il DTO {@code toString()} non esponga i valori delle mappe</li>
  * </ol>
@@ -73,7 +73,7 @@ class TppConnectorUpdateTokenTest {
     // ── Tests ─────────────────────────────────────────────────────────────────
 
     /**
-     * Happy path: il connector chiama {@code PUT /update/{tppId}/token} e completa
+     * Happy path: il connector chiama {@code PUT /emd/tpp/update/{tppId}/token} e completa
      * senza errori. Verifica metodo HTTP e URL.
      */
     @Test
@@ -90,7 +90,7 @@ class TppConnectorUpdateTokenTest {
 
         assertThat(capturedCalls).hasSize(1);
         assertThat(capturedCalls.get(0)).startsWith("PUT");
-        assertThat(capturedCalls.get(0)).contains("/update/" + TPP_ID + "/token");
+        assertThat(capturedCalls.get(0)).contains("/emd/tpp/update/" + TPP_ID + "/token");
     }
 
     /**

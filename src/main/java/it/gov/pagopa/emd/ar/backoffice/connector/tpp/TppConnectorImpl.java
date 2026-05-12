@@ -35,7 +35,7 @@ public class TppConnectorImpl implements TppConnector {
     private static final String DELETE_TPP_PATH           = "/emd/tpp/{tppId}";
     private static final String GET_TPP_BY_ENTITY_ID_PATH = "/emd/tpp/entityId/{entityId}";
     private static final String GET_TPP_TOKEN_PATH        = "/emd/tpp/{tppId}/token";
-    private static final String UPDATE_TPP_TOKEN_PATH     = "/update/{tppId}/token";
+    private static final String UPDATE_TPP_TOKEN_PATH     = "/emd/tpp/update/{tppId}/token";
 
     private final WebClient webClient;
 

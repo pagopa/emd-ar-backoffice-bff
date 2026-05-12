@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
@@ -85,4 +86,26 @@ public interface TppControllerV1 {
     @GetMapping(value = "tpp/{entityId}/credentials", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TokenSectionDTOV1>> getTppCredentials(
             @PathVariable("entityId") String entityId);
+
+    /**
+     * Updates the token-section credentials stored in the database for the TPP
+     * identified by {@code entityId} (CF o P.IVA).
+     *
+     * <p>The APIM extracts the {@code entityId} from the JWT claim {@code orgFiscalCode}
+     * and rewrites the URL to include it as a path variable before forwarding to this BFF
+     * endpoint. The BFF resolves the corresponding {@code tppId} and delegates the update
+     * to emd-tpp via {@code PUT /update/{tppId}/token}.</p>
+     *
+     * <p><strong>Privacy:</strong> the body may contain sensitive values (e.g.
+     * {@code client_secret}). The payload must never appear in logs.</p>
+     *
+     * @param entityId       the fiscal code (CF) or VAT number (P.IVA) injected by APIM
+     * @param tokenSectionDTO the new token-section data to persist
+     * @return {@code Mono<ResponseEntity<Void>>} HTTP 200 on success,
+     *         404 if no TPP is found, 502 if emd-tpp is unreachable
+     */
+    @PutMapping(value = "tpp/{entityId}/credentials", consumes = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<Void>> updateTppCredentials(
+            @PathVariable("entityId") String entityId,
+            @Valid @RequestBody TokenSectionDTOV1 tokenSectionDTO);
 }

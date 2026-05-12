@@ -50,4 +50,19 @@ public interface TppConnector {
      *         if no TPP exists for that {@code tppId} (upstream 404)
      */
     Mono<TokenSection> getTppToken(String tppId);
+
+    /**
+     * Updates the token-section credentials for the TPP identified by {@code tppId},
+     * calling {@code PUT /update/{tppId}/token} on the emd-tpp service.
+     *
+     * <p><strong>Privacy:</strong> the {@code tokenSection} body may contain sensitive values
+     * (e.g. {@code client_secret}). Callers must never log the payload contents.</p>
+     *
+     * @param tppId       the identifier of the TPP to update
+     * @param tokenSection the new token-section data to persist
+     * @return {@code Mono<Void>} completing on success, or an error if the upstream
+     *         call fails (404 → {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException},
+     *         others → {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException})
+     */
+    Mono<Void> updateTppToken(String tppId, TokenSection tokenSection);
 }

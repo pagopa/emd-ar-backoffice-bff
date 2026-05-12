@@ -22,6 +22,7 @@ import reactor.test.StepVerifier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.util.Map;
@@ -465,5 +466,105 @@ public class TppServiceImplTest {
         verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
         verify(keycloakClientService, never()).createKeycloakClient(anyString(), any(), any());
         verify(keycloakClientService, never()).deleteKeycloakClient(anyString());
+    }
+
+    // ── updateTppCredentials ───────────────────────────────────────────────────
+
+    /**
+     * Happy path: il connector risolve il tppId dall'entityId, poi invia l'aggiornamento
+     * al servizio emd-tpp. Keycloak non viene mai coinvolto.
+     */
+    @Test
+    void updateTppCredentials_Success_ResolvesEntityIdThenUpdates() {
+        String entityId = "12345678901";
+        String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
+        TokenSectionDTOV1 dto = new TokenSectionDTOV1(
+                "application/json",
+                Map.of("scope", "openid"),
+                Map.of("client_secret", "nuovo-secret"));
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+        when(tppConnector.updateTppToken(eq(tppId), any(TokenSection.class)))
+                .thenReturn(Mono.empty());
+
+        StepVerifier.create(tppService.updateTppCredentials(entityId, dto))
+                .verifyComplete();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+        verify(tppConnector, times(1)).updateTppToken(eq(tppId), any(TokenSection.class));
+        verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
+    }
+
+    /**
+     * TPP non trovata: il connector emette {@link ResourceNotFoundException}.
+     * {@code updateTppToken} NON deve essere chiamato.
+     */
+    @Test
+    void updateTppCredentials_TppNotFound_PropagatesResourceNotFoundException_UpdateNeverCalled() {
+        String entityId = "99999999999";
+        TokenSectionDTOV1 dto = new TokenSectionDTOV1("application/json", null, null);
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
+
+        StepVerifier.create(tppService.updateTppCredentials(entityId, dto))
+                .expectErrorMatches(ex -> ex instanceof ResourceNotFoundException
+                        && ex.getMessage().contains(entityId))
+                .verify();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+        verify(tppConnector, never()).updateTppToken(anyString(), any());
+    }
+
+    /**
+     * emd-tpp non raggiungibile durante l'update: {@link ExternalServiceException} propagata.
+     */
+    @Test
+    void updateTppCredentials_UpdateFails_PropagatesExternalServiceException() {
+        String entityId = "12345678901";
+        String tppId    = "tpp-update-fail";
+        TokenSectionDTOV1 dto = new TokenSectionDTOV1("application/json", null, null);
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+        when(tppConnector.updateTppToken(eq(tppId), any(TokenSection.class)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "updateTppToken", "upstream error")));
+
+        StepVerifier.create(tppService.updateTppCredentials(entityId, dto))
+                .expectErrorMatches(ex -> ex instanceof ExternalServiceException
+                        && ex.getMessage().contains("TPP_SERVICE"))
+                .verify();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+        verify(tppConnector, times(1)).updateTppToken(eq(tppId), any(TokenSection.class));
+    }
+
+    /**
+     * Verifica che i campi del DTO vengano mappati correttamente nel {@link TokenSection}
+     * passato al connector: contentType, pathAdditionalProperties e bodyAdditionalProperties.
+     */
+    @Test
+    void updateTppCredentials_MapsAllDtoFieldsToConnectorTokenSection() {
+        String entityId = "12345678901";
+        String tppId    = "tpp-mapping-check";
+        Map<String, String> path = Map.of("tenantId", "123456");
+        Map<String, String> body = Map.of("client_id", "new-id", "client_secret", "new-secret");
+        TokenSectionDTOV1 dto = new TokenSectionDTOV1("application/x-www-form-urlencoded", path, body);
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+        when(tppConnector.updateTppToken(eq(tppId), any(TokenSection.class)))
+                .thenAnswer(inv -> {
+                    TokenSection sent = inv.getArgument(1);
+                    assertThat(sent.getContentType()).isEqualTo("application/x-www-form-urlencoded");
+                    assertThat(sent.getPathAdditionalProperties()).containsEntry("tenantId", "123456");
+                    assertThat(sent.getBodyAdditionalProperties()).containsEntry("client_id", "new-id");
+                    assertThat(sent.getBodyAdditionalProperties()).containsEntry("client_secret", "new-secret");
+                    return Mono.empty();
+                });
+
+        StepVerifier.create(tppService.updateTppCredentials(entityId, dto))
+                .verifyComplete();
     }
 }

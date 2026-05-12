@@ -59,4 +59,13 @@ public class TppControllerImplV1 implements TppControllerV1 {
         return tppService.getTppCredentials(entityId)
                 .map(ResponseEntity::ok);
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<Void>> updateTppCredentials(String entityId, TokenSectionDTOV1 tokenSectionDTO) {
+        log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Updating token-section credentials for entityId={}", entityId);
+        // Privacy: tokenSectionDTO is NOT logged — may contain client_secret
+        return tppService.updateTppCredentials(entityId, tokenSectionDTO)
+                .thenReturn(ResponseEntity.<Void>ok().build());
+    }
 }

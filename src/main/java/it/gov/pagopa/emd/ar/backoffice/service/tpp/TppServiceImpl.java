@@ -5,6 +5,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper.TppConnectorMapper;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
 import lombok.extern.slf4j.Slf4j;
@@ -110,6 +111,28 @@ public class TppServiceImpl implements TppService {
                 // Privacy: doOnSuccess intentionally does NOT log the DTO contents (may contain secrets)
                 .doOnSuccess(dto -> log.info("[AR-BFF][TPP_CREDENTIALS] Token-section credentials retrieved for entityId={}", entityId))
                 .doOnError(e -> log.error("[AR-BFF][TPP_CREDENTIALS] Failed to retrieve token-section credentials for entityId={}: {}", entityId, e.getMessage()));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<TokenSectionDTOV1> updateTppCredentials(String entityId, TokenSectionDTOV1 tokenSectionDTO) {
+        log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Updating token-section credentials for entityId={}", entityId);
+        return tppConnector.getTppByEntityId(entityId)
+                .flatMap(response -> {
+                    String tppId = response.tppId();
+                    log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Resolved tppId={} for entityId={}", tppId, entityId);
+                    // Privacy: body content (may contain client_secret) is never logged
+                    return tppConnector.updateTppToken(tppId, new TokenSection(
+                            tokenSectionDTO.getContentType(),
+                            tokenSectionDTO.getPathAdditionalProperties(),
+                            tokenSectionDTO.getBodyAdditionalProperties()));
+                })
+                .map(ts -> new TokenSectionDTOV1(
+                        ts.getContentType(),
+                        ts.getPathAdditionalProperties(),
+                        ts.getBodyAdditionalProperties()))
+                .doOnSuccess(dto -> log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Token-section credentials updated for entityId={}", entityId))
+                .doOnError(e -> log.error("[AR-BFF][TPP_CREDENTIALS_UPDATE] Failed to update token-section credentials for entityId={}: {}", entityId, e.getMessage()));
     }
 
     /**

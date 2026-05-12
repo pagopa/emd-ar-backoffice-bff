@@ -81,4 +81,26 @@ public interface TppService {
      *         or 404 if no TPP exists for that {@code entityId}
      */
     Mono<TokenSectionDTOV1> getTppCredentials(String entityId);
+
+    /**
+     * Updates the token-section credentials stored in the database for the TPP
+     * identified by {@code entityId} (CF o P.IVA).
+     *
+     * <p>Execution order:
+     * <ol>
+     *   <li>Resolves the {@code tppId} from the emd-tpp service via {@code entityId}.</li>
+     *   <li>Sends the updated token section to emd-tpp via
+     *       {@code PUT /update/{tppId}/token}.</li>
+     * </ol>
+     * No intermediate caching is performed. Keycloak is not involved.</p>
+     *
+     * <p><strong>Privacy:</strong> the {@code tokenSectionDTO} body may contain sensitive
+     * values (e.g. {@code client_secret}). Implementations must never log payload contents.</p>
+     *
+     * @param entityId       the fiscal code (CF) or VAT number (P.IVA) of the TPP
+     * @param tokenSectionDTO the new token-section data to persist
+     * @return {@code Mono<TokenSectionDTOV1>} with the persisted token section (mirrors the request)
+     *         on success, or 404 if the TPP is not found, or 502 if emd-tpp is unreachable
+     */
+    Mono<TokenSectionDTOV1> updateTppCredentials(String entityId, TokenSectionDTOV1 tokenSectionDTO);
 }

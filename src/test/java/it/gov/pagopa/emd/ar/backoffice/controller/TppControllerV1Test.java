@@ -17,6 +17,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -255,6 +256,70 @@ class TppControllerImplV1Test {
 
         webTestClient.get()
                 .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials")
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    // ── updateTppCredentials ──────────────────────────────────────────────────
+
+    /**
+     * PUT /emd/backoffice/api/v1/tpp/{entityId}/credentials — happy path → 200 OK con body.
+     */
+    @Test
+    void updateTppCredentials_Success_Returns200WithBody() {
+        String entityId = "12345678901";
+        TokenSectionDTOV1 body = new TokenSectionDTOV1(
+                "application/x-www-form-urlencoded",
+                Map.of("tenantId", "123456"),
+                Map.of("client_id", "nuovo-client", "client_secret", "nuovo-secret"));
+
+        when(tppService.updateTppCredentials(eq(entityId), any(TokenSectionDTOV1.class)))
+                .thenReturn(Mono.just(body));
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.contentType").isEqualTo("application/x-www-form-urlencoded");
+    }
+
+    /**
+     * PUT .../credentials — TPP non trovata su emd-tpp → errore 404 propagato.
+     */
+    @Test
+    void updateTppCredentials_TppNotFound_PropagatesError() {
+        String entityId = "99999999999";
+        TokenSectionDTOV1 body = new TokenSectionDTOV1("application/json", null, null);
+
+        when(tppService.updateTppCredentials(eq(entityId), any(TokenSectionDTOV1.class)))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    /**
+     * PUT .../credentials — emd-tpp non raggiungibile → {@link ExternalServiceException} propagata.
+     */
+    @Test
+    void updateTppCredentials_ServiceUnavailable_PropagatesError() {
+        String entityId = "12345678901";
+        TokenSectionDTOV1 body = new TokenSectionDTOV1("application/json", null, null);
+
+        when(tppService.updateTppCredentials(eq(entityId), any(TokenSectionDTOV1.class)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "updateTppToken", "timeout")));
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
                 .exchange()
                 .expectStatus().is5xxServerError();
     }

@@ -31,10 +31,11 @@ import reactor.core.publisher.Mono;
 @Service
 public class TppConnectorImpl implements TppConnector {
 
-    private static final String SAVE_TPP_PATH = "/emd/tpp/save";
-    private static final String DELETE_TPP_PATH = "/emd/tpp/{tppId}";
+    private static final String SAVE_TPP_PATH             = "/emd/tpp/save";
+    private static final String DELETE_TPP_PATH           = "/emd/tpp/{tppId}";
     private static final String GET_TPP_BY_ENTITY_ID_PATH = "/emd/tpp/entityId/{entityId}";
-    private static final String GET_TPP_TOKEN_PATH = "/emd/tpp/{tppId}/token";
+    private static final String GET_TPP_TOKEN_PATH        = "/emd/tpp/{tppId}/token";
+    private static final String UPDATE_TPP_TOKEN_PATH     = "/emd/tpp/update/{tppId}/token";
 
     private final WebClient webClient;
 
@@ -150,5 +151,38 @@ public class TppConnectorImpl implements TppConnector {
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] GET {} failed for tppId={}: {}",
                         GET_TPP_TOKEN_PATH, tppId, ex.getMessage()));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code PUT /emd/tpp/update/{tppId}/token} to the remote emd-tpp service with
+     * the new {@link TokenSection} as JSON body. The response body (which mirrors the request)
+     * is deserialized and returned to the caller.</p>
+     *
+     * <p><strong>Privacy:</strong> the body is deliberately never logged (may contain secrets).</p>
+     *
+     * <p>PUT is idempotent, so transient retries are safe via
+     * {@link WebClientRetrySpecs#transientNetwork()}.</p>
+     */
+    @Override
+    public Mono<TokenSection> updateTppToken(String tppId, TokenSection tokenSection) {
+        return webClient.put()
+                .uri(UPDATE_TPP_TOKEN_PATH, tppId)
+                .bodyValue(tokenSection)
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ResourceNotFoundException("TPP token", tppId))))
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ExternalServiceException("TPP_SERVICE", "updateTppToken", body))))
+                .bodyToMono(TokenSection.class)
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}",
+                        UPDATE_TPP_TOKEN_PATH, tppId, ex.getMessage()));
     }
 }

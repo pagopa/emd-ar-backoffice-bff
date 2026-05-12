@@ -39,6 +39,8 @@ import static org.mockito.Mockito.when;
  *   <li>GET /client-secret fallisce con 500 → {@link ExternalServiceException} propagata</li>
  *   <li>GET /client-secret risponde senza campo "value" → {@link ExternalServiceException}</li>
  *   <li>DTO toString() non espone il clientSecret in chiaro</li>
+ *   <li>Il campo grantType del DTO è sempre "client_credentials"</li>
+ *   <li>DTO toString() include il grantType in chiaro</li>
  * </ol>
  * </p>
  */
@@ -51,6 +53,7 @@ class KeycloakClientServiceGetPagopaCredentialsTest {
     private static final String CLIENT_ID   = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
     private static final String INTERNAL_ID = "kc-internal-uuid-001";
     private static final String SECRET      = "xYz123AbC456DeF789GhI012JkL345Mn";
+    private static final String GRANT_TYPE  = "client_credentials";
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -114,6 +117,7 @@ class KeycloakClientServiceGetPagopaCredentialsTest {
                 .assertNext(credentials -> {
                     assertThat(credentials.getClientId()).isEqualTo(CLIENT_ID);
                     assertThat(credentials.getClientSecret()).isEqualTo(SECRET);
+                    assertThat(credentials.getGrantType()).isEqualTo(GRANT_TYPE);
                 })
                 .verifyComplete();
 
@@ -211,7 +215,7 @@ class KeycloakClientServiceGetPagopaCredentialsTest {
      */
     @Test
     void tppPagopaCredentialsDto_ToString_MasksSecret() {
-        TppPagopaCredentialsDTOV1 dto = new TppPagopaCredentialsDTOV1(CLIENT_ID, SECRET);
+        TppPagopaCredentialsDTOV1 dto = new TppPagopaCredentialsDTOV1(CLIENT_ID, SECRET, GRANT_TYPE);
 
         String stringRepresentation = dto.toString();
 
@@ -219,5 +223,38 @@ class KeycloakClientServiceGetPagopaCredentialsTest {
         assertThat(stringRepresentation).contains("***MASKED***");
         assertThat(stringRepresentation).contains(CLIENT_ID); // clientId visibile nei log è accettabile
     }
-}
 
+    /**
+     * Verifica che il campo {@code grantType} del DTO sia sempre {@code "client_credentials"}
+     * dopo la chiamata a {@code getPagopaClientCredentials}.
+     */
+    @Test
+    void getPagopaClientCredentials_Success_GrantTypeIsClientCredentials() {
+        String clientsJson = "[{\"id\":\"" + INTERNAL_ID + "\",\"clientId\":\"" + CLIENT_ID + "\"}]";
+        String secretJson  = "{\"type\":\"secret\",\"value\":\"" + SECRET + "\"}";
+
+        Queue<ClientResponse> responses = new LinkedList<>(List.of(
+                ok(clientsJson),
+                ok(secretJson)
+        ));
+        List<String> calls = new CopyOnWriteArrayList<>();
+
+        StepVerifier.create(serviceWith(queuedExchange(responses, calls)).getPagopaClientCredentials(CLIENT_ID))
+                .assertNext(credentials ->
+                        assertThat(credentials.getGrantType()).isEqualTo("client_credentials"))
+                .verifyComplete();
+    }
+
+    /**
+     * Verifica che il {@code toString()} del DTO includa il campo {@code grantType} in chiaro
+     * (non è un dato sensibile).
+     */
+    @Test
+    void tppPagopaCredentialsDto_ToString_IncludesGrantType() {
+        TppPagopaCredentialsDTOV1 dto = new TppPagopaCredentialsDTOV1(CLIENT_ID, SECRET, GRANT_TYPE);
+
+        String stringRepresentation = dto.toString();
+
+        assertThat(stringRepresentation).contains(GRANT_TYPE);
+    }
+}

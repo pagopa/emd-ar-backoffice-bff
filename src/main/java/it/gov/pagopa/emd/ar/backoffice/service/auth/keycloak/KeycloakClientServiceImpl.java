@@ -52,6 +52,13 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
 
     private static final String KEYCLOAK = "KEYCLOAK";
 
+    /**
+     * OAuth2 grant type used by all TPP PagoPA clients. These clients are created with
+     * {@code serviceAccountsEnabled=true} and {@code directAccessGrantsEnabled=false},
+     * so the only supported flow is {@code client_credentials}.
+     */
+    private static final String PAGOPA_GRANT_TYPE = "client_credentials";
+
     /** Lazy cache for the TPP group UUID — resolved once, never changes at runtime. */
     private final AtomicReference<String> cachedTppGroupId = new AtomicReference<>();
 
@@ -138,7 +145,7 @@ public class KeycloakClientServiceImpl extends AbstractKeycloakService implement
                         )
                         .flatMap(internalId -> fetchClientSecret(adminToken, internalId, clientId))
                 )
-                .map(secret -> new TppPagopaCredentialsDTOV1(clientId, secret))
+                .map(secret -> new TppPagopaCredentialsDTOV1(clientId, secret, PAGOPA_GRANT_TYPE))
                 .doOnSuccess(c -> log.info("[AR-BFF][GET_PAGOPA_CREDENTIALS] PagoPA credentials retrieved successfully for clientId={}", clientId))
                 .doOnError(e -> log.error("[AR-BFF][GET_PAGOPA_CREDENTIALS] Failed to retrieve PagoPA credentials for clientId={}: {}", clientId, e.getMessage()));
     }

@@ -262,7 +262,7 @@ public class TppServiceImplTest {
         String entityId = "12345678901";
         String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
         String secret   = "xYz123AbC456DeF789GhI012JkL345Mn";
-        TppPagopaCredentialsDTOV1 expected = new TppPagopaCredentialsDTOV1(tppId, secret);
+        TppPagopaCredentialsDTOV1 expected = new TppPagopaCredentialsDTOV1(tppId, secret, "client_credentials");
 
         when(tppConnector.getTppByEntityId(entityId))
                 .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
@@ -353,7 +353,7 @@ public class TppServiceImplTest {
     void getTppPagopaCredentials_AlwaysCallsConnectorToResolveTppId() {
         String entityId = "12345678901";
         String tppId    = "tpp-resolved";
-        TppPagopaCredentialsDTOV1 credentials = new TppPagopaCredentialsDTOV1(tppId, "secret");
+        TppPagopaCredentialsDTOV1 credentials = new TppPagopaCredentialsDTOV1(tppId, "secret", "client_credentials");
 
         when(tppConnector.getTppByEntityId(entityId))
                 .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));

@@ -154,7 +154,7 @@ class TppControllerImplV1Test {
         String secret   = "xYz123AbC456DeF789GhI012JkL345Mn";
 
         when(tppService.getTppPagopaCredentials(eq(entityId)))
-                .thenReturn(Mono.just(new TppPagopaCredentialsDTOV1(tppId, secret)));
+                .thenReturn(Mono.just(new TppPagopaCredentialsDTOV1(tppId, secret, "client_credentials")));
 
         webTestClient.get()
                 .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials/pagopa")

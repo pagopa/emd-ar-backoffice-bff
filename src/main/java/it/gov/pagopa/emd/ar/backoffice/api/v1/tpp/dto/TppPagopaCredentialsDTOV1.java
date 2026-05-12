@@ -28,11 +28,20 @@ public class TppPagopaCredentialsDTOV1 {
     private String clientSecret;
 
     /**
+     * The OAuth2 grant type used by this client. For PagoPA service-account clients
+     * this is always {@code "client_credentials"}.
+     */
+    @JsonProperty("grantType")
+    private String grantType;
+
+    /**
      * Overridden to prevent accidental {@code clientSecret} exposure in logs or error messages.
      */
     @Override
     public String toString() {
-        return "TppPagopaCredentialsDTOV1{clientId='" + clientId + "', clientSecret='***MASKED***'}";
+        return "TppPagopaCredentialsDTOV1{clientId='" + clientId
+                + "', clientSecret='***MASKED***'"
+                + ", grantType='" + grantType + "'}";
     }
 }
 

@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import reactor.core.publisher.Mono;
 
 public interface TppService {
@@ -62,4 +63,22 @@ public interface TppService {
      *         or 404 if no TPP or Keycloak client exists for that {@code entityId}
      */
     Mono<TppPagopaCredentialsDTOV1> getTppPagopaCredentials(String entityId);
+
+    /**
+     * Retrieves the token-section credentials stored in the database for the TPP
+     * identified by {@code entityId} (CF o P.IVA).
+     *
+     * <p>Execution order:
+     * <ol>
+     *   <li>Resolves the {@code tppId} from the emd-tpp service via {@code entityId}.</li>
+     *   <li>Fetches the token section from emd-tpp using the resolved {@code tppId}
+     *       ({@code GET /emd/tpp/{tppId}/token}).</li>
+     * </ol>
+     * No caching or intermediate storage is performed.</p>
+     *
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) of the TPP
+     * @return {@code Mono<TokenSectionDTOV1>} with the token configuration,
+     *         or 404 if no TPP exists for that {@code entityId}
+     */
+    Mono<TokenSectionDTOV1> getTppCredentials(String entityId);
 }

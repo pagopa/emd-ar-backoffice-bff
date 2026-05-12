@@ -2,7 +2,9 @@ package it.gov.pagopa.emd.ar.backoffice.service;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
@@ -17,9 +19,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+
+import java.util.Map;
 
 /**
  * Unit tests for {@link TppServiceImpl}.
@@ -361,5 +366,104 @@ public class TppServiceImplTest {
         // Keycloak viene chiamato con il tppId risolto, NON con l'entityId
         verify(keycloakClientService, times(1)).getPagopaClientCredentials(tppId);
         verify(keycloakClientService, never()).getPagopaClientCredentials(entityId);
+    }
+
+    // ── getTppCredentials ──────────────────────────────────────────────────────
+
+    /**
+     * Happy path: il connector risolve il tppId dall'entityId, poi recupera il token section
+     * dal servizio emd-tpp e lo mappa in {@link TokenSectionDTOV1} correttamente.
+     */
+    @Test
+    void getTppCredentials_Success_ResolvesEntityIdThenFetchesTokenSection() {
+        String entityId    = "12345678901";
+        String tppId       = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
+        TokenSection tokenSection = new TokenSection(
+                "application/json",
+                Map.of("scope", "openid"),
+                Map.of("client_secret", "s3cr3t"));
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+        when(tppConnector.getTppToken(tppId))
+                .thenReturn(Mono.just(tokenSection));
+
+        StepVerifier.create(tppService.getTppCredentials(entityId))
+                .assertNext(dto -> {
+                    assertThat(dto.getContentType()).isEqualTo("application/json");
+                    assertThat(dto.getPathAdditionalProperties()).containsEntry("scope", "openid");
+                    assertThat(dto.getBodyAdditionalProperties()).containsEntry("client_secret", "s3cr3t");
+                })
+                .verifyComplete();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+        verify(tppConnector, times(1)).getTppToken(tppId);
+        // Keycloak non deve essere coinvolto in questo flusso
+        verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
+    }
+
+    /**
+     * TPP non trovata: il connector emette {@link ResourceNotFoundException}.
+     * {@code getTppToken} NON deve essere chiamato.
+     */
+    @Test
+    void getTppCredentials_TppNotFound_PropagatesResourceNotFoundException_TokenNeverFetched() {
+        String entityId = "99999999999";
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
+
+        StepVerifier.create(tppService.getTppCredentials(entityId))
+                .expectErrorMatches(ex -> ex instanceof ResourceNotFoundException
+                        && ex.getMessage().contains(entityId))
+                .verify();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+        verify(tppConnector, never()).getTppToken(anyString());
+    }
+
+    /**
+     * Il connector risolve il tppId ma {@code getTppToken} emette un errore (es. 404 o 502):
+     * l'errore deve propagarsi correttamente.
+     */
+    @Test
+    void getTppCredentials_GetTokenFails_PropagatesExternalServiceException() {
+        String entityId = "12345678901";
+        String tppId    = "tpp-token-fail";
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+        when(tppConnector.getTppToken(tppId))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "getTppToken", "upstream error")));
+
+        StepVerifier.create(tppService.getTppCredentials(entityId))
+                .expectErrorMatches(ex -> ex instanceof ExternalServiceException
+                        && ex.getMessage().contains("TPP_SERVICE"))
+                .verify();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+        verify(tppConnector, times(1)).getTppToken(tppId);
+    }
+
+    /**
+     * Keycloak NON deve essere mai chiamato nel flusso {@code getTppCredentials}
+     * (le credenziali vengono lette da emd-tpp, non da Keycloak).
+     */
+    @Test
+    void getTppCredentials_NeverInteractsWithKeycloak() {
+        String entityId = "12345678901";
+        String tppId    = "tpp-no-kc";
+        TokenSection tokenSection = new TokenSection("application/json", null, null);
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+        when(tppConnector.getTppToken(tppId))
+                .thenReturn(Mono.just(tokenSection));
+
+        tppService.getTppCredentials(entityId).block();
+
+        verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
+        verify(keycloakClientService, never()).createKeycloakClient(anyString(), any(), any());
+        verify(keycloakClientService, never()).deleteKeycloakClient(anyString());
     }
 }

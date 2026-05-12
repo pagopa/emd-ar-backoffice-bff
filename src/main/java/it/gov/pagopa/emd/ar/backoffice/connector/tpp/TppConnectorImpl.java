@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.SaveTppResponse;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
@@ -33,6 +34,7 @@ public class TppConnectorImpl implements TppConnector {
     private static final String SAVE_TPP_PATH = "/emd/tpp/save";
     private static final String DELETE_TPP_PATH = "/emd/tpp/{tppId}";
     private static final String GET_TPP_BY_ENTITY_ID_PATH = "/emd/tpp/entityId/{entityId}";
+    private static final String GET_TPP_TOKEN_PATH = "/emd/tpp/{tppId}/token";
 
     private final WebClient webClient;
 
@@ -119,5 +121,34 @@ public class TppConnectorImpl implements TppConnector {
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] GET {} failed for entityId={}: {}",
                         GET_TPP_BY_ENTITY_ID_PATH, entityId, ex.getMessage()));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code GET /emd/tpp/{tppId}/token} to the remote emd-tpp service.
+     * A 404 response is converted to a {@link ResourceNotFoundException}.
+     * All other errors are wrapped in {@link ExternalServiceException}.</p>
+     *
+     * <p>Safe to retry with {@link WebClientRetrySpecs#transientNetwork()} — GET is idempotent.</p>
+     */
+    @Override
+    public Mono<TokenSection> getTppToken(String tppId) {
+        return webClient.get()
+                .uri(GET_TPP_TOKEN_PATH, tppId)
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ResourceNotFoundException("TPP token", tppId))))
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ExternalServiceException("TPP_SERVICE", "getTppToken", body))))
+                .bodyToMono(TokenSection.class)
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] GET {} failed for tppId={}: {}",
+                        GET_TPP_TOKEN_PATH, tppId, ex.getMessage()));
     }
 }

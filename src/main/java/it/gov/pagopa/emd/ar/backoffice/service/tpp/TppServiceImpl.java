@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper.TppConnectorMapper;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
@@ -91,6 +92,24 @@ public class TppServiceImpl implements TppService {
                 })
                 .doOnSuccess(c -> log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] PagoPA credentials retrieved for entityId={}", entityId))
                 .doOnError(e -> log.error("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Failed to retrieve PagoPA credentials for entityId={}: {}", entityId, e.getMessage()));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<TokenSectionDTOV1> getTppCredentials(String entityId) {
+        log.info("[AR-BFF][TPP_CREDENTIALS] Retrieving token-section credentials for entityId={}", entityId);
+        return tppConnector.getTppByEntityId(entityId)
+                .flatMap(response -> {
+                    log.info("[AR-BFF][TPP_CREDENTIALS] Resolved tppId={} for entityId={}", response.tppId(), entityId);
+                    return tppConnector.getTppToken(response.tppId());
+                })
+                .map(tokenSection -> new TokenSectionDTOV1(
+                        tokenSection.getContentType(),
+                        tokenSection.getPathAdditionalProperties(),
+                        tokenSection.getBodyAdditionalProperties()))
+                // Privacy: doOnSuccess intentionally does NOT log the DTO contents (may contain secrets)
+                .doOnSuccess(dto -> log.info("[AR-BFF][TPP_CREDENTIALS] Token-section credentials retrieved for entityId={}", entityId))
+                .doOnError(e -> log.error("[AR-BFF][TPP_CREDENTIALS] Failed to retrieve token-section credentials for entityId={}: {}", entityId, e.getMessage()));
     }
 
     /**

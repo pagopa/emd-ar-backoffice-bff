@@ -99,9 +99,8 @@ public interface TppService {
      *
      * @param entityId       the fiscal code (CF) or VAT number (P.IVA) of the TPP
      * @param tokenSectionDTO the new token-section data to persist
-     * @return {@code Mono<Void>} completing on success,
-     *         or 404 if the TPP is not found,
-     *         or 502 if emd-tpp is unreachable
+     * @return {@code Mono<TokenSectionDTOV1>} with the persisted token section (mirrors the request)
+     *         on success, or 404 if the TPP is not found, or 502 if emd-tpp is unreachable
      */
-    Mono<Void> updateTppCredentials(String entityId, TokenSectionDTOV1 tokenSectionDTO);
+    Mono<TokenSectionDTOV1> updateTppCredentials(String entityId, TokenSectionDTOV1 tokenSectionDTO);
 }

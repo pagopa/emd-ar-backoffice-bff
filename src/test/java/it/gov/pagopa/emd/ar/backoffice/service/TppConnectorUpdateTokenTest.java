@@ -44,6 +44,13 @@ class TppConnectorUpdateTokenTest {
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
+    private ClientResponse okJson(String json) {
+        return ClientResponse.create(HttpStatus.OK)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .body(json)
+                .build();
+    }
+
     private ClientResponse emptyOk() {
         return ClientResponse.create(HttpStatus.OK)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -73,19 +80,32 @@ class TppConnectorUpdateTokenTest {
     // ── Tests ─────────────────────────────────────────────────────────────────
 
     /**
-     * Happy path: il connector chiama {@code PUT /emd/tpp/update/{tppId}/token} e completa
-     * senza errori. Verifica metodo HTTP e URL.
+     * Happy path: il connector chiama {@code PUT /emd/tpp/update/{tppId}/token}, riceve il body
+     * della response (uguale al payload) e lo deserializza in {@link TokenSection}.
+     * Verifica anche metodo HTTP e URL.
      */
     @Test
-    void updateTppToken_Success_CompletesWithNoError() {
+    void updateTppToken_Success_ReturnsDeserializedTokenSection() {
+        String responseJson = """
+                {
+                  "contentType": "application/json",
+                  "pathAdditionalProperties": {"scope": "openid"},
+                  "bodyAdditionalProperties": {"client_secret": "supersecret", "client_id": "my-client"}
+                }
+                """;
         List<String> capturedCalls = new CopyOnWriteArrayList<>();
 
         TppConnectorImpl c = connectorWith(request -> {
             capturedCalls.add(request.method().name() + " " + request.url().getPath());
-            return Mono.just(emptyOk());
+            return Mono.just(okJson(responseJson));
         });
 
         StepVerifier.create(c.updateTppToken(TPP_ID, sampleTokenSection()))
+                .assertNext(ts -> {
+                    assertThat(ts.getContentType()).isEqualTo("application/json");
+                    assertThat(ts.getPathAdditionalProperties()).containsEntry("scope", "openid");
+                    assertThat(ts.getBodyAdditionalProperties()).containsEntry("client_secret", "supersecret");
+                })
                 .verifyComplete();
 
         assertThat(capturedCalls).hasSize(1);
@@ -135,16 +155,18 @@ class TppConnectorUpdateTokenTest {
     }
 
     /**
-     * Verifica che una seconda chiamata con un body diverso (nullable fields) completi
+     * Verifica che una seconda chiamata con un body con mappe null completi
      * correttamente — PUT è idempotente e non deve dipendere dalla presenza delle mappe.
      */
     @Test
     void updateTppToken_WithNullMaps_CompletesSuccessfully() {
         TokenSection minimalSection = new TokenSection("application/json", null, null);
 
-        TppConnectorImpl c = connectorWith(request -> Mono.just(emptyOk()));
+        TppConnectorImpl c = connectorWith(request ->
+                Mono.just(okJson("{\"contentType\":\"application/json\"}")));
 
         StepVerifier.create(c.updateTppToken(TPP_ID, minimalSection))
+                .assertNext(ts -> assertThat(ts.getContentType()).isEqualTo("application/json"))
                 .verifyComplete();
     }
 

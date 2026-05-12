@@ -156,8 +156,9 @@ public class TppConnectorImpl implements TppConnector {
     /**
      * {@inheritDoc}
      *
-     * <p>Sends a {@code PUT /update/{tppId}/token} to the remote emd-tpp service with
-     * the new {@link TokenSection} as JSON body.</p>
+     * <p>Sends a {@code PUT /emd/tpp/update/{tppId}/token} to the remote emd-tpp service with
+     * the new {@link TokenSection} as JSON body. The response body (which mirrors the request)
+     * is deserialized and returned to the caller.</p>
      *
      * <p><strong>Privacy:</strong> the body is deliberately never logged (may contain secrets).</p>
      *
@@ -165,7 +166,7 @@ public class TppConnectorImpl implements TppConnector {
      * {@link WebClientRetrySpecs#transientNetwork()}.</p>
      */
     @Override
-    public Mono<Void> updateTppToken(String tppId, TokenSection tokenSection) {
+    public Mono<TokenSection> updateTppToken(String tppId, TokenSection tokenSection) {
         return webClient.put()
                 .uri(UPDATE_TPP_TOKEN_PATH, tppId)
                 .bodyValue(tokenSection)
@@ -178,9 +179,8 @@ public class TppConnectorImpl implements TppConnector {
                         response.bodyToMono(String.class)
                                 .flatMap(body -> Mono.error(
                                         new ExternalServiceException("TPP_SERVICE", "updateTppToken", body))))
-                .toBodilessEntity()
+                .bodyToMono(TokenSection.class)
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
-                .then()
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}",
                         UPDATE_TPP_TOKEN_PATH, tppId, ex.getMessage()));

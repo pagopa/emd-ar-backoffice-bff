@@ -263,10 +263,10 @@ class TppControllerImplV1Test {
     // ── updateTppCredentials ──────────────────────────────────────────────────
 
     /**
-     * PUT /emd/backoffice/api/v1/tpp/{entityId}/credentials — happy path → 200 OK.
+     * PUT /emd/backoffice/api/v1/tpp/{entityId}/credentials — happy path → 200 OK con body.
      */
     @Test
-    void updateTppCredentials_Success_Returns200() {
+    void updateTppCredentials_Success_Returns200WithBody() {
         String entityId = "12345678901";
         TokenSectionDTOV1 body = new TokenSectionDTOV1(
                 "application/x-www-form-urlencoded",
@@ -274,14 +274,16 @@ class TppControllerImplV1Test {
                 Map.of("client_id", "nuovo-client", "client_secret", "nuovo-secret"));
 
         when(tppService.updateTppCredentials(eq(entityId), any(TokenSectionDTOV1.class)))
-                .thenReturn(Mono.empty());
+                .thenReturn(Mono.just(body));
 
         webTestClient.put()
                 .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
                 .exchange()
-                .expectStatus().isOk();
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.contentType").isEqualTo("application/x-www-form-urlencoded");
     }
 
     /**

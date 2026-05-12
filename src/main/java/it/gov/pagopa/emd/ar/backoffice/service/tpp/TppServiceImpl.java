@@ -115,7 +115,7 @@ public class TppServiceImpl implements TppService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<Void> updateTppCredentials(String entityId, TokenSectionDTOV1 tokenSectionDTO) {
+    public Mono<TokenSectionDTOV1> updateTppCredentials(String entityId, TokenSectionDTOV1 tokenSectionDTO) {
         log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Updating token-section credentials for entityId={}", entityId);
         return tppConnector.getTppByEntityId(entityId)
                 .flatMap(response -> {
@@ -127,7 +127,11 @@ public class TppServiceImpl implements TppService {
                             tokenSectionDTO.getPathAdditionalProperties(),
                             tokenSectionDTO.getBodyAdditionalProperties()));
                 })
-                .doOnSuccess(v -> log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Token-section credentials updated for entityId={}", entityId))
+                .map(ts -> new TokenSectionDTOV1(
+                        ts.getContentType(),
+                        ts.getPathAdditionalProperties(),
+                        ts.getBodyAdditionalProperties()))
+                .doOnSuccess(dto -> log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Token-section credentials updated for entityId={}", entityId))
                 .doOnError(e -> log.error("[AR-BFF][TPP_CREDENTIALS_UPDATE] Failed to update token-section credentials for entityId={}: {}", entityId, e.getMessage()));
     }
 

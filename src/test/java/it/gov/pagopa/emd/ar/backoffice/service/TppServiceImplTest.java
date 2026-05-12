@@ -472,13 +472,18 @@ public class TppServiceImplTest {
 
     /**
      * Happy path: il connector risolve il tppId dall'entityId, poi invia l'aggiornamento
-     * al servizio emd-tpp. Keycloak non viene mai coinvolto.
+     * al servizio emd-tpp e restituisce il {@link TokenSectionDTOV1} con i campi aggiornati.
+     * Keycloak non viene mai coinvolto.
      */
     @Test
-    void updateTppCredentials_Success_ResolvesEntityIdThenUpdates() {
+    void updateTppCredentials_Success_ResolvesEntityIdThenUpdatesAndReturnsDto() {
         String entityId = "12345678901";
         String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
         TokenSectionDTOV1 dto = new TokenSectionDTOV1(
+                "application/json",
+                Map.of("scope", "openid"),
+                Map.of("client_secret", "nuovo-secret"));
+        TokenSection updatedSection = new TokenSection(
                 "application/json",
                 Map.of("scope", "openid"),
                 Map.of("client_secret", "nuovo-secret"));
@@ -486,9 +491,14 @@ public class TppServiceImplTest {
         when(tppConnector.getTppByEntityId(entityId))
                 .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
         when(tppConnector.updateTppToken(eq(tppId), any(TokenSection.class)))
-                .thenReturn(Mono.empty());
+                .thenReturn(Mono.just(updatedSection));
 
         StepVerifier.create(tppService.updateTppCredentials(entityId, dto))
+                .assertNext(result -> {
+                    assertThat(result.getContentType()).isEqualTo("application/json");
+                    assertThat(result.getPathAdditionalProperties()).containsEntry("scope", "openid");
+                    assertThat(result.getBodyAdditionalProperties()).containsEntry("client_secret", "nuovo-secret");
+                })
                 .verifyComplete();
 
         verify(tppConnector, times(1)).getTppByEntityId(entityId);
@@ -561,10 +571,11 @@ public class TppServiceImplTest {
                     assertThat(sent.getPathAdditionalProperties()).containsEntry("tenantId", "123456");
                     assertThat(sent.getBodyAdditionalProperties()).containsEntry("client_id", "new-id");
                     assertThat(sent.getBodyAdditionalProperties()).containsEntry("client_secret", "new-secret");
-                    return Mono.empty();
+                    return Mono.just(sent); // emd-tpp restituisce lo stesso body
                 });
 
         StepVerifier.create(tppService.updateTppCredentials(entityId, dto))
+                .assertNext(result -> assertThat(result.getContentType()).isEqualTo("application/x-www-form-urlencoded"))
                 .verifyComplete();
     }
 }

@@ -101,11 +101,13 @@ public interface TppControllerV1 {
      *
      * @param entityId       the fiscal code (CF) or VAT number (P.IVA) injected by APIM
      * @param tokenSectionDTO the new token-section data to persist
-     * @return {@code Mono<ResponseEntity<Void>>} HTTP 200 on success,
+     * @return {@code Mono<ResponseEntity<TokenSectionDTOV1>>} HTTP 200 with the persisted token section,
      *         404 if no TPP is found, 502 if emd-tpp is unreachable
      */
-    @PutMapping(value = "tpp/{entityId}/credentials", consumes = MediaType.APPLICATION_JSON_VALUE)
-    Mono<ResponseEntity<Void>> updateTppCredentials(
+    @PutMapping(value = "tpp/{entityId}/credentials",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<TokenSectionDTOV1>> updateTppCredentials(
             @PathVariable("entityId") String entityId,
             @Valid @RequestBody TokenSectionDTOV1 tokenSectionDTO);
 }

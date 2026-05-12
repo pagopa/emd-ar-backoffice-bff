@@ -60,9 +60,10 @@ public interface TppConnector {
      *
      * @param tppId       the identifier of the TPP to update
      * @param tokenSection the new token-section data to persist
-     * @return {@code Mono<Void>} completing on success, or an error if the upstream
-     *         call fails (404 → {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException},
+     * @return {@code Mono<TokenSection>} with the persisted token section (mirrors the request body)
+     *         on success, or an error if the upstream call fails
+     *         (404 → {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException},
      *         others → {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException})
      */
-    Mono<Void> updateTppToken(String tppId, TokenSection tokenSection);
+    Mono<TokenSection> updateTppToken(String tppId, TokenSection tokenSection);
 }

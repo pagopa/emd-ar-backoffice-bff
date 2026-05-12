@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +31,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<TppIdResponseDTOV1>> getTppByEntityId(String entityId) {
+    public Mono<ResponseEntity<TppResponseDTOV1>> getTppByEntityId(String entityId) {
         log.info("[AR-BFF][TPP_GET] Getting TPP by entityId={}", entityId);
         return tppService.getTppByEntityId(entityId)
                 .map(ResponseEntity::ok);

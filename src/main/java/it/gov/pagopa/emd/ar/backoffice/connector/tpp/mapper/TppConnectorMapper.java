@@ -1,8 +1,10 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.TokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.VersionDetailsV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AgentLink;
@@ -10,6 +12,7 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AuthenticationType;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.Contact;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.VersionDetails;
 
 import java.util.Map;
@@ -94,5 +97,68 @@ public final class TppConnectorMapper {
     private static VersionDetails toVersionDetails(VersionDetailsV1 v1) {
         if (v1 == null) return null;
         return VersionDetails.builder().link(v1.getLink()).build();
+    }
+
+    // ── TppEntityIdResponse → TppResponseDTOV1 ───────────────────────────────
+
+    /**
+     * Maps a {@link TppEntityIdResponse} (connector layer) to the API-layer
+     * {@link TppResponseDTOV1}, converting connector-layer enums and nested objects
+     * to their V1 counterparts.
+     */
+    public static TppResponseDTOV1 toTppResponseDTOV1(TppEntityIdResponse src) {
+        return TppResponseDTOV1.builder()
+                .tppId(src.getTppId())
+                .entityId(src.getEntityId())
+                .idPsp(src.getIdPsp())
+                .businessName(src.getBusinessName())
+                .legalAddress(src.getLegalAddress())
+                .messageUrl(src.getMessageUrl())
+                .authenticationUrl(src.getAuthenticationUrl())
+                .authenticationType(toAuthenticationTypeV1(src.getAuthenticationType()))
+                .contact(toContactV1(src.getContact()))
+                .state(src.getState())
+                .creationDate(src.getCreationDate())
+                .lastUpdateDate(src.getLastUpdateDate())
+                .pspDenomination(src.getPspDenomination())
+                .agentLinks(toAgentLinksV1(src.getAgentLinks()))
+                .isPaymentEnabled(src.getIsPaymentEnabled())
+                .messageTemplate(src.getMessageTemplate())
+                .whitelistRecipient(src.getWhitelistRecipient())
+                .build();
+    }
+
+    private static AuthenticationTypeV1 toAuthenticationTypeV1(AuthenticationType connector) {
+        if (connector == null) return null;
+        return AuthenticationTypeV1.valueOf(connector.name());
+    }
+
+    private static ContactV1 toContactV1(Contact connector) {
+        if (connector == null) return null;
+        return new ContactV1(connector.getName(), connector.getNumber(), connector.getEmail());
+    }
+
+    private static Map<String, AgentLinkV1> toAgentLinksV1(Map<String, AgentLink> connectorMap) {
+        if (connectorMap == null) return null;
+        return connectorMap.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> toAgentLinkV1(e.getValue())));
+    }
+
+    private static AgentLinkV1 toAgentLinkV1(AgentLink connector) {
+        if (connector == null) return null;
+        Map<String, VersionDetailsV1> versions = null;
+        if (connector.getVersions() != null) {
+            versions = connector.getVersions().entrySet().stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey, e -> toVersionDetailsV1(e.getValue())));
+        }
+        return AgentLinkV1.builder()
+                .fallBackLink(connector.getFallBackLink())
+                .versions(versions)
+                .build();
+    }
+
+    private static VersionDetailsV1 toVersionDetailsV1(VersionDetails connector) {
+        if (connector == null) return null;
+        return VersionDetailsV1.builder().link(connector.getLink()).build();
     }
 }

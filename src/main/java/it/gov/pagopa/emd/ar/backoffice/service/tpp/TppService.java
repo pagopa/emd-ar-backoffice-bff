@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import reactor.core.publisher.Mono;
 
@@ -21,11 +22,11 @@ public interface TppService {
      * Looks up an existing TPP by its {@code entityId} (CF o P.IVA).
      *
      * @param entityId the fiscal code or VAT number
-     * @return {@code Mono<TppIdResponseDTOV1>} with the tppId if found,
+     * @return {@code Mono<TppResponseDTOV1>} with the full TPP details if found,
      *         or a {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException}
      *         (HTTP 404) if no TPP exists for that entityId
      */
-    Mono<TppIdResponseDTOV1> getTppByEntityId(String entityId);
+    Mono<TppResponseDTOV1> getTppByEntityId(String entityId);
 
     /**
      * Deletes a TPP from the emd-tpp service and its associated Keycloak client.

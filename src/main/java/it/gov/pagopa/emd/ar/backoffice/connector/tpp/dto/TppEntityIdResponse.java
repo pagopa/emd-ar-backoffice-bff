@@ -1,15 +1,45 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
 
 /**
- * Minimal connector-layer representation of the response from the emd-tpp service
+ * Full connector-layer representation of the response from the emd-tpp service
  * when querying a TPP by {@code entityId} ({@code GET /emd/tpp/entityId/{entityId}}).
  *
- * <p>The upstream service returns a richer payload ({@code TppDTOWithoutTokenSection}),
- * but the BFF only needs the {@code tppId} at this point. Unknown fields are ignored via
- * {@link JsonIgnoreProperties} so future additions to the upstream DTO do not break deserialization.
+ * <p>Maps the upstream {@code TppDTOWithoutTokenSection} payload. Unknown fields are
+ * silently ignored via {@link JsonIgnoreProperties} so future upstream additions do not
+ * break deserialization.</p>
  */
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record TppEntityIdResponse(String tppId) {}
+public class TppEntityIdResponse {
+    private String tppId;
+    private String entityId;
+    private String idPsp;
+    private String businessName;
+    private String legalAddress;
+    private String messageUrl;
+    private String authenticationUrl;
+    private AuthenticationType authenticationType;
+    private Contact contact;
+    private Boolean state;
+    private LocalDateTime creationDate;
+    private LocalDateTime lastUpdateDate;
+    private String pspDenomination;
+    private HashMap<String, AgentLink> agentLinks;
+    private Boolean isPaymentEnabled;
+    private String messageTemplate;
+    private List<String> whitelistRecipient;
+}
 

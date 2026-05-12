@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
@@ -31,16 +32,17 @@ public interface TppControllerV1 {
     Mono<ResponseEntity<TppIdResponseDTOV1>> saveTpp(@Valid @RequestBody TppDTOV1 tppDTO);
 
     /**
-     * Checks whether a TPP with the given {@code entityId} (CF or P.IVA) already exists.
+     * Checks whether a TPP with the given {@code entityId} (CF or P.IVA) already exists
+     * and returns its full details.
      *
-     * <p>Returns HTTP 200 with a {@code tppId} payload if found, or HTTP 404 if no TPP
+     * <p>Returns HTTP 200 with a {@code TppResponseDTOV1} payload if found, or HTTP 404 if no TPP
      * exists for that {@code entityId}.</p>
      *
      * @param entityId the fiscal code (11 digits) or VAT number (up to 16 alphanumeric chars)
-     * @return {@code Mono<ResponseEntity<TppIdResponseDTOV1>>} with the tppId, or 404
+     * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} with full TPP details, or 404
      */
     @GetMapping(value = "tpp/{entityId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    Mono<ResponseEntity<TppIdResponseDTOV1>> getTppByEntityId(
+    Mono<ResponseEntity<TppResponseDTOV1>> getTppByEntityId(
             @PathVariable("entityId") String entityId);
 
     /**

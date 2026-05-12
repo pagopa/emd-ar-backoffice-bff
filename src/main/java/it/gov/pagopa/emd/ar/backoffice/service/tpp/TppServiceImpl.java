@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
@@ -59,10 +60,10 @@ public class TppServiceImpl implements TppService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<TppIdResponseDTOV1> getTppByEntityId(String entityId) {
+    public Mono<TppResponseDTOV1> getTppByEntityId(String entityId) {
         log.info("[AR-BFF][TPP_GET] Looking up TPP by entityId={}", entityId);
         return tppConnector.getTppByEntityId(entityId)
-                .map(response -> new TppIdResponseDTOV1(response.tppId()))
+                .map(TppConnectorMapper::toTppResponseDTOV1)
                 .doOnSuccess(r -> log.info("[AR-BFF][TPP_GET] Found TPP tppId={} for entityId={}", r.getTppId(), entityId))
                 .doOnError(e -> log.warn("[AR-BFF][TPP_GET] TPP not found for entityId={}: {}", entityId, e.getMessage()));
     }
@@ -73,7 +74,7 @@ public class TppServiceImpl implements TppService {
         log.info("[AR-BFF][TPP_DELETE] Deleting TPP and Keycloak client for entityId={}", entityId);
         return tppConnector.getTppByEntityId(entityId)
                 .flatMap(response -> {
-                    String tppId = response.tppId();
+                    String tppId = response.getTppId();
                     log.info("[AR-BFF][TPP_DELETE] Resolved tppId={} for entityId={}", tppId, entityId);
                     return keycloakClientService.deleteKeycloakClient(tppId)
                             .then(Mono.defer(() -> tppConnector.deleteTpp(tppId)));
@@ -88,8 +89,8 @@ public class TppServiceImpl implements TppService {
         log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Retrieving PagoPA credentials for entityId={}", entityId);
         return tppConnector.getTppByEntityId(entityId)
                 .flatMap(response -> {
-                    log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Resolved tppId={} for entityId={}", response.tppId(), entityId);
-                    return keycloakClientService.getPagopaClientCredentials(response.tppId());
+                    log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Resolved tppId={} for entityId={}", response.getTppId(), entityId);
+                    return keycloakClientService.getPagopaClientCredentials(response.getTppId());
                 })
                 .doOnSuccess(c -> log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] PagoPA credentials retrieved for entityId={}", entityId))
                 .doOnError(e -> log.error("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Failed to retrieve PagoPA credentials for entityId={}: {}", entityId, e.getMessage()));
@@ -101,8 +102,8 @@ public class TppServiceImpl implements TppService {
         log.info("[AR-BFF][TPP_CREDENTIALS] Retrieving token-section credentials for entityId={}", entityId);
         return tppConnector.getTppByEntityId(entityId)
                 .flatMap(response -> {
-                    log.info("[AR-BFF][TPP_CREDENTIALS] Resolved tppId={} for entityId={}", response.tppId(), entityId);
-                    return tppConnector.getTppToken(response.tppId());
+                    log.info("[AR-BFF][TPP_CREDENTIALS] Resolved tppId={} for entityId={}", response.getTppId(), entityId);
+                    return tppConnector.getTppToken(response.getTppId());
                 })
                 .map(tokenSection -> new TokenSectionDTOV1(
                         tokenSection.getContentType(),
@@ -119,7 +120,7 @@ public class TppServiceImpl implements TppService {
         log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Updating token-section credentials for entityId={}", entityId);
         return tppConnector.getTppByEntityId(entityId)
                 .flatMap(response -> {
-                    String tppId = response.tppId();
+                    String tppId = response.getTppId();
                     log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Resolved tppId={} for entityId={}", tppId, entityId);
                     // Privacy: body content (may contain client_secret) is never logged
                     return tppConnector.updateTppToken(tppId, new TokenSection(

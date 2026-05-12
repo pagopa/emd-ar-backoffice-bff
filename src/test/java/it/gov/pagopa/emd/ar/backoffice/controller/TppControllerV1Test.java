@@ -4,8 +4,10 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller.TppControllerImplV1
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
@@ -72,15 +74,27 @@ class TppControllerImplV1Test {
     }
 
     /**
-     * GET /emd/backoffice/api/v1/tpp/{entityId} — TPP trovata → 200 con tppId.
+     * GET /emd/backoffice/api/v1/tpp/{entityId} — TPP trovata → 200 con tutti i campi del DTO.
      */
     @Test
-    void getTppByEntityId_Found_Returns200WithTppId() {
+    void getTppByEntityId_Found_Returns200WithFullDto() {
         String entityId = "12345678901";
         String expectedTppId = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
 
+        TppResponseDTOV1 response = TppResponseDTOV1.builder()
+                .tppId(expectedTppId)
+                .entityId(entityId)
+                .businessName("My TPP Srl")
+                .idPsp("PSP_001")
+                .legalAddress("Via Roma 1, 00100 Roma")
+                .authenticationType(AuthenticationTypeV1.OAUTH2)
+                .contact(new ContactV1("Mario Rossi", "1234567890", "mario@tpp.it"))
+                .state(true)
+                .isPaymentEnabled(false)
+                .build();
+
         when(tppService.getTppByEntityId(eq(entityId)))
-                .thenReturn(Mono.just(new TppIdResponseDTOV1(expectedTppId)));
+                .thenReturn(Mono.just(response));
 
         webTestClient.get()
                 .uri("/emd/backoffice/api/v1/tpp/" + entityId)
@@ -88,7 +102,16 @@ class TppControllerImplV1Test {
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
                 .expectBody()
-                .jsonPath("$.tppId").isEqualTo(expectedTppId);
+                .jsonPath("$.tppId").isEqualTo(expectedTppId)
+                .jsonPath("$.entityId").isEqualTo(entityId)
+                .jsonPath("$.businessName").isEqualTo("My TPP Srl")
+                .jsonPath("$.idPsp").isEqualTo("PSP_001")
+                .jsonPath("$.legalAddress").isEqualTo("Via Roma 1, 00100 Roma")
+                .jsonPath("$.authenticationType").isEqualTo("OAUTH2")
+                .jsonPath("$.contact.name").isEqualTo("Mario Rossi")
+                .jsonPath("$.contact.email").isEqualTo("mario@tpp.it")
+                .jsonPath("$.state").isEqualTo(true)
+                .jsonPath("$.isPaymentEnabled").isEqualTo(false);
     }
 
     /**

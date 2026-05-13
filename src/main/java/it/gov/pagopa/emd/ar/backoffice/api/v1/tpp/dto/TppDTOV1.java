@@ -19,16 +19,14 @@ import java.util.Map;
  * <p>Intentionally limited: server-managed fields ({@code tppId}, {@code state}, timestamps)
  * and temporarily-defaulted fields ({@code idPsp}, {@code legalAddress},
  * {@code isPaymentEnabled}, {@code messageTemplate}, {@code whitelistRecipient}) are NOT
- * exposed here. {@code entityId} is provided by the frontend in the request body (it
- * corresponds to the organisation fiscal code / VAT number).</p>
+ * exposed here. {@code entityId} is injected by APIM as a path variable from the JWT
+ * claim {@code orgFiscalCode}; the request body must NOT include it.</p>
  */
 @Data
 @SuperBuilder
 @NoArgsConstructor
 public class TppDTOV1 {
 
-    @NotBlank(message = "Entity ID must not be blank")
-    private String entityId;
 
     @NotBlank(message = "Business name must not be blank")
     private String businessName;

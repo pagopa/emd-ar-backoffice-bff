@@ -1,7 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
@@ -24,10 +23,10 @@ public class TppControllerImplV1 implements TppControllerV1 {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<TppIdResponseDTOV1>> saveTpp(TppDTOV1 tppDTO) {
-        log.info("[AR-BFF][TPP_SAVE] Saving TPP for entityId={}", tppDTO.getEntityId());
-        return tppService.createTppAndKeycloakClient(tppDTO.getEntityId(), tppDTO)
-                .map(tppId -> ResponseEntity.ok(new TppIdResponseDTOV1(tppId)));
+    public Mono<ResponseEntity<TppResponseDTOV1>> saveTpp(String entityId, TppDTOV1 tppDTO) {
+        log.info("[AR-BFF][TPP_SAVE] Saving TPP for entityId={}", entityId);
+        return tppService.createTppAndKeycloakClient(entityId, tppDTO)
+                .map(ResponseEntity::ok);
     }
 
     /** {@inheritDoc} */

@@ -15,9 +15,10 @@ public interface TppService {
      *
      * @param entityId the fiscal code (CF) or VAT number (P.IVA) injected by APIM
      * @param tppDTO   the TPP data to create (body fields only — entityId comes separately)
-     * @return {@code Mono<String>} containing the tppId of the created TPP, or an error
+     * @return {@code Mono<TppResponseDTOV1>} with the full representation of the created TPP,
+     *         matching the same format returned by GET and PATCH
      */
-    Mono<String> createTppAndKeycloakClient(String entityId, TppDTOV1 tppDTO);
+    Mono<TppResponseDTOV1> createTppAndKeycloakClient(String entityId, TppDTOV1 tppDTO);
 
     /**
      * Looks up an existing TPP by its {@code entityId} (CF o P.IVA).

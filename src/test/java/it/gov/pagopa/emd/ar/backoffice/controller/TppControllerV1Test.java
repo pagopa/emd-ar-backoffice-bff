@@ -2,7 +2,6 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller.TppControllerImplV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
@@ -55,24 +54,29 @@ class TppControllerImplV1Test {
     void saveTpp_ShouldReturnTppId() {
         String entityId = "12345678901";
         TppDTOV1 dto = new TppDTOV1();
-        dto.setEntityId(entityId);
         dto.setBusinessName("Test Tpp Name");
         dto.setAuthenticationType(AuthenticationTypeV1.OAUTH2);
         dto.setAgentLinks(new HashMap<>());
 
-        String expectedTppId = "TPP_CREATED_ID_123";
+        TppResponseDTOV1 expectedResponse = TppResponseDTOV1.builder()
+                .tppId("TPP_CREATED_ID_123")
+                .businessName("Test Tpp Name")
+                .authenticationType(AuthenticationTypeV1.OAUTH2)
+                .build();
 
         when(tppService.createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class)))
-                .thenReturn(Mono.just(expectedTppId));
+                .thenReturn(Mono.just(expectedResponse));
 
         webTestClient.post()
-                .uri("/emd/backoffice/api/v1/tpp")
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(dto)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.tppId").isEqualTo(expectedTppId);
+                .jsonPath("$.tppId").isEqualTo("TPP_CREATED_ID_123")
+                .jsonPath("$.businessName").isEqualTo("Test Tpp Name")
+                .jsonPath("$.authenticationType").isEqualTo("OAUTH2");
     }
 
     /**

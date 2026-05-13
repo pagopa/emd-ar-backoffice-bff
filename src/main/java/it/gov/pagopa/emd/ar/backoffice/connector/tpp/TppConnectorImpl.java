@@ -1,7 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
-import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.SaveTppResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
@@ -50,13 +49,13 @@ public class TppConnectorImpl implements TppConnector {
      * {@inheritDoc}
      *
      * <p>Serializes the {@link TppCreateRequest} as the POST body,
-     * then extracts the {@code tppId} from the {@link SaveTppResponse}.</p>
+     * then deserializes the full {@link TppEntityIdResponse} returned by the upstream service.</p>
      *
      * <p>Retries up to {@value WebClientRetrySpecs#MAX_RETRY_ATTEMPTS} times on
      * TCP connect failures (safe for POST — request never reached the server).</p>
      */
     @Override
-    public Mono<String> saveTpp(TppCreateRequest request) {
+    public Mono<TppEntityIdResponse> saveTpp(TppCreateRequest request) {
         return webClient.post()
                 .uri(SAVE_TPP_PATH)
                 .bodyValue(request)
@@ -68,8 +67,7 @@ public class TppConnectorImpl implements TppConnector {
                         response.bodyToMono(String.class)
                                 .flatMap(body -> Mono.error(
                                         new ExternalServiceException("TPP_SERVICE", "saveTpp", body))))
-                .bodyToMono(SaveTppResponse.class)
-                .map(SaveTppResponse::tppId)
+                .bodyToMono(TppEntityIdResponse.class)
                 .retryWhen(WebClientRetrySpecs.connectFailureOnly())
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] POST {} failed: {}", SAVE_TPP_PATH, ex.getMessage()));

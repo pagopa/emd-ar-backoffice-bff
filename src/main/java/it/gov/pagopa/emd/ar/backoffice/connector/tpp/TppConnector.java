@@ -15,9 +15,10 @@ public interface TppConnector {
      * Saves TPP data by sending a POST request to the remote emd-tpp service.
      *
      * @param request the outbound payload (already enriched with defaults)
-     * @return {@code Mono<String>} containing the tppId of the saved TPP or an error if the operation fails
+     * @return {@code Mono<TppEntityIdResponse>} containing the full TPP representation returned by
+     *         the upstream service, or an error if the operation fails
      */
-    Mono<String> saveTpp(TppCreateRequest request);
+    Mono<TppEntityIdResponse> saveTpp(TppCreateRequest request);
 
     /**
      * Deletes a previously saved TPP by its identifier.

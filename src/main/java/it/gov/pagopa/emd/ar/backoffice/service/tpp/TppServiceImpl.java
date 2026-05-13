@@ -45,16 +45,18 @@ public class TppServiceImpl implements TppService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<String> createTppAndKeycloakClient(String entityId, TppDTOV1 tppDTO) {
+    public Mono<TppResponseDTOV1> createTppAndKeycloakClient(String entityId, TppDTOV1 tppDTO) {
         log.info("[AR-BFF][TPP_CREATE] Creating new TPP for entityId={}: {}", entityId, tppDTO.getBusinessName());
         return tppConnector.saveTpp(TppConnectorMapper.toCreateRequest(entityId, tppDTO))
-                .flatMap(tppId -> {
+                .flatMap(tppResponse -> {
+                    String tppId = tppResponse.getTppId();
                     log.info("[AR-BFF][TPP_CREATE] TPP persisted with id={}. Creating Keycloak client.", tppId);
                     return keycloakClientService.createKeycloakClient(tppId, entityId, tppDTO.getBusinessName())
-                            .thenReturn(tppId)
-                            .onErrorResume(ex -> compensateDelete(tppId, ex));
+                            .onErrorResume(ex -> compensateDelete(tppId, ex))
+                            .thenReturn(tppResponse);
                 })
-                .doOnSuccess(tppId -> log.info("[AR-BFF][TPP_CREATE] TPP creation completed. id={}", tppId))
+                .map(TppConnectorMapper::toTppResponseDTOV1)
+                .doOnSuccess(r -> log.info("[AR-BFF][TPP_CREATE] TPP creation completed. tppId={}", r.getTppId()))
                 .doOnError(e -> log.error("[AR-BFF][TPP_CREATE] Error during TPP creation: {}", e.getMessage()));
     }
 

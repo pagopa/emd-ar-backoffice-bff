@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
@@ -24,15 +23,19 @@ public interface TppControllerV1 {
 
 
     /**
-     * Endpoint to save TPP information. Expects a valid TppDTOV1 payload in the request body,
-     * including the mandatory {@code entityId} (CF/P.IVA of the organisation).
-     * It will contact the TPP service to save the provided TPP information, create a new Keycloak
-     * client, and return the tppId of the saved TPP.
+     * Endpoint to save TPP information. Expects a valid TppDTOV1 payload in the request body.
+     * It will contact the TPP service to save the provided TPP information. Then it will create a new client
+     * in Keycloak with the TPP information. Finally it will return the tppId of the saved TPP as response.
      *
-     * @return {@code Mono<ResponseEntity<TppIdResponseDTOV1>>} The tppId with status OK
+     * <p>The {@code entityId} is injected by APIM from the JWT claim {@code orgFiscalCode} via
+     * URL-rewrite; the request body must NOT include it.</p>
+     *
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) injected by APIM
+     * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} The full TPP representation with status OK
      */
-    @PostMapping(value = "tpp", consumes = MediaType.APPLICATION_JSON_VALUE)
-    Mono<ResponseEntity<TppIdResponseDTOV1>> saveTpp(
+    @PostMapping(value = "tpp/{entityId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<TppResponseDTOV1>> saveTpp(
+            @PathVariable("entityId") String entityId,
             @Valid @RequestBody TppDTOV1 tppDTO);
 
     /**

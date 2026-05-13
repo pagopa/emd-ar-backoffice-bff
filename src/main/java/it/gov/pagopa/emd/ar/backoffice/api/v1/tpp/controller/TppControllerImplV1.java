@@ -24,9 +24,9 @@ public class TppControllerImplV1 implements TppControllerV1 {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<TppIdResponseDTOV1>> saveTpp(TppDTOV1 tppDTO) {
-        log.info("[AR-BFF][TPP_SAVE] Saving TPP");
-        return tppService.createTppAndKeycloakClient(tppDTO)
+    public Mono<ResponseEntity<TppIdResponseDTOV1>> saveTpp(String entityId, TppDTOV1 tppDTO) {
+        log.info("[AR-BFF][TPP_SAVE] Saving TPP for entityId={}", entityId);
+        return tppService.createTppAndKeycloakClient(entityId, tppDTO)
                 .map(tppId -> ResponseEntity.ok(new TppIdResponseDTOV1(tppId)));
     }
 

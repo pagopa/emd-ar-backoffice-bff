@@ -11,30 +11,24 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 /**
- * Data Transfer Object representing a complete TPP entity with full configuration.
+ * Data Transfer Object representing the fields the frontend can supply when creating a new TPP.
+ *
+ * <p>Intentionally limited: server-managed fields ({@code tppId}, {@code entityId},
+ * {@code state}, timestamps) and temporarily-defaulted fields ({@code idPsp},
+ * {@code legalAddress}, {@code isPaymentEnabled}, {@code messageTemplate},
+ * {@code whitelistRecipient}) are NOT exposed here. {@code entityId} is injected by APIM
+ * from the JWT claim {@code orgFiscalCode} via URL-rewrite as a path variable.</p>
  */
 @Data
 @SuperBuilder
 @NoArgsConstructor
 public class TppDTOV1 {
 
-    private String tppId;
-
-    @NotBlank(message = "Entity ID must not be blank")
-    @Pattern(regexp = "^(\\d{11}|[A-Za-z0-9]{16})$", message = "Entity ID must be 11 digits or up to 16 alphanumeric characters")
-    private String entityId;
-
-    private String idPsp;
-
     @NotBlank(message = "Business name must not be blank")
     private String businessName;
-
-    private String legalAddress;
 
     @Pattern(regexp = "^(https?|ftp)://[^ /$.?#].[^ ]*$", message = "Message URL must be a valid URL")
     private String messageUrl;
@@ -47,21 +41,10 @@ public class TppDTOV1 {
 
     private ContactV1 contact;
 
-    private Boolean state;
-
-    private LocalDateTime creationDate;
-    private LocalDateTime lastUpdateDate;
-
     private TokenSectionV1 tokenSection;
 
     private String pspDenomination;
 
     @NotNull(message = "Agent Link must not be null")
     private Map<String, AgentLinkV1> agentLinks;
-
-    private Boolean isPaymentEnabled;
-
-    private String messageTemplate;
-
-    private List<String> whitelistRecipient;
 }

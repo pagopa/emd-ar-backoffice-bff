@@ -57,27 +57,27 @@ public class TppServiceImplTest {
     }
 
     /**
-     * Happy path: the mapper converts the API DTO to a TppCreateRequest,
-     * the connector persists it and returns a tppId, then the KC client is created
-     * with both tppId (as clientId) and entityId for the hardcoded-claim mapper.
+     * Happy path: the mapper converts the API DTO to a TppCreateRequest (using entityId from
+     * path variable), the connector persists it and returns a tppId, then the KC client is
+     * created with both tppId (as clientId) and entityId for the hardcoded-claim mapper.
      */
     @Test
     void createTppAndKeycloakClient_Success() {
+        String entityId = "12345678901";
         TppDTOV1 dto = new TppDTOV1();
         dto.setBusinessName("Pagopa TPP");
-        dto.setEntityId("12345678901");
 
         String savedTppId = "INTERNAL_ID_001";
 
         when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(savedTppId));
-        when(keycloakClientService.createKeycloakClient(savedTppId, "12345678901", "Pagopa TPP")).thenReturn(Mono.just(savedTppId));
+        when(keycloakClientService.createKeycloakClient(savedTppId, entityId, "Pagopa TPP")).thenReturn(Mono.just(savedTppId));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
                 .expectNext(savedTppId)
                 .verifyComplete();
 
         verify(tppConnector, times(1)).saveTpp(any(TppCreateRequest.class));
-        verify(keycloakClientService, times(1)).createKeycloakClient(savedTppId, "12345678901", "Pagopa TPP");
+        verify(keycloakClientService, times(1)).createKeycloakClient(savedTppId, entityId, "Pagopa TPP");
         verify(tppConnector, never()).deleteTpp(anyString());
     }
 
@@ -86,16 +86,18 @@ public class TppServiceImplTest {
      */
     @Test
     void createTppAndKeycloakClient_DoesNotMutateInputDto() {
+        String entityId = "12345678901";
         TppDTOV1 original = new TppDTOV1();
         original.setBusinessName("Test TPP");
 
         when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just("tpp-id"));
         when(keycloakClientService.createKeycloakClient(anyString(), any(), any())).thenReturn(Mono.just("tpp-id"));
 
-        tppService.createTppAndKeycloakClient(original).block();
+        tppService.createTppAndKeycloakClient(entityId, original).block();
 
-        assert original.getIdPsp() == null : "Original DTO must not be mutated";
-        assert original.getLegalAddress() == null : "Original DTO must not be mutated";
+        // The DTO has no server-managed fields — verify it was not mutated
+        assert original.getMessageUrl() == null : "Original DTO must not be mutated";
+        assert original.getAuthenticationUrl() == null : "Original DTO must not be mutated";
     }
 
     /**
@@ -103,13 +105,14 @@ public class TppServiceImplTest {
      */
     @Test
     void createTppAndKeycloakClient_ErrorOnConnector_KeycloakNeverCalled() {
+        String entityId = "12345678901";
         TppDTOV1 dto = new TppDTOV1();
         dto.setBusinessName("Fail TPP");
 
         when(tppConnector.saveTpp(any(TppCreateRequest.class)))
                 .thenReturn(Mono.error(new RuntimeException("Database error")));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
                 .expectError(RuntimeException.class)
                 .verify();
 
@@ -123,23 +126,23 @@ public class TppServiceImplTest {
      */
     @Test
     void createTppAndKeycloakClient_ErrorOnKeycloak_CompensationTriggered() {
+        String entityId = "12345678901";
         TppDTOV1 dto = new TppDTOV1();
         dto.setBusinessName("KC Fail TPP");
-        dto.setEntityId("12345678901");
 
         String savedTppId = "tpp-123";
         RuntimeException kcException = new RuntimeException("Keycloak unavailable");
 
         when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(savedTppId));
-        when(keycloakClientService.createKeycloakClient(savedTppId, "12345678901", "KC Fail TPP")).thenReturn(Mono.error(kcException));
+        when(keycloakClientService.createKeycloakClient(savedTppId, entityId, "KC Fail TPP")).thenReturn(Mono.error(kcException));
         when(tppConnector.deleteTpp(savedTppId)).thenReturn(Mono.empty());
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
                 .expectError(RuntimeException.class)
                 .verify();
 
         verify(tppConnector, times(1)).saveTpp(any(TppCreateRequest.class));
-        verify(keycloakClientService, times(1)).createKeycloakClient(savedTppId, "12345678901", "KC Fail TPP");
+        verify(keycloakClientService, times(1)).createKeycloakClient(savedTppId, entityId, "KC Fail TPP");
         // Compensation must have been attempted
         verify(tppConnector, times(1)).deleteTpp(savedTppId);
     }
@@ -150,19 +153,19 @@ public class TppServiceImplTest {
      */
     @Test
     void createTppAndKeycloakClient_ErrorOnKeycloak_CompensationAlsoFails_OriginalErrorPropagated() {
+        String entityId = "12345678901";
         TppDTOV1 dto = new TppDTOV1();
         dto.setBusinessName("Double Fail TPP");
-        dto.setEntityId("12345678901");
 
         String savedTppId = "tpp-456";
         RuntimeException kcException = new RuntimeException("Keycloak unavailable");
 
         when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(savedTppId));
-        when(keycloakClientService.createKeycloakClient(savedTppId, "12345678901", "Double Fail TPP")).thenReturn(Mono.error(kcException));
+        when(keycloakClientService.createKeycloakClient(savedTppId, entityId, "Double Fail TPP")).thenReturn(Mono.error(kcException));
         when(tppConnector.deleteTpp(savedTppId))
                 .thenReturn(Mono.error(new RuntimeException("DB also down")));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
                 .expectErrorMatches(ex -> ex.getMessage().equals("Keycloak unavailable"))
                 .verify();
 
@@ -198,17 +201,11 @@ public class TppServiceImplTest {
 
         StepVerifier.create(tppService.getTppByEntityId(entityId))
                 .assertNext(dto -> {
-                    assertThat(dto.getTppId()).isEqualTo(tppId);
-                    assertThat(dto.getEntityId()).isEqualTo(entityId);
                     assertThat(dto.getBusinessName()).isEqualTo("My TPP Srl");
-                    assertThat(dto.getIdPsp()).isEqualTo("PSP_001");
-                    assertThat(dto.getLegalAddress()).isEqualTo("Via Roma 1, 00100 Roma");
                     assertThat(dto.getAuthenticationType()).isEqualTo(AuthenticationTypeV1.OAUTH2);
                     assertThat(dto.getContact()).isNotNull();
                     assertThat(dto.getContact().getName()).isEqualTo("Mario Rossi");
                     assertThat(dto.getContact().getEmail()).isEqualTo("mario@tpp.it");
-                    assertThat(dto.getState()).isTrue();
-                    assertThat(dto.getIsPaymentEnabled()).isFalse();
                 })
                 .verifyComplete();
 
@@ -702,11 +699,8 @@ public class TppServiceImplTest {
 
         StepVerifier.create(tppService.patchTpp(entityId, patchDTO))
                 .assertNext(dto -> {
-                    assertThat(dto.getTppId()).isEqualTo(tppId);
-                    assertThat(dto.getEntityId()).isEqualTo(entityId);
                     assertThat(dto.getBusinessName()).isEqualTo("Acme TPP S.p.A.");
                     assertThat(dto.getMessageUrl()).isEqualTo("https://api.acme.com/v2/messages");
-                    assertThat(dto.getState()).isTrue();
                 })
                 .verifyComplete();
 
@@ -739,9 +733,8 @@ public class TppServiceImplTest {
                     TppPatchRequest req = inv.getArgument(1);
                     assertThat(req.getBusinessName()).isEqualTo("New Name");
                     assertThat(req.getMessageUrl()).isEqualTo("https://new.url/messages");
-                    assertThat(req.getIdPsp()).isNull();
-                    assertThat(req.getLegalAddress()).isNull();
                     assertThat(req.getContact()).isNull();
+                    assertThat(req.getAuthenticationType()).isNull();
                     return Mono.just(updatedResponse);
                 });
 

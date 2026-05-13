@@ -28,10 +28,16 @@ public interface TppControllerV1 {
      * It will contact the TPP service to save the provided TPP information. Then it will create a new client
      * in Keycloak with the TPP information. Finally it will return the tppId of the saved TPP as response.
      *
+     * <p>The {@code entityId} is injected by APIM from the JWT claim {@code orgFiscalCode} via
+     * URL-rewrite; the request body must NOT include it.</p>
+     *
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) injected by APIM
      * @return {@code Mono<ResponseEntity<TppIdResponseDTOV1>>} The tppId with status OK
      */
-    @PostMapping(value = "tpp")
-    Mono<ResponseEntity<TppIdResponseDTOV1>> saveTpp(@Valid @RequestBody TppDTOV1 tppDTO);
+    @PostMapping(value = "tpp/{entityId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<TppIdResponseDTOV1>> saveTpp(
+            @PathVariable("entityId") String entityId,
+            @Valid @RequestBody TppDTOV1 tppDTO);
 
     /**
      * Checks whether a TPP with the given {@code entityId} (CF or P.IVA) already exists

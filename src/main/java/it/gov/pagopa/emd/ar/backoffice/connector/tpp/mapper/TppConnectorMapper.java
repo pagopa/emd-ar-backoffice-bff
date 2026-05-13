@@ -39,19 +39,23 @@ public final class TppConnectorMapper {
 
     private TppConnectorMapper() {}
 
-    public static TppCreateRequest toCreateRequest(TppDTOV1 input) {
+    /**
+     * Maps the API-layer {@link TppDTOV1} to a connector-layer {@link TppCreateRequest}.
+     *
+     * @param entityId the entity identifier injected by APIM (from JWT claim {@code orgFiscalCode})
+     * @param input    the POST request body
+     */
+    public static TppCreateRequest toCreateRequest(String entityId, TppDTOV1 input) {
         return TppCreateRequest.builder()
-                .entityId(input.getEntityId())
+                .entityId(entityId)
                 .businessName(input.getBusinessName())
                 .authenticationType(toAuthenticationType(input.getAuthenticationType()))
                 .agentLinks(toAgentLinks(input.getAgentLinks()))
                 .messageUrl(input.getMessageUrl())
                 .authenticationUrl(input.getAuthenticationUrl())
                 .tokenSection(toTokenSection(input.getTokenSection()))
-                .messageTemplate(input.getMessageTemplate())
-                .whitelistRecipient(input.getWhitelistRecipient())
                 .idPsp(DEFAULT_ID_PSP)
-                .pspDenomination(input.getBusinessName())
+                .pspDenomination(input.getPspDenomination() != null ? input.getPspDenomination() : input.getBusinessName())
                 .legalAddress(DEFAULT_LEGAL_ADDRESS)
                 .contact(Contact.builder()
                         .name(DEFAULT_CONTACT_NAME)
@@ -64,17 +68,13 @@ public final class TppConnectorMapper {
     }
 
     /**
-     * Maps the API-layer {@link TppPatchDTOV1} to a connector-layer {@link TppPatchRequest},
-     * converting V1 types (enums, nested objects) to their connector-layer counterparts.
+     * Maps the API-layer {@link TppPatchDTOV1} to a connector-layer {@link TppPatchRequest}.
      * All fields may be null — the caller decides which fields to include.
      */
     public static TppPatchRequest toPatchRequest(TppPatchDTOV1 input) {
         if (input == null) return null;
         return TppPatchRequest.builder()
-                .entityId(input.getEntityId())
-                .idPsp(input.getIdPsp())
                 .businessName(input.getBusinessName())
-                .legalAddress(input.getLegalAddress())
                 .messageUrl(input.getMessageUrl())
                 .authenticationUrl(input.getAuthenticationUrl())
                 .authenticationType(toAuthenticationType(input.getAuthenticationType()))
@@ -82,9 +82,6 @@ public final class TppConnectorMapper {
                 .pspDenomination(input.getPspDenomination())
                 .agentLinks(input.getAgentLinks() == null ? null
                         : new java.util.HashMap<>(toAgentLinks(input.getAgentLinks())))
-                .isPaymentEnabled(input.getIsPaymentEnabled())
-                .messageTemplate(input.getMessageTemplate())
-                .whitelistRecipient(input.getWhitelistRecipient())
                 .build();
     }
 
@@ -144,23 +141,13 @@ public final class TppConnectorMapper {
      */
     public static TppResponseDTOV1 toTppResponseDTOV1(TppEntityIdResponse src) {
         return TppResponseDTOV1.builder()
-                .tppId(src.getTppId())
-                .entityId(src.getEntityId())
-                .idPsp(src.getIdPsp())
                 .businessName(src.getBusinessName())
-                .legalAddress(src.getLegalAddress())
                 .messageUrl(src.getMessageUrl())
                 .authenticationUrl(src.getAuthenticationUrl())
                 .authenticationType(toAuthenticationTypeV1(src.getAuthenticationType()))
                 .contact(toContactV1(src.getContact()))
-                .state(src.getState())
-                .creationDate(src.getCreationDate())
-                .lastUpdateDate(src.getLastUpdateDate())
                 .pspDenomination(src.getPspDenomination())
                 .agentLinks(toAgentLinksV1(src.getAgentLinks()))
-                .isPaymentEnabled(src.getIsPaymentEnabled())
-                .messageTemplate(src.getMessageTemplate())
-                .whitelistRecipient(src.getWhitelistRecipient())
                 .build();
     }
 

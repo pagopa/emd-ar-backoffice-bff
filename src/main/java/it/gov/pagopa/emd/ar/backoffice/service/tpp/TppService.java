@@ -1,7 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
@@ -14,10 +13,11 @@ public interface TppService {
      * Creates a new TPP by first saving it through the connector and then creating a
      * corresponding Keycloak client.
      *
-     * @param tppDTO the TPP data to create
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) injected by APIM
+     * @param tppDTO   the TPP data to create (body fields only — entityId comes separately)
      * @return {@code Mono<String>} containing the tppId of the created TPP, or an error
      */
-    Mono<String> createTppAndKeycloakClient(TppDTOV1 tppDTO);
+    Mono<String> createTppAndKeycloakClient(String entityId, TppDTOV1 tppDTO);
 
     /**
      * Looks up an existing TPP by its {@code entityId} (CF o P.IVA).

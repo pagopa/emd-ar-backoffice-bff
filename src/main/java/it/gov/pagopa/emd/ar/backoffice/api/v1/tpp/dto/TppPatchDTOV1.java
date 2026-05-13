@@ -10,14 +10,17 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.HashMap;
-import java.util.List;
 
 /**
  * API request DTO for {@code PATCH /tpp/{entityId}}.
  *
- * <p>Maps the upstream {@code TppDTOPatch}: only non-null fields present in the request
- * body will be applied to the existing TPP. All omitted or null fields are ignored by
- * the backend and will retain their current values in the database.</p>
+ * <p>Only non-null fields present in the request body will be applied to the existing TPP.
+ * All omitted or null fields are ignored by the backend and will retain their current
+ * values in the database.</p>
+ *
+ * <p>Intentionally limited: {@code entityId} (injected by APIM via path variable),
+ * {@code idPsp}, {@code legalAddress}, {@code isPaymentEnabled}, {@code messageTemplate}
+ * and {@code whitelistRecipient} are NOT exposed — they will be added in a future iteration.</p>
  */
 @Data
 @Builder
@@ -25,15 +28,7 @@ import java.util.List;
 @NoArgsConstructor
 public class TppPatchDTOV1 {
 
-    @Pattern(regexp = "^(\\d{11}|[A-Za-z0-9]{16})$",
-            message = "Entity ID must be 11 digits or up to 16 alphanumeric characters")
-    private String entityId;
-
-    private String idPsp;
-
     private String businessName;
-
-    private String legalAddress;
 
     @Pattern(regexp = "^(https?|ftp)://[^ /$.?#].[^ ]*$",
             message = "Message URL must be a valid URL")
@@ -50,11 +45,4 @@ public class TppPatchDTOV1 {
     private String pspDenomination;
 
     private HashMap<String, AgentLinkV1> agentLinks;
-
-    private Boolean isPaymentEnabled;
-
-    private String messageTemplate;
-
-    private List<String> whitelistRecipient;
 }
-

@@ -1,7 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
@@ -46,12 +45,12 @@ public class TppServiceImpl implements TppService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<String> createTppAndKeycloakClient(TppDTOV1 tppDTO) {
-        log.info("[AR-BFF][TPP_CREATE] Creating new TPP: {}", tppDTO.getBusinessName());
-        return tppConnector.saveTpp(TppConnectorMapper.toCreateRequest(tppDTO))
+    public Mono<String> createTppAndKeycloakClient(String entityId, TppDTOV1 tppDTO) {
+        log.info("[AR-BFF][TPP_CREATE] Creating new TPP for entityId={}: {}", entityId, tppDTO.getBusinessName());
+        return tppConnector.saveTpp(TppConnectorMapper.toCreateRequest(entityId, tppDTO))
                 .flatMap(tppId -> {
                     log.info("[AR-BFF][TPP_CREATE] TPP persisted with id={}. Creating Keycloak client.", tppId);
-                    return keycloakClientService.createKeycloakClient(tppId, tppDTO.getEntityId(), tppDTO.getBusinessName())
+                    return keycloakClientService.createKeycloakClient(tppId, entityId, tppDTO.getBusinessName())
                             .thenReturn(tppId)
                             .onErrorResume(ex -> compensateDelete(tppId, ex));
                 })
@@ -65,7 +64,7 @@ public class TppServiceImpl implements TppService {
         log.info("[AR-BFF][TPP_GET] Looking up TPP by entityId={}", entityId);
         return tppConnector.getTppByEntityId(entityId)
                 .map(TppConnectorMapper::toTppResponseDTOV1)
-                .doOnSuccess(r -> log.info("[AR-BFF][TPP_GET] Found TPP tppId={} for entityId={}", r.getTppId(), entityId))
+                .doOnSuccess(r -> log.info("[AR-BFF][TPP_GET] Found TPP for entityId={}", entityId))
                 .doOnError(e -> log.warn("[AR-BFF][TPP_GET] TPP not found for entityId={}: {}", entityId, e.getMessage()));
     }
 

@@ -24,19 +24,15 @@ public interface TppControllerV1 {
 
 
     /**
-     * Endpoint to save TPP information. Expects a valid TppDTOV1 payload in the request body.
-     * It will contact the TPP service to save the provided TPP information. Then it will create a new client
-     * in Keycloak with the TPP information. Finally it will return the tppId of the saved TPP as response.
+     * Endpoint to save TPP information. Expects a valid TppDTOV1 payload in the request body,
+     * including the mandatory {@code entityId} (CF/P.IVA of the organisation).
+     * It will contact the TPP service to save the provided TPP information, create a new Keycloak
+     * client, and return the tppId of the saved TPP.
      *
-     * <p>The {@code entityId} is injected by APIM from the JWT claim {@code orgFiscalCode} via
-     * URL-rewrite; the request body must NOT include it.</p>
-     *
-     * @param entityId the fiscal code (CF) or VAT number (P.IVA) injected by APIM
      * @return {@code Mono<ResponseEntity<TppIdResponseDTOV1>>} The tppId with status OK
      */
-    @PostMapping(value = "tpp/{entityId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "tpp", consumes = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TppIdResponseDTOV1>> saveTpp(
-            @PathVariable("entityId") String entityId,
             @Valid @RequestBody TppDTOV1 tppDTO);
 
     /**

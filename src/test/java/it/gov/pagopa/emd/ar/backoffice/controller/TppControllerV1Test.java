@@ -55,6 +55,7 @@ class TppControllerImplV1Test {
     void saveTpp_ShouldReturnTppId() {
         String entityId = "12345678901";
         TppDTOV1 dto = new TppDTOV1();
+        dto.setEntityId(entityId);
         dto.setBusinessName("Test Tpp Name");
         dto.setAuthenticationType(AuthenticationTypeV1.OAUTH2);
         dto.setAgentLinks(new HashMap<>());
@@ -65,7 +66,7 @@ class TppControllerImplV1Test {
                 .thenReturn(Mono.just(expectedTppId));
 
         webTestClient.post()
-                .uri("/emd/backoffice/api/v1/tpp/" + entityId)
+                .uri("/emd/backoffice/api/v1/tpp")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(dto)
                 .exchange()

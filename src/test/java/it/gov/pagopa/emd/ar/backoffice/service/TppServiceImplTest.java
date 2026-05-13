@@ -2,7 +2,10 @@ package it.gov.pagopa.emd.ar.backoffice.service;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
@@ -164,6 +167,91 @@ public class TppServiceImplTest {
         verify(tppConnector, times(1)).deleteTpp(savedTppId);
     }
 
+    // ── getTppByEntityId ───────────────────────────────────────────────────────
+
+    /**
+     * Happy path: il connector restituisce il payload completo della TPP e il service
+     * lo mappa correttamente nel {@link TppResponseDTOV1}.
+     */
+    @Test
+    void getTppByEntityId_Success_MapsAllFieldsToResponseDto() {
+        String entityId = "12345678901";
+        String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
+
+        TppEntityIdResponse connectorResponse = TppEntityIdResponse.builder()
+                .tppId(tppId)
+                .entityId(entityId)
+                .businessName("My TPP Srl")
+                .idPsp("PSP_001")
+                .legalAddress("Via Roma 1, 00100 Roma")
+                .authenticationType(it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AuthenticationType.OAUTH2)
+                .contact(new it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.Contact("Mario Rossi", "1234567890", "mario@tpp.it"))
+                .state(true)
+                .isPaymentEnabled(false)
+                .pspDenomination("My TPP Srl")
+                .build();
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(connectorResponse));
+
+        StepVerifier.create(tppService.getTppByEntityId(entityId))
+                .assertNext(dto -> {
+                    assertThat(dto.getTppId()).isEqualTo(tppId);
+                    assertThat(dto.getEntityId()).isEqualTo(entityId);
+                    assertThat(dto.getBusinessName()).isEqualTo("My TPP Srl");
+                    assertThat(dto.getIdPsp()).isEqualTo("PSP_001");
+                    assertThat(dto.getLegalAddress()).isEqualTo("Via Roma 1, 00100 Roma");
+                    assertThat(dto.getAuthenticationType()).isEqualTo(AuthenticationTypeV1.OAUTH2);
+                    assertThat(dto.getContact()).isNotNull();
+                    assertThat(dto.getContact().getName()).isEqualTo("Mario Rossi");
+                    assertThat(dto.getContact().getEmail()).isEqualTo("mario@tpp.it");
+                    assertThat(dto.getState()).isTrue();
+                    assertThat(dto.getIsPaymentEnabled()).isFalse();
+                })
+                .verifyComplete();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+        verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
+    }
+
+    /**
+     * TPP non trovata: il connector emette {@link ResourceNotFoundException}
+     * che si propaga invariata verso il chiamante.
+     */
+    @Test
+    void getTppByEntityId_NotFound_PropagatesResourceNotFoundException() {
+        String entityId = "99999999999";
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
+
+        StepVerifier.create(tppService.getTppByEntityId(entityId))
+                .expectErrorMatches(ex -> ex instanceof ResourceNotFoundException
+                        && ex.getMessage().contains(entityId))
+                .verify();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+    }
+
+    /**
+     * Errore generico sul connector (es. 502): viene propagato come
+     * {@link ExternalServiceException}.
+     */
+    @Test
+    void getTppByEntityId_ConnectorFails_PropagatesExternalServiceException() {
+        String entityId = "12345678901";
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "getTppByEntityId", "upstream error")));
+
+        StepVerifier.create(tppService.getTppByEntityId(entityId))
+                .expectErrorMatches(ex -> ex instanceof ExternalServiceException
+                        && ex.getMessage().contains("TPP_SERVICE"))
+                .verify();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+    }
+
     // ── deleteTppAndKeycloakClient ─────────────────────────────────────────────
 
     /**
@@ -175,7 +263,7 @@ public class TppServiceImplTest {
         String entityId = "12345678901";
         String tppId    = "tpp-to-delete";
 
-        when(tppConnector.getTppByEntityId(entityId)).thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+        when(tppConnector.getTppByEntityId(entityId)).thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(keycloakClientService.deleteKeycloakClient(tppId)).thenReturn(Mono.empty());
         when(tppConnector.deleteTpp(tppId)).thenReturn(Mono.empty());
 
@@ -216,7 +304,7 @@ public class TppServiceImplTest {
         String entityId = "12345678901";
         String tppId    = "tpp-kc-fail";
 
-        when(tppConnector.getTppByEntityId(entityId)).thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+        when(tppConnector.getTppByEntityId(entityId)).thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(keycloakClientService.deleteKeycloakClient(tppId))
                 .thenReturn(Mono.error(new RuntimeException("Keycloak delete failed")));
 
@@ -237,7 +325,7 @@ public class TppServiceImplTest {
         String entityId = "12345678901";
         String tppId    = "tpp-connector-fail";
 
-        when(tppConnector.getTppByEntityId(entityId)).thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+        when(tppConnector.getTppByEntityId(entityId)).thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(keycloakClientService.deleteKeycloakClient(tppId)).thenReturn(Mono.empty());
         when(tppConnector.deleteTpp(tppId))
                 .thenReturn(Mono.error(new RuntimeException("TPP service unavailable")));
@@ -265,7 +353,7 @@ public class TppServiceImplTest {
         TppPagopaCredentialsDTOV1 expected = new TppPagopaCredentialsDTOV1(tppId, secret, "client_credentials");
 
         when(tppConnector.getTppByEntityId(entityId))
-                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(keycloakClientService.getPagopaClientCredentials(tppId))
                 .thenReturn(Mono.just(expected));
 
@@ -310,7 +398,7 @@ public class TppServiceImplTest {
         String tppId    = "tpp-orphan";
 
         when(tppConnector.getTppByEntityId(entityId))
-                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(keycloakClientService.getPagopaClientCredentials(tppId))
                 .thenReturn(Mono.error(new ResourceNotFoundException("Keycloak client", tppId)));
 
@@ -332,7 +420,7 @@ public class TppServiceImplTest {
         String tppId    = "tpp-kc-down";
 
         when(tppConnector.getTppByEntityId(entityId))
-                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(keycloakClientService.getPagopaClientCredentials(tppId))
                 .thenReturn(Mono.error(new ExternalServiceException("KEYCLOAK", "fetchClientSecret", "timeout")));
 
@@ -356,7 +444,7 @@ public class TppServiceImplTest {
         TppPagopaCredentialsDTOV1 credentials = new TppPagopaCredentialsDTOV1(tppId, "secret", "client_credentials");
 
         when(tppConnector.getTppByEntityId(entityId))
-                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(keycloakClientService.getPagopaClientCredentials(tppId))
                 .thenReturn(Mono.just(credentials));
 
@@ -385,7 +473,7 @@ public class TppServiceImplTest {
                 Map.of("client_secret", "s3cr3t"));
 
         when(tppConnector.getTppByEntityId(entityId))
-                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(tppConnector.getTppToken(tppId))
                 .thenReturn(Mono.just(tokenSection));
 
@@ -433,7 +521,7 @@ public class TppServiceImplTest {
         String tppId    = "tpp-token-fail";
 
         when(tppConnector.getTppByEntityId(entityId))
-                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(tppConnector.getTppToken(tppId))
                 .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "getTppToken", "upstream error")));
 
@@ -457,7 +545,7 @@ public class TppServiceImplTest {
         TokenSection tokenSection = new TokenSection("application/json", null, null);
 
         when(tppConnector.getTppByEntityId(entityId))
-                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(tppConnector.getTppToken(tppId))
                 .thenReturn(Mono.just(tokenSection));
 
@@ -489,7 +577,7 @@ public class TppServiceImplTest {
                 Map.of("client_secret", "nuovo-secret"));
 
         when(tppConnector.getTppByEntityId(entityId))
-                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(tppConnector.updateTppToken(eq(tppId), any(TokenSection.class)))
                 .thenReturn(Mono.just(updatedSection));
 
@@ -537,7 +625,7 @@ public class TppServiceImplTest {
         TokenSectionDTOV1 dto = new TokenSectionDTOV1("application/json", null, null);
 
         when(tppConnector.getTppByEntityId(entityId))
-                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(tppConnector.updateTppToken(eq(tppId), any(TokenSection.class)))
                 .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "updateTppToken", "upstream error")));
 
@@ -563,7 +651,7 @@ public class TppServiceImplTest {
         TokenSectionDTOV1 dto = new TokenSectionDTOV1("application/x-www-form-urlencoded", path, body);
 
         when(tppConnector.getTppByEntityId(entityId))
-                .thenReturn(Mono.just(new TppEntityIdResponse(tppId)));
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
         when(tppConnector.updateTppToken(eq(tppId), any(TokenSection.class)))
                 .thenAnswer(inv -> {
                     TokenSection sent = inv.getArgument(1);

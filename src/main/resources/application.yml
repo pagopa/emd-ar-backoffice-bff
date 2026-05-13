@@ -9,12 +9,6 @@ spring:
   threads:
     virtual:
       enabled: true
-  jackson:
-    deserialization:
-      # Reject unknown fields in incoming request bodies (returns 400).
-      # Connector response DTOs that may receive extra upstream fields
-      # are individually annotated with @JsonIgnoreProperties(ignoreUnknown = true).
-      fail-on-unknown-properties: true
 
 management:
   info:

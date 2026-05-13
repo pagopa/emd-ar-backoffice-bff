@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
@@ -134,6 +135,21 @@ public class TppServiceImpl implements TppService {
                         ts.getBodyAdditionalProperties()))
                 .doOnSuccess(dto -> log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Token-section credentials updated for entityId={}", entityId))
                 .doOnError(e -> log.error("[AR-BFF][TPP_CREDENTIALS_UPDATE] Failed to update token-section credentials for entityId={}: {}", entityId, e.getMessage()));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<TppResponseDTOV1> patchTpp(String entityId, TppPatchDTOV1 patchDTO) {
+        log.info("[AR-BFF][TPP_PATCH] Patching TPP for entityId={}", entityId);
+        return tppConnector.getTppByEntityId(entityId)
+                .flatMap(response -> {
+                    String tppId = response.getTppId();
+                    log.info("[AR-BFF][TPP_PATCH] Resolved tppId={} for entityId={}", tppId, entityId);
+                    return tppConnector.patchTpp(tppId, TppConnectorMapper.toPatchRequest(patchDTO));
+                })
+                .map(TppConnectorMapper::toTppResponseDTOV1)
+                .doOnSuccess(r -> log.info("[AR-BFF][TPP_PATCH] TPP patched successfully for entityId={}", entityId))
+                .doOnError(e -> log.error("[AR-BFF][TPP_PATCH] Failed to patch TPP for entityId={}: {}", entityId, e.getMessage()));
     }
 
     /**

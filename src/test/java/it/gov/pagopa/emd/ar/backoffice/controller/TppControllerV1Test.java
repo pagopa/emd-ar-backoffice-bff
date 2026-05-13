@@ -4,6 +4,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller.TppControllerImplV1
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
@@ -343,6 +344,91 @@ class TppControllerImplV1Test {
                 .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    // ── patchTpp ──────────────────────────────────────────────────────────────
+
+    /**
+     * PATCH /emd/backoffice/api/v1/tpp/{entityId} — happy path → 200 OK con
+     * la rappresentazione completa della TPP aggiornata.
+     */
+    @Test
+    void patchTpp_Success_Returns200WithUpdatedTpp() {
+        String entityId = "12345678901";
+        String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
+
+        TppPatchDTOV1 patchBody = TppPatchDTOV1.builder()
+                .messageUrl("https://api.acme.com/v2/messages")
+                .contact(new ContactV1("Luigi Bianchi", "0612345678", "nuovo-tech@acme.com"))
+                .build();
+
+        TppResponseDTOV1 updatedResponse = TppResponseDTOV1.builder()
+                .tppId(tppId)
+                .entityId(entityId)
+                .businessName("Acme TPP S.p.A.")
+                .messageUrl("https://api.acme.com/v2/messages")
+                .contact(new ContactV1("Luigi Bianchi", "0612345678", "nuovo-tech@acme.com"))
+                .state(true)
+                .isPaymentEnabled(true)
+                .build();
+
+        when(tppService.patchTpp(eq(entityId), any(TppPatchDTOV1.class)))
+                .thenReturn(Mono.just(updatedResponse));
+
+        webTestClient.patch()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(patchBody)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo(tppId)
+                .jsonPath("$.entityId").isEqualTo(entityId)
+                .jsonPath("$.businessName").isEqualTo("Acme TPP S.p.A.")
+                .jsonPath("$.messageUrl").isEqualTo("https://api.acme.com/v2/messages")
+                .jsonPath("$.contact.name").isEqualTo("Luigi Bianchi")
+                .jsonPath("$.contact.email").isEqualTo("nuovo-tech@acme.com")
+                .jsonPath("$.state").isEqualTo(true)
+                .jsonPath("$.isPaymentEnabled").isEqualTo(true);
+    }
+
+    /**
+     * PATCH .../tpp/{entityId} — TPP non trovata su emd-tpp → errore propagato.
+     */
+    @Test
+    void patchTpp_TppNotFound_PropagatesError() {
+        String entityId = "99999999999";
+        TppPatchDTOV1 patchBody = TppPatchDTOV1.builder().businessName("New Name").build();
+
+        when(tppService.patchTpp(eq(entityId), any(TppPatchDTOV1.class)))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
+
+        webTestClient.patch()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(patchBody)
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    /**
+     * PATCH .../tpp/{entityId} — emd-tpp non raggiungibile → {@link ExternalServiceException} propagata.
+     */
+    @Test
+    void patchTpp_ServiceUnavailable_PropagatesError() {
+        String entityId = "12345678901";
+        TppPatchDTOV1 patchBody = TppPatchDTOV1.builder().businessName("New Name").build();
+
+        when(tppService.patchTpp(eq(entityId), any(TppPatchDTOV1.class)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "patchTpp", "timeout")));
+
+        webTestClient.patch()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(patchBody)
                 .exchange()
                 .expectStatus().is5xxServerError();
     }

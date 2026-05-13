@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.service;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
@@ -10,6 +11,7 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
@@ -665,5 +667,153 @@ public class TppServiceImplTest {
         StepVerifier.create(tppService.updateTppCredentials(entityId, dto))
                 .assertNext(result -> assertThat(result.getContentType()).isEqualTo("application/x-www-form-urlencoded"))
                 .verifyComplete();
+    }
+
+    // ── patchTpp ───────────────────────────────────────────────────────────────
+
+    /**
+     * Happy path: il connector risolve il tppId dall'entityId, poi invia il PATCH
+     * a emd-tpp e restituisce la TPP completa aggiornata mappata in {@link TppResponseDTOV1}.
+     * Keycloak non viene mai coinvolto.
+     */
+    @Test
+    void patchTpp_Success_ResolvesEntityIdThenPatchesAndReturnsFullDto() {
+        String entityId = "12345678901";
+        String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
+
+        TppPatchDTOV1 patchDTO = TppPatchDTOV1.builder()
+                .messageUrl("https://api.acme.com/v2/messages")
+                .businessName("Acme TPP S.p.A.")
+                .build();
+
+        TppEntityIdResponse updatedConnectorResponse = TppEntityIdResponse.builder()
+                .tppId(tppId)
+                .entityId(entityId)
+                .businessName("Acme TPP S.p.A.")
+                .messageUrl("https://api.acme.com/v2/messages")
+                .state(true)
+                .isPaymentEnabled(false)
+                .build();
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
+        when(tppConnector.patchTpp(eq(tppId), any(TppPatchRequest.class)))
+                .thenReturn(Mono.just(updatedConnectorResponse));
+
+        StepVerifier.create(tppService.patchTpp(entityId, patchDTO))
+                .assertNext(dto -> {
+                    assertThat(dto.getTppId()).isEqualTo(tppId);
+                    assertThat(dto.getEntityId()).isEqualTo(entityId);
+                    assertThat(dto.getBusinessName()).isEqualTo("Acme TPP S.p.A.");
+                    assertThat(dto.getMessageUrl()).isEqualTo("https://api.acme.com/v2/messages");
+                    assertThat(dto.getState()).isTrue();
+                })
+                .verifyComplete();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+        verify(tppConnector, times(1)).patchTpp(eq(tppId), any(TppPatchRequest.class));
+        verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
+    }
+
+    /**
+     * Il mapper trasporta correttamente i campi non-null del DTO nel {@link TppPatchRequest}
+     * inviato al connector. I campi null devono restare null (semantica PATCH).
+     */
+    @Test
+    void patchTpp_MapsOnlyNonNullFieldsToConnectorRequest() {
+        String entityId = "12345678901";
+        String tppId    = "tpp-patch-map";
+
+        TppPatchDTOV1 patchDTO = TppPatchDTOV1.builder()
+                .businessName("New Name")
+                .messageUrl("https://new.url/messages")
+                .build();
+
+        TppEntityIdResponse updatedResponse = TppEntityIdResponse.builder()
+                .tppId(tppId).entityId(entityId).businessName("New Name").build();
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
+        when(tppConnector.patchTpp(eq(tppId), any(TppPatchRequest.class)))
+                .thenAnswer(inv -> {
+                    TppPatchRequest req = inv.getArgument(1);
+                    assertThat(req.getBusinessName()).isEqualTo("New Name");
+                    assertThat(req.getMessageUrl()).isEqualTo("https://new.url/messages");
+                    assertThat(req.getIdPsp()).isNull();
+                    assertThat(req.getLegalAddress()).isNull();
+                    assertThat(req.getContact()).isNull();
+                    return Mono.just(updatedResponse);
+                });
+
+        StepVerifier.create(tppService.patchTpp(entityId, patchDTO))
+                .assertNext(dto -> assertThat(dto.getBusinessName()).isEqualTo("New Name"))
+                .verifyComplete();
+    }
+
+    /**
+     * TPP non trovata al momento della risoluzione entityId → tppId:
+     * il PATCH a emd-tpp NON deve essere chiamato.
+     */
+    @Test
+    void patchTpp_TppNotFound_PropagatesResourceNotFoundException_PatchNeverCalled() {
+        String entityId = "99999999999";
+        TppPatchDTOV1 patchDTO = TppPatchDTOV1.builder().businessName("Any").build();
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
+
+        StepVerifier.create(tppService.patchTpp(entityId, patchDTO))
+                .expectErrorMatches(ex -> ex instanceof ResourceNotFoundException
+                        && ex.getMessage().contains(entityId))
+                .verify();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+        verify(tppConnector, never()).patchTpp(anyString(), any());
+    }
+
+    /**
+     * emd-tpp non raggiungibile durante il PATCH: {@link ExternalServiceException} propagata.
+     */
+    @Test
+    void patchTpp_ConnectorPatchFails_PropagatesExternalServiceException() {
+        String entityId = "12345678901";
+        String tppId    = "tpp-patch-fail";
+        TppPatchDTOV1 patchDTO = TppPatchDTOV1.builder().businessName("Any").build();
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
+        when(tppConnector.patchTpp(eq(tppId), any(TppPatchRequest.class)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "patchTpp", "upstream error")));
+
+        StepVerifier.create(tppService.patchTpp(entityId, patchDTO))
+                .expectErrorMatches(ex -> ex instanceof ExternalServiceException
+                        && ex.getMessage().contains("TPP_SERVICE"))
+                .verify();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+        verify(tppConnector, times(1)).patchTpp(eq(tppId), any(TppPatchRequest.class));
+    }
+
+    /**
+     * Keycloak NON deve essere mai chiamato nel flusso {@code patchTpp}.
+     */
+    @Test
+    void patchTpp_NeverInteractsWithKeycloak() {
+        String entityId = "12345678901";
+        String tppId    = "tpp-patch-no-kc";
+        TppPatchDTOV1 patchDTO = TppPatchDTOV1.builder().businessName("Any").build();
+        TppEntityIdResponse updatedResponse = TppEntityIdResponse.builder()
+                .tppId(tppId).entityId(entityId).build();
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(TppEntityIdResponse.builder().tppId(tppId).build()));
+        when(tppConnector.patchTpp(eq(tppId), any(TppPatchRequest.class)))
+                .thenReturn(Mono.just(updatedResponse));
+
+        tppService.patchTpp(entityId, patchDTO).block();
+
+        verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
+        verify(keycloakClientService, never()).createKeycloakClient(anyString(), any(), any());
+        verify(keycloakClientService, never()).deleteKeycloakClient(anyString());
     }
 }

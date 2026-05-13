@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
@@ -67,6 +68,14 @@ public class TppControllerImplV1 implements TppControllerV1 {
         log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Updating token-section credentials for entityId={}", entityId);
         // Privacy: tokenSectionDTO is NOT logged — may contain client_secret
         return tppService.updateTppCredentials(entityId, tokenSectionDTO)
+                .map(ResponseEntity::ok);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<TppResponseDTOV1>> patchTpp(String entityId, TppPatchDTOV1 patchDTO) {
+        log.info("[AR-BFF][TPP_PATCH] Patching TPP for entityId={}", entityId);
+        return tppService.patchTpp(entityId, patchDTO)
                 .map(ResponseEntity::ok);
     }
 }

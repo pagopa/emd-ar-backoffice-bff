@@ -201,6 +201,7 @@ public class TppServiceImplTest {
 
         StepVerifier.create(tppService.getTppByEntityId(entityId))
                 .assertNext(dto -> {
+                    assertThat(dto.getTppId()).isEqualTo(tppId);
                     assertThat(dto.getBusinessName()).isEqualTo("My TPP Srl");
                     assertThat(dto.getAuthenticationType()).isEqualTo(AuthenticationTypeV1.OAUTH2);
                     assertThat(dto.getContact()).isNotNull();
@@ -699,6 +700,7 @@ public class TppServiceImplTest {
 
         StepVerifier.create(tppService.patchTpp(entityId, patchDTO))
                 .assertNext(dto -> {
+                    assertThat(dto.getTppId()).isEqualTo(tppId);
                     assertThat(dto.getBusinessName()).isEqualTo("Acme TPP S.p.A.");
                     assertThat(dto.getMessageUrl()).isEqualTo("https://api.acme.com/v2/messages");
                 })

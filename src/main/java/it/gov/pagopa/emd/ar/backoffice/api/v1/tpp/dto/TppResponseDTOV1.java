@@ -14,8 +14,8 @@ import java.util.Map;
  * API response DTO for {@code GET /tpp/{entityId}}, {@code POST /tpp/{entityId}}
  * and {@code PATCH /tpp/{entityId}}.
  *
- * <p>Contains only the fields exposed to the frontend. Internal/server-managed fields
- * (tppId, entityId, idPsp, legalAddress, state, creationDate, lastUpdateDate,
+ * <p>Contains only the fields exposed to the frontend. Server-managed fields
+ * (entityId, idPsp, legalAddress, state, creationDate, lastUpdateDate,
  * isPaymentEnabled, messageTemplate, whitelistRecipient) are intentionally omitted.</p>
  */
 @Data
@@ -24,6 +24,7 @@ import java.util.Map;
 @NoArgsConstructor
 public class TppResponseDTOV1 {
 
+    private String tppId;
     private String businessName;
     private String messageUrl;
     private String authenticationUrl;

@@ -141,6 +141,7 @@ public final class TppConnectorMapper {
      */
     public static TppResponseDTOV1 toTppResponseDTOV1(TppEntityIdResponse src) {
         return TppResponseDTOV1.builder()
+                .tppId(src.getTppId())
                 .businessName(src.getBusinessName())
                 .messageUrl(src.getMessageUrl())
                 .authenticationUrl(src.getAuthenticationUrl())

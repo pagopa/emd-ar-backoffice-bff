@@ -82,6 +82,7 @@ class TppControllerImplV1Test {
         String entityId = "12345678901";
 
         TppResponseDTOV1 response = TppResponseDTOV1.builder()
+                .tppId("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
                 .businessName("My TPP Srl")
                 .authenticationType(AuthenticationTypeV1.OAUTH2)
                 .contact(new ContactV1("Mario Rossi", "1234567890", "mario@tpp.it"))
@@ -96,6 +97,7 @@ class TppControllerImplV1Test {
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
                 .expectBody()
+                .jsonPath("$.tppId").isEqualTo("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
                 .jsonPath("$.businessName").isEqualTo("My TPP Srl")
                 .jsonPath("$.authenticationType").isEqualTo("OAUTH2")
                 .jsonPath("$.contact.name").isEqualTo("Mario Rossi")
@@ -351,6 +353,7 @@ class TppControllerImplV1Test {
                 .build();
 
         TppResponseDTOV1 updatedResponse = TppResponseDTOV1.builder()
+                .tppId("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
                 .businessName("Acme TPP S.p.A.")
                 .messageUrl("https://api.acme.com/v2/messages")
                 .contact(new ContactV1("Luigi Bianchi", "0612345678", "nuovo-tech@acme.com"))
@@ -367,6 +370,7 @@ class TppControllerImplV1Test {
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
                 .expectBody()
+                .jsonPath("$.tppId").isEqualTo("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
                 .jsonPath("$.businessName").isEqualTo("Acme TPP S.p.A.")
                 .jsonPath("$.messageUrl").isEqualTo("https://api.acme.com/v2/messages")
                 .jsonPath("$.contact.name").isEqualTo("Luigi Bianchi")

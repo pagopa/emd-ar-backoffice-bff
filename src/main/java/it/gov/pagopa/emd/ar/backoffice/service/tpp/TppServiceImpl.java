@@ -1,8 +1,8 @@
 package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
@@ -45,16 +45,18 @@ public class TppServiceImpl implements TppService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<String> createTppAndKeycloakClient(TppDTOV1 tppDTO) {
-        log.info("[AR-BFF][TPP_CREATE] Creating new TPP: {}", tppDTO.getBusinessName());
-        return tppConnector.saveTpp(TppConnectorMapper.toCreateRequest(tppDTO))
-                .flatMap(tppId -> {
+    public Mono<TppResponseDTOV1> createTppAndKeycloakClient(String entityId, TppDTOV1 tppDTO) {
+        log.info("[AR-BFF][TPP_CREATE] Creating new TPP for entityId={}: {}", entityId, tppDTO.getBusinessName());
+        return tppConnector.saveTpp(TppConnectorMapper.toCreateRequest(entityId, tppDTO))
+                .flatMap(tppResponse -> {
+                    String tppId = tppResponse.getTppId();
                     log.info("[AR-BFF][TPP_CREATE] TPP persisted with id={}. Creating Keycloak client.", tppId);
-                    return keycloakClientService.createKeycloakClient(tppId, tppDTO.getEntityId(), tppDTO.getBusinessName())
-                            .thenReturn(tppId)
-                            .onErrorResume(ex -> compensateDelete(tppId, ex));
+                    return keycloakClientService.createKeycloakClient(tppId, entityId, tppDTO.getBusinessName())
+                            .onErrorResume(ex -> compensateDelete(tppId, ex))
+                            .thenReturn(tppResponse);
                 })
-                .doOnSuccess(tppId -> log.info("[AR-BFF][TPP_CREATE] TPP creation completed. id={}", tppId))
+                .map(TppConnectorMapper::toTppResponseDTOV1)
+                .doOnSuccess(r -> log.info("[AR-BFF][TPP_CREATE] TPP creation completed. tppId={}", r.getTppId()))
                 .doOnError(e -> log.error("[AR-BFF][TPP_CREATE] Error during TPP creation: {}", e.getMessage()));
     }
 
@@ -64,7 +66,7 @@ public class TppServiceImpl implements TppService {
         log.info("[AR-BFF][TPP_GET] Looking up TPP by entityId={}", entityId);
         return tppConnector.getTppByEntityId(entityId)
                 .map(TppConnectorMapper::toTppResponseDTOV1)
-                .doOnSuccess(r -> log.info("[AR-BFF][TPP_GET] Found TPP tppId={} for entityId={}", r.getTppId(), entityId))
+                .doOnSuccess(r -> log.info("[AR-BFF][TPP_GET] Found TPP for entityId={}", entityId))
                 .doOnError(e -> log.warn("[AR-BFF][TPP_GET] TPP not found for entityId={}: {}", entityId, e.getMessage()));
     }
 
@@ -134,6 +136,21 @@ public class TppServiceImpl implements TppService {
                         ts.getBodyAdditionalProperties()))
                 .doOnSuccess(dto -> log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Token-section credentials updated for entityId={}", entityId))
                 .doOnError(e -> log.error("[AR-BFF][TPP_CREDENTIALS_UPDATE] Failed to update token-section credentials for entityId={}: {}", entityId, e.getMessage()));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<TppResponseDTOV1> patchTpp(String entityId, TppPatchDTOV1 patchDTO) {
+        log.info("[AR-BFF][TPP_PATCH] Patching TPP for entityId={}", entityId);
+        return tppConnector.getTppByEntityId(entityId)
+                .flatMap(response -> {
+                    String tppId = response.getTppId();
+                    log.info("[AR-BFF][TPP_PATCH] Resolved tppId={} for entityId={}", tppId, entityId);
+                    return tppConnector.patchTpp(tppId, TppConnectorMapper.toPatchRequest(patchDTO));
+                })
+                .map(TppConnectorMapper::toTppResponseDTOV1)
+                .doOnSuccess(r -> log.info("[AR-BFF][TPP_PATCH] TPP patched successfully for entityId={}", entityId))
+                .doOnError(e -> log.error("[AR-BFF][TPP_PATCH] Failed to patch TPP for entityId={}: {}", entityId, e.getMessage()));
     }
 
     /**

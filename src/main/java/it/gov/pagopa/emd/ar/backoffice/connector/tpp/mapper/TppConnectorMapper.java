@@ -1,6 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
@@ -13,6 +14,7 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.Contact;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.VersionDetails;
 
 import java.util.Map;
@@ -37,19 +39,23 @@ public final class TppConnectorMapper {
 
     private TppConnectorMapper() {}
 
-    public static TppCreateRequest toCreateRequest(TppDTOV1 input) {
+    /**
+     * Maps the API-layer {@link TppDTOV1} to a connector-layer {@link TppCreateRequest}.
+     *
+     * @param entityId the entity identifier injected by APIM (from JWT claim {@code orgFiscalCode})
+     * @param input    the POST request body
+     */
+    public static TppCreateRequest toCreateRequest(String entityId, TppDTOV1 input) {
         return TppCreateRequest.builder()
-                .entityId(input.getEntityId())
+                .entityId(entityId)
                 .businessName(input.getBusinessName())
                 .authenticationType(toAuthenticationType(input.getAuthenticationType()))
                 .agentLinks(toAgentLinks(input.getAgentLinks()))
                 .messageUrl(input.getMessageUrl())
                 .authenticationUrl(input.getAuthenticationUrl())
                 .tokenSection(toTokenSection(input.getTokenSection()))
-                .messageTemplate(input.getMessageTemplate())
-                .whitelistRecipient(input.getWhitelistRecipient())
                 .idPsp(DEFAULT_ID_PSP)
-                .pspDenomination(input.getBusinessName())
+                .pspDenomination(input.getPspDenomination() != null ? input.getPspDenomination() : input.getBusinessName())
                 .legalAddress(DEFAULT_LEGAL_ADDRESS)
                 .contact(Contact.builder()
                         .name(DEFAULT_CONTACT_NAME)
@@ -58,6 +64,33 @@ public final class TppConnectorMapper {
                         .build())
                 .state(false)
                 .isPaymentEnabled(false)
+                .build();
+    }
+
+    /**
+     * Maps the API-layer {@link TppPatchDTOV1} to a connector-layer {@link TppPatchRequest}.
+     * All fields may be null — the caller decides which fields to include.
+     */
+    public static TppPatchRequest toPatchRequest(TppPatchDTOV1 input) {
+        if (input == null) return null;
+        return TppPatchRequest.builder()
+                .businessName(input.getBusinessName())
+                .messageUrl(input.getMessageUrl())
+                .authenticationUrl(input.getAuthenticationUrl())
+                .authenticationType(toAuthenticationType(input.getAuthenticationType()))
+                .contact(toContact(input.getContact()))
+                .pspDenomination(input.getPspDenomination())
+                .agentLinks(input.getAgentLinks() == null ? null
+                        : new java.util.HashMap<>(toAgentLinks(input.getAgentLinks())))
+                .build();
+    }
+
+    private static Contact toContact(it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1 v1) {
+        if (v1 == null) return null;
+        return Contact.builder()
+                .name(v1.getName())
+                .number(v1.getNumber())
+                .email(v1.getEmail())
                 .build();
     }
 
@@ -109,22 +142,13 @@ public final class TppConnectorMapper {
     public static TppResponseDTOV1 toTppResponseDTOV1(TppEntityIdResponse src) {
         return TppResponseDTOV1.builder()
                 .tppId(src.getTppId())
-                .entityId(src.getEntityId())
-                .idPsp(src.getIdPsp())
                 .businessName(src.getBusinessName())
-                .legalAddress(src.getLegalAddress())
                 .messageUrl(src.getMessageUrl())
                 .authenticationUrl(src.getAuthenticationUrl())
                 .authenticationType(toAuthenticationTypeV1(src.getAuthenticationType()))
                 .contact(toContactV1(src.getContact()))
-                .state(src.getState())
-                .creationDate(src.getCreationDate())
-                .lastUpdateDate(src.getLastUpdateDate())
                 .pspDenomination(src.getPspDenomination())
                 .agentLinks(toAgentLinksV1(src.getAgentLinks()))
-                .isPaymentEnabled(src.getIsPaymentEnabled())
-                .messageTemplate(src.getMessageTemplate())
-                .whitelistRecipient(src.getWhitelistRecipient())
                 .build();
     }
 

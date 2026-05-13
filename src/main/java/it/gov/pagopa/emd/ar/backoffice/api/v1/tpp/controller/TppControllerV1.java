@@ -4,14 +4,15 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import jakarta.validation.Valid;
@@ -26,10 +27,16 @@ public interface TppControllerV1 {
      * It will contact the TPP service to save the provided TPP information. Then it will create a new client
      * in Keycloak with the TPP information. Finally it will return the tppId of the saved TPP as response.
      *
-     * @return {@code Mono<ResponseEntity<TppIdResponseDTOV1>>} The tppId with status OK
+     * <p>The {@code entityId} is injected by APIM from the JWT claim {@code orgFiscalCode} via
+     * URL-rewrite; the request body must NOT include it.</p>
+     *
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) injected by APIM
+     * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} The full TPP representation with status OK
      */
-    @PostMapping(value = "tpp")
-    Mono<ResponseEntity<TppIdResponseDTOV1>> saveTpp(@Valid @RequestBody TppDTOV1 tppDTO);
+    @PostMapping(value = "tpp/{entityId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<TppResponseDTOV1>> saveTpp(
+            @PathVariable("entityId") String entityId,
+            @Valid @RequestBody TppDTOV1 tppDTO);
 
     /**
      * Checks whether a TPP with the given {@code entityId} (CF or P.IVA) already exists
@@ -112,4 +119,27 @@ public interface TppControllerV1 {
     Mono<ResponseEntity<TokenSectionDTOV1>> updateTppCredentials(
             @PathVariable("entityId") String entityId,
             @Valid @RequestBody TokenSectionDTOV1 tokenSectionDTO);
+
+    /**
+     * Partially updates the TPP identified by {@code entityId} (CF o P.IVA).
+     *
+     * <p>The APIM extracts the {@code entityId} from the JWT claim {@code orgFiscalCode}
+     * and rewrites the URL to include it as a path variable before forwarding to this BFF
+     * endpoint. The BFF resolves the corresponding {@code tppId} and delegates the patch
+     * to emd-tpp via {@code PATCH /emd/tpp/{tppId}}.</p>
+     *
+     * <p>Only non-null fields in the request body are applied; all others retain their
+     * current values in the database.</p>
+     *
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) injected by APIM
+     * @param patchDTO the partial update payload
+     * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} HTTP 200 with the full updated TPP,
+     *         404 if no TPP is found, 502 if emd-tpp is unreachable
+     */
+    @PatchMapping(value = "tpp/{entityId}",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<TppResponseDTOV1>> patchTpp(
+            @PathVariable("entityId") String entityId,
+            @Valid @RequestBody TppPatchDTOV1 patchDTO);
 }

@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
 import reactor.core.publisher.Mono;
 
 /**
@@ -14,9 +15,10 @@ public interface TppConnector {
      * Saves TPP data by sending a POST request to the remote emd-tpp service.
      *
      * @param request the outbound payload (already enriched with defaults)
-     * @return {@code Mono<String>} containing the tppId of the saved TPP or an error if the operation fails
+     * @return {@code Mono<TppEntityIdResponse>} containing the full TPP representation returned by
+     *         the upstream service, or an error if the operation fails
      */
-    Mono<String> saveTpp(TppCreateRequest request);
+    Mono<TppEntityIdResponse> saveTpp(TppCreateRequest request);
 
     /**
      * Deletes a previously saved TPP by its identifier.
@@ -66,4 +68,21 @@ public interface TppConnector {
      *         others → {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException})
      */
     Mono<TokenSection> updateTppToken(String tppId, TokenSection tokenSection);
+
+    /**
+     * Partially updates the TPP identified by {@code tppId} by sending a
+     * {@code PATCH /emd/tpp/{tppId}} request to the emd-tpp service.
+     *
+     * <p>Only the non-null fields in {@code patchRequest} are serialized and applied;
+     * all omitted fields retain their existing values in the database.</p>
+     *
+     * @param tppId        the identifier of the TPP to patch
+     * @param patchRequest the partial update payload
+     * @return {@code Mono<TppEntityIdResponse>} with the full, updated TPP representation,
+     *         or a {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException}
+     *         if no TPP exists for that {@code tppId} (upstream 404), or an
+     *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException}
+     *         for any other upstream error
+     */
+    Mono<TppEntityIdResponse> patchTpp(String tppId, TppPatchRequest patchRequest);
 }

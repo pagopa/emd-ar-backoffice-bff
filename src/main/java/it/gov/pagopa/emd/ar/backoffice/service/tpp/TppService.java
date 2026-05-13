@@ -1,8 +1,8 @@
 package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import reactor.core.publisher.Mono;
@@ -13,10 +13,12 @@ public interface TppService {
      * Creates a new TPP by first saving it through the connector and then creating a
      * corresponding Keycloak client.
      *
-     * @param tppDTO the TPP data to create
-     * @return {@code Mono<String>} containing the tppId of the created TPP, or an error
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) injected by APIM
+     * @param tppDTO   the TPP data to create (body fields only — entityId comes separately)
+     * @return {@code Mono<TppResponseDTOV1>} with the full representation of the created TPP,
+     *         matching the same format returned by GET and PATCH
      */
-    Mono<String> createTppAndKeycloakClient(TppDTOV1 tppDTO);
+    Mono<TppResponseDTOV1> createTppAndKeycloakClient(String entityId, TppDTOV1 tppDTO);
 
     /**
      * Looks up an existing TPP by its {@code entityId} (CF o P.IVA).
@@ -104,4 +106,22 @@ public interface TppService {
      *         on success, or 404 if the TPP is not found, or 502 if emd-tpp is unreachable
      */
     Mono<TokenSectionDTOV1> updateTppCredentials(String entityId, TokenSectionDTOV1 tokenSectionDTO);
+
+    /**
+     * Partially updates the TPP identified by {@code entityId} (CF o P.IVA).
+     *
+     * <p>Execution order:
+     * <ol>
+     *   <li>Resolves the {@code tppId} from the emd-tpp service via {@code entityId}.</li>
+     *   <li>Sends the partial update to emd-tpp via {@code PATCH /emd/tpp/{tppId}}.</li>
+     * </ol>
+     * Only non-null fields in {@code patchDTO} are applied; all others retain their current
+     * values in the database.</p>
+     *
+     * @param entityId the fiscal code (CF) or VAT number (P.IVA) of the TPP
+     * @param patchDTO the partial update payload
+     * @return {@code Mono<TppResponseDTOV1>} with the full, updated TPP representation,
+     *         or 404 if the TPP is not found, or 502 if emd-tpp is unreachable
+     */
+    Mono<TppResponseDTOV1> patchTpp(String entityId, TppPatchDTOV1 patchDTO);
 }

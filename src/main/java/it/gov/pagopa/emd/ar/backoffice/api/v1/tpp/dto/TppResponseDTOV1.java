@@ -8,15 +8,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 /**
- * API response DTO for {@code GET /tpp/{entityId}}.
+ * API response DTO for {@code GET /tpp/{entityId}}, {@code POST /tpp/{entityId}}
+ * and {@code PATCH /tpp/{entityId}}.
  *
- * <p>Mirrors the upstream {@code TppDTOWithoutTokenSection} from the emd-tpp service,
- * converted to API-layer types (V1 variants). Token-section data is NOT included.</p>
+ * <p>Contains only the fields exposed to the frontend. Server-managed fields
+ * (entityId, idPsp, legalAddress, state, creationDate, lastUpdateDate,
+ * isPaymentEnabled, messageTemplate, whitelistRecipient) are intentionally omitted.</p>
  */
 @Data
 @Builder
@@ -25,21 +25,12 @@ import java.util.Map;
 public class TppResponseDTOV1 {
 
     private String tppId;
-    private String entityId;
-    private String idPsp;
     private String businessName;
-    private String legalAddress;
     private String messageUrl;
     private String authenticationUrl;
     private AuthenticationTypeV1 authenticationType;
     private ContactV1 contact;
-    private Boolean state;
-    private LocalDateTime creationDate;
-    private LocalDateTime lastUpdateDate;
     private String pspDenomination;
     private Map<String, AgentLinkV1> agentLinks;
-    private Boolean isPaymentEnabled;
-    private String messageTemplate;
-    private List<String> whitelistRecipient;
 }
 

@@ -2,8 +2,8 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller.TppControllerImplV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppIdResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
@@ -52,25 +52,31 @@ class TppControllerImplV1Test {
 
     @Test
     void saveTpp_ShouldReturnTppId() {
+        String entityId = "12345678901";
         TppDTOV1 dto = new TppDTOV1();
-        dto.setEntityId("12345678901");
         dto.setBusinessName("Test Tpp Name");
         dto.setAuthenticationType(AuthenticationTypeV1.OAUTH2);
         dto.setAgentLinks(new HashMap<>());
 
-        String expectedTppId = "TPP_CREATED_ID_123";
+        TppResponseDTOV1 expectedResponse = TppResponseDTOV1.builder()
+                .tppId("TPP_CREATED_ID_123")
+                .businessName("Test Tpp Name")
+                .authenticationType(AuthenticationTypeV1.OAUTH2)
+                .build();
 
-        when(tppService.createTppAndKeycloakClient(any(TppDTOV1.class)))
-                .thenReturn(Mono.just(expectedTppId));
+        when(tppService.createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class)))
+                .thenReturn(Mono.just(expectedResponse));
 
         webTestClient.post()
-                .uri("/emd/backoffice/api/v1/tpp")
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(dto)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.tppId").isEqualTo(expectedTppId);
+                .jsonPath("$.tppId").isEqualTo("TPP_CREATED_ID_123")
+                .jsonPath("$.businessName").isEqualTo("Test Tpp Name")
+                .jsonPath("$.authenticationType").isEqualTo("OAUTH2");
     }
 
     /**
@@ -79,18 +85,12 @@ class TppControllerImplV1Test {
     @Test
     void getTppByEntityId_Found_Returns200WithFullDto() {
         String entityId = "12345678901";
-        String expectedTppId = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
 
         TppResponseDTOV1 response = TppResponseDTOV1.builder()
-                .tppId(expectedTppId)
-                .entityId(entityId)
+                .tppId("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
                 .businessName("My TPP Srl")
-                .idPsp("PSP_001")
-                .legalAddress("Via Roma 1, 00100 Roma")
                 .authenticationType(AuthenticationTypeV1.OAUTH2)
                 .contact(new ContactV1("Mario Rossi", "1234567890", "mario@tpp.it"))
-                .state(true)
-                .isPaymentEnabled(false)
                 .build();
 
         when(tppService.getTppByEntityId(eq(entityId)))
@@ -102,16 +102,11 @@ class TppControllerImplV1Test {
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
                 .expectBody()
-                .jsonPath("$.tppId").isEqualTo(expectedTppId)
-                .jsonPath("$.entityId").isEqualTo(entityId)
+                .jsonPath("$.tppId").isEqualTo("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
                 .jsonPath("$.businessName").isEqualTo("My TPP Srl")
-                .jsonPath("$.idPsp").isEqualTo("PSP_001")
-                .jsonPath("$.legalAddress").isEqualTo("Via Roma 1, 00100 Roma")
                 .jsonPath("$.authenticationType").isEqualTo("OAUTH2")
                 .jsonPath("$.contact.name").isEqualTo("Mario Rossi")
-                .jsonPath("$.contact.email").isEqualTo("mario@tpp.it")
-                .jsonPath("$.state").isEqualTo(true)
-                .jsonPath("$.isPaymentEnabled").isEqualTo(false);
+                .jsonPath("$.contact.email").isEqualTo("mario@tpp.it");
     }
 
     /**
@@ -343,6 +338,84 @@ class TppControllerImplV1Test {
                 .uri("/emd/backoffice/api/v1/tpp/" + entityId + "/credentials")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    // ── patchTpp ──────────────────────────────────────────────────────────────
+
+    /**
+     * PATCH /emd/backoffice/api/v1/tpp/{entityId} — happy path → 200 OK con
+     * la rappresentazione completa della TPP aggiornata.
+     */
+    @Test
+    void patchTpp_Success_Returns200WithUpdatedTpp() {
+        String entityId = "12345678901";
+
+        TppPatchDTOV1 patchBody = TppPatchDTOV1.builder()
+                .messageUrl("https://api.acme.com/v2/messages")
+                .contact(new ContactV1("Luigi Bianchi", "0612345678", "nuovo-tech@acme.com"))
+                .build();
+
+        TppResponseDTOV1 updatedResponse = TppResponseDTOV1.builder()
+                .tppId("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
+                .businessName("Acme TPP S.p.A.")
+                .messageUrl("https://api.acme.com/v2/messages")
+                .contact(new ContactV1("Luigi Bianchi", "0612345678", "nuovo-tech@acme.com"))
+                .build();
+
+        when(tppService.patchTpp(eq(entityId), any(TppPatchDTOV1.class)))
+                .thenReturn(Mono.just(updatedResponse));
+
+        webTestClient.patch()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(patchBody)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
+                .jsonPath("$.businessName").isEqualTo("Acme TPP S.p.A.")
+                .jsonPath("$.messageUrl").isEqualTo("https://api.acme.com/v2/messages")
+                .jsonPath("$.contact.name").isEqualTo("Luigi Bianchi")
+                .jsonPath("$.contact.email").isEqualTo("nuovo-tech@acme.com");
+    }
+
+    /**
+     * PATCH .../tpp/{entityId} — TPP non trovata su emd-tpp → errore propagato.
+     */
+    @Test
+    void patchTpp_TppNotFound_PropagatesError() {
+        String entityId = "99999999999";
+        TppPatchDTOV1 patchBody = TppPatchDTOV1.builder().businessName("New Name").build();
+
+        when(tppService.patchTpp(eq(entityId), any(TppPatchDTOV1.class)))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
+
+        webTestClient.patch()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(patchBody)
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    /**
+     * PATCH .../tpp/{entityId} — emd-tpp non raggiungibile → {@link ExternalServiceException} propagata.
+     */
+    @Test
+    void patchTpp_ServiceUnavailable_PropagatesError() {
+        String entityId = "12345678901";
+        TppPatchDTOV1 patchBody = TppPatchDTOV1.builder().businessName("New Name").build();
+
+        when(tppService.patchTpp(eq(entityId), any(TppPatchDTOV1.class)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "patchTpp", "timeout")));
+
+        webTestClient.patch()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(patchBody)
                 .exchange()
                 .expectStatus().is5xxServerError();
     }

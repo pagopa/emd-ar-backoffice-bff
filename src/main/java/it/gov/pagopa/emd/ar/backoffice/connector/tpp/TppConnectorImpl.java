@@ -1,10 +1,10 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
-import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.SaveTppResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
@@ -33,6 +33,7 @@ public class TppConnectorImpl implements TppConnector {
 
     private static final String SAVE_TPP_PATH             = "/emd/tpp/save";
     private static final String DELETE_TPP_PATH           = "/emd/tpp/{tppId}";
+    private static final String PATCH_TPP_PATH            = "/emd/tpp/{tppId}";
     private static final String GET_TPP_BY_ENTITY_ID_PATH = "/emd/tpp/entityId/{entityId}";
     private static final String GET_TPP_TOKEN_PATH        = "/emd/tpp/{tppId}/token";
     private static final String UPDATE_TPP_TOKEN_PATH     = "/emd/tpp/update/{tppId}/token";
@@ -48,13 +49,13 @@ public class TppConnectorImpl implements TppConnector {
      * {@inheritDoc}
      *
      * <p>Serializes the {@link TppCreateRequest} as the POST body,
-     * then extracts the {@code tppId} from the {@link SaveTppResponse}.</p>
+     * then deserializes the full {@link TppEntityIdResponse} returned by the upstream service.</p>
      *
      * <p>Retries up to {@value WebClientRetrySpecs#MAX_RETRY_ATTEMPTS} times on
      * TCP connect failures (safe for POST — request never reached the server).</p>
      */
     @Override
-    public Mono<String> saveTpp(TppCreateRequest request) {
+    public Mono<TppEntityIdResponse> saveTpp(TppCreateRequest request) {
         return webClient.post()
                 .uri(SAVE_TPP_PATH)
                 .bodyValue(request)
@@ -66,8 +67,7 @@ public class TppConnectorImpl implements TppConnector {
                         response.bodyToMono(String.class)
                                 .flatMap(body -> Mono.error(
                                         new ExternalServiceException("TPP_SERVICE", "saveTpp", body))))
-                .bodyToMono(SaveTppResponse.class)
-                .map(SaveTppResponse::tppId)
+                .bodyToMono(TppEntityIdResponse.class)
                 .retryWhen(WebClientRetrySpecs.connectFailureOnly())
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] POST {} failed: {}", SAVE_TPP_PATH, ex.getMessage()));
@@ -184,5 +184,37 @@ public class TppConnectorImpl implements TppConnector {
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}",
                         UPDATE_TPP_TOKEN_PATH, tppId, ex.getMessage()));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code PATCH /emd/tpp/{tppId}} to the remote emd-tpp service with the
+     * partial {@link TppPatchRequest} as JSON body (null fields are omitted via
+     * {@code @JsonInclude(NON_NULL)}). The full, updated {@link TppEntityIdResponse} is
+     * returned on success.</p>
+     *
+     * <p>PATCH is idempotent here, so transient retries are safe via
+     * {@link WebClientRetrySpecs#transientNetwork()}.</p>
+     */
+    @Override
+    public Mono<TppEntityIdResponse> patchTpp(String tppId, TppPatchRequest patchRequest) {
+        return webClient.patch()
+                .uri(PATCH_TPP_PATH, tppId)
+                .bodyValue(patchRequest)
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ResourceNotFoundException("TPP", tppId))))
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ExternalServiceException("TPP_SERVICE", "patchTpp", body))))
+                .bodyToMono(TppEntityIdResponse.class)
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] PATCH {} failed for tppId={}: {}",
+                        PATCH_TPP_PATH, tppId, ex.getMessage()));
     }
 }

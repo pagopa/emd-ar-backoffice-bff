@@ -1,6 +1,8 @@
 package it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakTokenResponseV1;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import jakarta.annotation.PostConstruct;
@@ -178,7 +180,7 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
 
     /** {@inheritDoc} */
     @Override
-    public Mono<String> getJwtBearerToken(String externalToken) {
+    public Mono<KeycloakTokenResponseV1> getJwtBearerToken(String externalToken) {
         log.info("[AR-BFF][KC_TOKEN_SERVICE] Requesting JWT-Bearer token exchange");
 
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
@@ -196,11 +198,35 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
                                 .flatMap(body -> handleKeycloakError("jwtBearerExchange", body)))
-                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .bodyToMono(KeycloakTokenResponseV1.class)
                 .retryWhen(WebClientRetrySpecs.connectFailureOnly())
-                .map(responseMap -> (String) responseMap.get("access_token"))
                 .doOnSuccess(t -> log.info("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer token obtained"))
                 .doOnError(e -> log.error("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer exchange failed: {}", e.getMessage()));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<Map<String, Object>> refreshUserToken(String refreshToken) {
+        log.info("[AR-BFF][KC_TOKEN_SERVICE] Refreshing token");
+        // Prepare OAuth2 compliant form data for the refresh_token grant request
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("grant_type", "refresh_token");
+        formData.add("client_id", backofficeClientId);
+        formData.add("client_secret", backofficeClientSecret);
+        formData.add("refresh_token", refreshToken);
+
+        return webClient.post()
+                .uri(tokenUri())
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .bodyValue(formData)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> handleKeycloakError("refreshToken", body)))
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .retryWhen(WebClientRetrySpecs.connectFailureOnly())
+                .doOnSuccess(t -> log.info("[AR-BFF][KC_TOKEN_SERVICE] Token refreshed successfully"))
+                .doOnError(e -> log.error("[AR-BFF][KC_TOKEN_SERVICE] Refresh failed: {}", e.getMessage()));
     }
 }
 

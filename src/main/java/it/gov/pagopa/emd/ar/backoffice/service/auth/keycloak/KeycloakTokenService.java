@@ -1,5 +1,8 @@
 package it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak;
 
+import java.util.Map;
+
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakTokenResponseV1;
 import reactor.core.publisher.Mono;
 
 /**
@@ -24,6 +27,14 @@ public interface KeycloakTokenService {
      * @param externalToken the raw external JWT to exchange
      * @return {@code Mono<String>} containing the resulting Keycloak access token
      */
-    Mono<String> getJwtBearerToken(String externalToken);
+    Mono<KeycloakTokenResponseV1> getJwtBearerToken(String externalToken);
+
+    /**
+     * Obtains new tokens from Keycloak using a refresh token.
+     *
+     * @param refreshToken the valid refresh token
+     * @return {@code Mono<Map<String, Object>>} raw response from Keycloak token endpoint
+     */
+    Mono<Map<String, Object>> refreshUserToken(String refreshToken);
 }
 

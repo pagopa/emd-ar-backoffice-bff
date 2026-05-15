@@ -65,9 +65,10 @@ public class AuthServiceImpl implements AuthService {
                             .flatMap(managerToken -> userService.upsertKeycloakUser(managerToken, user))
                             .then(Mono.defer(() -> tokenService.getJwtBearerToken(token)))
                             .doOnSuccess(t -> log.info("[AR-BFF][EXCHANGE_TOKEN] Completed: org_id={}", user.getOrganization().getId()))
-                            .map(finalToken -> ResponseEntity.ok(AuthResponseV1.builder()
+                            .map(tokenResponse -> ResponseEntity.ok(AuthResponseV1.builder()
                                     .userInfo(user)
-                                    .token(finalToken)
+                                    .token(tokenResponse.getAccessToken())
+                                    .refreshToken(tokenResponse.getRefreshToken())
                                     .build()));
                 })
                 // Only authentication/token errors return 401 — all others propagate to the
@@ -130,5 +131,43 @@ public class AuthServiceImpl implements AuthService {
                         .status("ERROR")
                         .message("Authentication failed")
                         .build()));
+    }
+
+    /**
+     * Renews the Keycloak access token using a valid refresh token.
+     * <p>
+     * This method orchestrates the token renewal process by calling the underlying
+     * Keycloak service. If the refresh operation is successful, it returns a new
+     * access token and a new refresh token (if token rotation is enabled).
+     * If the refresh token is expired, revoked, or otherwise invalid, it catches
+     * the error and returns an HTTP 401 Unauthorized response.
+     * </p>
+     *
+     * @param refreshToken the Keycloak refresh token provided by the client
+     * @return a {@code Mono} emitting a {@link ResponseEntity} containing the updated
+     *         {@link AuthResponseV1} with new tokens, or 401 Unauthorized on failure
+     */
+    @Override
+    public Mono<ResponseEntity<AuthResponseV1>> refreshToken(String refreshToken) {
+        return tokenService.refreshUserToken(refreshToken)
+                .map(responseMap -> {
+                    // Extract new tokens from the Keycloak response map
+                    String newAccessToken = (String) responseMap.get("access_token");
+                    String newRefreshToken = (String) responseMap.get("refresh_token");
+
+                     // Build the response body; type is explicitly declared to assist compiler type inference
+                    AuthResponseV1 body = AuthResponseV1.builder()
+                            .token(newAccessToken)
+                            .refreshToken(newRefreshToken)
+                            .build();
+
+                    return ResponseEntity.ok(body);
+                })
+                .onErrorResume(e -> {
+                    // In case of failure, log and return 401 Unauthorized
+                    log.warn("[AR-BFF][REFRESH_TOKEN] Refresh failed: {}", e.getMessage());
+                    return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                                .<AuthResponseV1>build());
+                });
     }
 }

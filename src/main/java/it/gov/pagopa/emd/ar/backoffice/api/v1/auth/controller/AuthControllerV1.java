@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.RefreshRequestDTOV1;
 import reactor.core.publisher.Mono;
 
 @RequestMapping("/emd/backoffice/api/v1")
@@ -28,4 +29,15 @@ public interface AuthControllerV1 {
      */
     @PostMapping(value = "auth/exchange", consumes = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<AuthResponseV1>> exchangeToken(@Valid @RequestBody AuthRequestDTOV1 authRequest);
+
+    /**
+     * Refreshes an existing Keycloak session using a refresh token.
+     * This allows the client to obtain a new access token without re-authenticating
+     * against SelfCare as long as the refresh session is valid.
+     *
+     * @param refreshRequest request body containing the valid Keycloak refresh token
+     * @return {@code Mono<ResponseEntity<AuthResponseV1>>} containing the new access and refresh tokens
+     */
+    @PostMapping(value = "auth/refresh", consumes = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<AuthResponseV1>> refreshToken(@Valid @RequestBody RefreshRequestDTOV1 refreshRequest);
 }

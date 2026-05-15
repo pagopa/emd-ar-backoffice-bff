@@ -16,4 +16,12 @@ public interface AuthService {
      *  Keycloak token or an error response
      */
     Mono<ResponseEntity<AuthResponseV1>> exchangeToken(String token);
+
+    /**
+     * Renews the Keycloak session using the provided refresh token.
+     * 
+     * @param refreshToken the Keycloak refresh token obtained during exchange or previous refresh
+     * @return {@code Mono<ResponseEntity<AuthResponseV1>>} with new tokens or 401 if the session is expired
+     */
+    Mono<ResponseEntity<AuthResponseV1>> refreshToken(String refreshToken);
 }

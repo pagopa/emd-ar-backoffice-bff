@@ -186,9 +186,11 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("client_id", backofficeClientId);
         formData.add("client_secret", backofficeClientSecret);
-        formData.add("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
-        formData.add("assertion", externalToken);
+        formData.add("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange");
+        formData.add("subject_token", externalToken);
+        formData.add("subject_token_type", "urn:ietf:params:oauth:token-type:jwt");
         formData.add("scope", "openid offline_access");
+        formData.add("subject_issuer", "selfcare-dev-jwt-grant");
 
         return webClient.post()
             .uri(tokenUri())

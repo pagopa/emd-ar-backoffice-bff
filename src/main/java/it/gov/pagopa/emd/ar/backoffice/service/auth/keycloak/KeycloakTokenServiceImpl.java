@@ -215,7 +215,6 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
             .retryWhen(WebClientRetrySpecs.connectFailureOnly())
             .doOnSuccess(t -> log.info("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer token obtained. RefreshToken null? {}", t.getRefreshToken() == null))
             .doOnError(e -> log.error("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer exchange failed: {}", e.getMessage()));
-}
     }
 
     /** {@inheritDoc} */

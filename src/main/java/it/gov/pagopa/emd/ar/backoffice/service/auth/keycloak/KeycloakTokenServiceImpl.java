@@ -188,6 +188,7 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
         formData.add("client_secret", backofficeClientSecret);
         formData.add("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
         formData.add("assertion", externalToken);
+        formData.add("scope", "openid offline_access");
 
         return webClient.post()
                 .uri(tokenUri())

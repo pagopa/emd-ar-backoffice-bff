@@ -190,7 +190,6 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
         formData.add("subject_token", externalToken);
         formData.add("subject_token_type", "urn:ietf:params:oauth:token-type:jwt");
         formData.add("scope", "openid offline_access");
-        formData.add("subject_issuer", "selfcare-dev-jwt-grant");
 
         return webClient.post()
             .uri(tokenUri())

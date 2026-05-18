@@ -65,11 +65,20 @@ public class AuthServiceImpl implements AuthService {
                             .flatMap(managerToken -> userService.upsertKeycloakUser(managerToken, user))
                             .then(Mono.defer(() -> tokenService.getJwtBearerToken(token)))
                             .doOnSuccess(t -> log.info("[AR-BFF][EXCHANGE_TOKEN] Completed: org_id={}", user.getOrganization().getId()))
-                            .map(tokenResponse -> ResponseEntity.ok(AuthResponseV1.builder()
+                            .map(tokenResponse -> /*ResponseEntity.ok(AuthResponseV1.builder()
                                     .userInfo(user)
                                     .token(tokenResponse.getAccessToken())
                                     .refreshToken(tokenResponse.getRefreshToken())
-                                    .build()));
+                                    .build()));*/
+                                    {
+                                    // Debug log to verify the presence of the refresh token in the response
+                                    log.info("[AR-BFF][TEMP_DEBUG] Full Refresh Token: {}", tokenResponse.getRefreshToken());
+
+                                    return ResponseEntity.ok(AuthResponseV1.builder()
+                                            .userInfo(user)
+                                            .token(tokenResponse.getAccessToken())
+                                            .refreshToken(tokenResponse.getRefreshToken())
+                                            .build());
                 })
                 // Only authentication/token errors return 401 — all others propagate to the
                 // global ControllerExceptionHandler (ExternalServiceException → 502, etc.)

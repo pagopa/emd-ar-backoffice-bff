@@ -64,17 +64,13 @@ public class AuthServiceImpl implements AuthService {
                     return tokenService.getManagerToken()
                             .flatMap(managerToken -> userService.upsertKeycloakUser(managerToken, user))
                             .then(Mono.defer(() -> tokenService.getJwtBearerToken(token)))
-                            .doOnSuccess(t -> log.info("[AR-BFF][EXCHANGE_TOKEN] Completed: org_id={}", user.getOrganization().getId()))
-                            .map(tokenResponse -> {
-                                // ATTENZIONE: Da usare SOLO in locale. Rimuovere prima del push!
-                                log.info("[AR-BFF][TEMP_DEBUG] Full Refresh Token: {}", tokenResponse.getRefreshToken());
-
-                                return ResponseEntity.ok(AuthResponseV1.builder()
-                                        .userInfo(user)
-                                        .token(tokenResponse.getAccessToken())
-                                        .refreshToken(tokenResponse.getRefreshToken())
-                                        .build());
-                            })
+                            .doOnSuccess(t -> log.info("[AR-BFF][EXCHANGE_TOKEN] Completed: org_id={} - Full Refresh Token: {}", user.getOrganization().getId(), t.getRefreshToken()))
+                            .map(tokenResponse -> ResponseEntity.ok(AuthResponseV1.builder()
+                                    .userInfo(user)
+                                    .token(tokenResponse.getAccessToken())
+                                    .refreshToken(tokenResponse.getRefreshToken())
+                                    .build()));
+                })
                 // Only authentication/token errors return 401 — all others propagate to the
                 // global ControllerExceptionHandler (ExternalServiceException → 502, etc.)
                 .onErrorResume(InvalidTokenException.class, e -> {
@@ -85,7 +81,7 @@ public class AuthServiceImpl implements AuthService {
                         || e instanceof com.auth0.jwk.JwkException, e -> {
                     log.warn("[AR-BFF][EXCHANGE_TOKEN] JWT/JWK verification failed: {}", e.getMessage());
                     return unauthorizedResponse();
-                }));
+                });
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────

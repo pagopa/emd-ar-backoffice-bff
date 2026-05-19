@@ -186,36 +186,22 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("client_id", backofficeClientId);
         formData.add("client_secret", backofficeClientSecret);
-        formData.add("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange");
-        formData.add("subject_token", externalToken);
-        formData.add("subject_token_type", "urn:ietf:params:oauth:token-type:access_token");
-        formData.add("scope", "openid offline_access");
+        formData.add("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
+        formData.add("assertion", externalToken);
 
         return webClient.post()
-            .uri(tokenUri())
-            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-            .accept(MediaType.APPLICATION_JSON)
-            .bodyValue(formData)
-            .retrieve()
-            .onStatus(HttpStatusCode::isError, response ->
-                    response.bodyToMono(String.class)
-                            .flatMap(body -> handleKeycloakError("jwtBearerExchange", body)))
-            //Row json response as String to log it before mapping to DTO
-            .bodyToMono(String.class)
-            //Log the raw JSON response for debugging purposes before mapping to DTO
-            .doOnNext(json -> log.info("[AR-BFF][DEBUG_JSON] Raw Response from Keycloak: {}", json))
-            //Convert the raw JSON string to the KeycloakTokenResponseV1 DTO, with error handling
-            .map(json -> {
-                try {
-                    return objectMapper.readValue(json, KeycloakTokenResponseV1.class);
-                } catch (Exception e) {
-                    log.error("[AR-BFF][DEBUG_JSON] Error mapping JSON to DTO: {}", e.getMessage());
-                    throw new RuntimeException(e);
-                }
-            })
-            .retryWhen(WebClientRetrySpecs.connectFailureOnly())
-            .doOnSuccess(t -> log.info("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer token obtained. RefreshToken null? {}", t.getRefreshToken() == null))
-            .doOnError(e -> log.error("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer exchange failed: {}", e.getMessage()));
+                .uri(tokenUri())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .bodyValue(formData)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, response ->
+                            response.bodyToMono(String.class)
+                                    .flatMap(body -> handleKeycloakError("jwtBearerExchange", body)))
+                    .bodyToMono(KeycloakTokenResponseV1.class)
+                    .retryWhen(WebClientRetrySpecs.connectFailureOnly())
+                    .doOnSuccess(t -> log.info("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer token obtained"))
+                    .doOnError(e -> log.error("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer exchange failed: {}", e.getMessage()));
     }
 
     /** {@inheritDoc} */

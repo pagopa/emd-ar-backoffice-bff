@@ -26,6 +26,14 @@ import java.util.List;
 public class TppEntityIdResponse {
     private String tppId;
     private String entityId;
+    /**
+     * Optional legacy Keycloak Client ID for pre-existing TPPs whose Keycloak client was
+     * created with a random identifier (not aligned with {@code entityId}).
+     * When present (non-null, non-empty) it takes priority over {@code entityId} for
+     * any Keycloak Client lookup or token exchange.
+     * For new TPPs this field is {@code null} and {@code entityId} is used instead.
+     */
+    private String clientId;
     private String idPsp;
     private String businessName;
     private String legalAddress;

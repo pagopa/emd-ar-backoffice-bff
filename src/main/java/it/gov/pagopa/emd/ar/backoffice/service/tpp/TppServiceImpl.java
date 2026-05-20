@@ -7,6 +7,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper.TppConnectorMapper;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
 import lombok.extern.slf4j.Slf4j;
@@ -18,8 +19,18 @@ import reactor.core.publisher.Mono;
  * <ol>
  *   <li>Maps the API DTO to the connector request (applying defaults via {@link TppConnectorMapper}).</li>
  *   <li>Persists the TPP via the connector (obtains the {@code tppId}).</li>
- *   <li>Creates the corresponding Keycloak OIDC client using the {@code tppId}.</li>
+ *   <li>Creates the corresponding Keycloak OIDC client using the resolved Keycloak Client ID.</li>
  * </ol>
+ *
+ * <p><strong>Keycloak Client ID resolution:</strong> the identifier used for Keycloak
+ * operations is determined by {@link #resolveKeycloakClientId(TppEntityIdResponse)} with the
+ * following priority:
+ * <ol>
+ *   <li>If the TPP response contains a non-empty {@code clientId}, that value is used
+ *       (covers legacy/pre-existing TPPs whose Keycloak client was created with a random ID).</li>
+ *   <li>Otherwise the TPP {@code entityId} is used (default for all new TPPs).</li>
+ * </ol>
+ * </p>
  *
  * <p><strong>Consistency / compensation:</strong> if Keycloak fails after the TPP is
  * persisted, the service attempts a <em>compensating delete</em> of the DB record so
@@ -50,8 +61,9 @@ public class TppServiceImpl implements TppService {
         return tppConnector.saveTpp(TppConnectorMapper.toCreateRequest(entityId, tppDTO))
                 .flatMap(tppResponse -> {
                     String tppId = tppResponse.getTppId();
-                    log.info("[AR-BFF][TPP_CREATE] TPP persisted with id={}. Creating Keycloak client.", tppId);
-                    return keycloakClientService.createKeycloakClient(tppId, entityId, tppDTO.getBusinessName())
+                    String keycloakClientId = resolveKeycloakClientId(tppResponse);
+                    log.info("[AR-BFF][TPP_CREATE] TPP persisted with id={}. Creating Keycloak client with clientId={}.", tppId, keycloakClientId);
+                    return keycloakClientService.createKeycloakClient(keycloakClientId, entityId, tppDTO.getBusinessName())
                             .onErrorResume(ex -> compensateDelete(tppId, ex))
                             .thenReturn(tppResponse);
                 })
@@ -77,8 +89,9 @@ public class TppServiceImpl implements TppService {
         return tppConnector.getTppByEntityId(entityId)
                 .flatMap(response -> {
                     String tppId = response.getTppId();
-                    log.info("[AR-BFF][TPP_DELETE] Resolved tppId={} for entityId={}", tppId, entityId);
-                    return keycloakClientService.deleteKeycloakClient(tppId)
+                    String keycloakClientId = resolveKeycloakClientId(response);
+                    log.info("[AR-BFF][TPP_DELETE] Resolved tppId={}, keycloakClientId={} for entityId={}", tppId, keycloakClientId, entityId);
+                    return keycloakClientService.deleteKeycloakClient(keycloakClientId)
                             .then(Mono.defer(() -> tppConnector.deleteTpp(tppId)));
                 })
                 .doOnSuccess(v -> log.info("[AR-BFF][TPP_DELETE] TPP and Keycloak client deleted for entityId={}", entityId))
@@ -91,8 +104,9 @@ public class TppServiceImpl implements TppService {
         log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Retrieving PagoPA credentials for entityId={}", entityId);
         return tppConnector.getTppByEntityId(entityId)
                 .flatMap(response -> {
-                    log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Resolved tppId={} for entityId={}", response.getTppId(), entityId);
-                    return keycloakClientService.getPagopaClientCredentials(response.getTppId());
+                    String keycloakClientId = resolveKeycloakClientId(response);
+                    log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Resolved tppId={}, keycloakClientId={} for entityId={}", response.getTppId(), keycloakClientId, entityId);
+                    return keycloakClientService.getPagopaClientCredentials(keycloakClientId);
                 })
                 .doOnSuccess(c -> log.info("[AR-BFF][TPP_PAGOPA_CREDENTIALS] PagoPA credentials retrieved for entityId={}", entityId))
                 .doOnError(e -> log.error("[AR-BFF][TPP_PAGOPA_CREDENTIALS] Failed to retrieve PagoPA credentials for entityId={}: {}", entityId, e.getMessage()));
@@ -151,6 +165,32 @@ public class TppServiceImpl implements TppService {
                 .map(TppConnectorMapper::toTppResponseDTOV1)
                 .doOnSuccess(r -> log.info("[AR-BFF][TPP_PATCH] TPP patched successfully for entityId={}", entityId))
                 .doOnError(e -> log.error("[AR-BFF][TPP_PATCH] Failed to patch TPP for entityId={}: {}", entityId, e.getMessage()));
+    }
+
+    /**
+     * Resolves the Keycloak Client ID to use for a given TPP response, applying the
+     * following priority:
+     * <ol>
+     *   <li><strong>Priority – legacy override:</strong> if {@code response.clientId} is
+     *       present (non-null, non-empty) it is returned as-is. This covers pre-existing
+     *       TPPs whose Keycloak client was provisioned with a random identifier.</li>
+     *   <li><strong>Default:</strong> {@code response.entityId} is returned. This is the
+     *       standard identifier used for all newly onboarded TPPs.</li>
+     * </ol>
+     *
+     * <p><strong>Note:</strong> this method deliberately does NOT use {@code tppId}. The
+     * old tppId-based lookup is replaced by entityId to align the Keycloak clientId with
+     * the TPP's fiscal/VAT identifier going forward.</p>
+     *
+     * @param response the full TPP response from the emd-tpp connector
+     * @return the resolved Keycloak {@code clientId} to use
+     */
+    private String resolveKeycloakClientId(TppEntityIdResponse response) {
+        if (response.getClientId() != null && !response.getClientId().isEmpty()) {
+            log.debug("[AR-BFF][KEYCLOAK_RESOLVE] Using legacy clientId override for tppId={}", response.getTppId());
+            return response.getClientId();
+        }
+        return response.getEntityId();
     }
 
     /**

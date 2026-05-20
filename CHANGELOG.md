@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.9.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.8.1...v0.9.0) (2026-05-20)
+
+
+### Features
+
+* [MMC-556] add pagopa/keycloak credentials get endpoint ([#24](https://github.com/pagopa/emd-ar-backoffice-bff/issues/24)) ([b44f3a8](https://github.com/pagopa/emd-ar-backoffice-bff/commit/b44f3a81ea506401f3f655d7e7d93a1e63a7d661))
+* [MMC-557] add TPP credentials get endpoint ([#27](https://github.com/pagopa/emd-ar-backoffice-bff/issues/27)) ([265bdde](https://github.com/pagopa/emd-ar-backoffice-bff/commit/265bdde180f38255bcdb32001cef5e0a55ed42b5))
+* [MMC-558] add tpp credentials update endpoint ([#28](https://github.com/pagopa/emd-ar-backoffice-bff/issues/28)) ([79f93f0](https://github.com/pagopa/emd-ar-backoffice-bff/commit/79f93f0cff06c2a2cabfdfd33e804017e06fab41))
+* [MMC-571] change get tpp endpoint to get full details ([#30](https://github.com/pagopa/emd-ar-backoffice-bff/issues/30)) ([80563b3](https://github.com/pagopa/emd-ar-backoffice-bff/commit/80563b353b743ef4cf538f732c336e28493db65c))
+* [MMC-574] add patch tpp endpoint ([#31](https://github.com/pagopa/emd-ar-backoffice-bff/issues/31)) ([a5bde36](https://github.com/pagopa/emd-ar-backoffice-bff/commit/a5bde3603f19d13df7241f41899ee6daf31278f9))
+
+
+### Bug Fixes
+
+* [MMC-564] refactor endpoints ([#26](https://github.com/pagopa/emd-ar-backoffice-bff/issues/26)) ([c615de5](https://github.com/pagopa/emd-ar-backoffice-bff/commit/c615de5d226d936a3ade4f1c13e83a7b8bb62d23))
+* [MMC-581] add grant type to ppa credentials ([#29](https://github.com/pagopa/emd-ar-backoffice-bff/issues/29)) ([a430aba](https://github.com/pagopa/emd-ar-backoffice-bff/commit/a430aba659185cb3ca6ef000e0b14508d46a226a))
+* [MMC-664] handle legacy clientId for existing tpps ([#33](https://github.com/pagopa/emd-ar-backoffice-bff/issues/33)) ([d29e1a9](https://github.com/pagopa/emd-ar-backoffice-bff/commit/d29e1a905e544ba57c8ba42fe061fc01eaf930fc))
+
 ## [0.8.1](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.8.0...v0.8.1) (2026-05-11)
 
 

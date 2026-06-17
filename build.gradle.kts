@@ -5,14 +5,14 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
   java
-  id("org.springframework.boot") version "4.0.3"
+  id("org.springframework.boot") version "4.1.0"
   id("io.spring.dependency-management") version "1.1.7"
   jacoco
-  id("org.sonarqube") version "7.2.3.7755"
-  id("com.github.ben-manes.versions") version "0.53.0"
-  id("org.openapi.generator") version "7.20.0"
+  id("org.sonarqube") version "7.3.1.8318"
+  id("com.github.ben-manes.versions") version "0.54.0"
+  id("org.openapi.generator") version "7.23.0"
   id("com.gorylenko.gradle-git-properties") version "2.5.7"
-  id("com.github.jk1.dependency-license-report") version "3.1.1"
+  id("com.github.jk1.dependency-license-report") version "3.1.4"
 }
 
 group = "it.gov.pagopa.emd.ar"
@@ -48,16 +48,16 @@ repositories {
   mavenCentral()
 }
 
-val springDocOpenApiVersion = "3.0.2"
+val springDocOpenApiVersion = "3.0.3"
 val janinoVersion = "3.1.12"
-val openApiToolsVersion = "0.2.9"
-val micrometerVersion = "1.6.3"
+val openApiToolsVersion = "0.2.10"
+val micrometerVersion = "1.7.0"
 val httpClientVersion = "5.6"
 val httpCoreVersion = "5.4.1"
 
 // fix cve
-val jackson2CoreVersion = "2.21.1"
-val jackson3CoreVersion = "3.1.0"
+val jackson2CoreVersion = "2.22.0"
+val jackson3CoreVersion = "3.2.0"
 
 dependencies {
 
@@ -70,8 +70,8 @@ dependencies {
 
 
   // JWT token
-  implementation("com.auth0:java-jwt:4.4.0")
-  implementation("com.auth0:jwks-rsa:0.22.1")
+  implementation("com.auth0:java-jwt:4.5.2")
+  implementation("com.auth0:jwks-rsa:0.24.1")
 
 
   // Monitoring

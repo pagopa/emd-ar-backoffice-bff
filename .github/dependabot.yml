@@ -1,17 +1,8 @@
 version: 2
 
-registries:
-  github-pagopa:
-    type: maven-repository
-    url: https://maven.pkg.github.com/pagopa
-    username: "mil-github-bot"
-    password: "${{ secrets.MIL_BOT_TOKEN }}"
-
 updates:
-  - package-ecosystem: "maven"
+  - package-ecosystem: "gradle"
     directory: "/"
-    registries:
-      - github-pagopa
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10

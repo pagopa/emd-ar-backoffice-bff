@@ -1,14 +1,23 @@
 name: SonarCloud Analysis
 
+# push to main/release-*: full branch analysis (SonarCloud quality gate baseline).
+# workflow_call: invoked by pr-pipeline.yml AFTER depcheck, so dep-sha256.json is
+# already aligned with pom.xml before the analysis runs.
+# NOTE: the direct `pull_request` trigger was removed on purpose — PR analysis is
+# now driven by the orchestrator to enforce the depcheck → code-review ordering.
+
 on:
   push:
     branches:
       - main
-  pull_request:
-    types:
-      - opened
-      - edited
-      - synchronize
+      - release-*
+  workflow_call:
+
+# Cancel previous runs for the same PR or branch when a new commit is pushed.
+concurrency:
+  group: sonar-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 
 jobs:
   sonarcloud:

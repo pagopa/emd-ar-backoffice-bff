@@ -1,0 +1,42 @@
+name: PR Pipeline
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Cancel superseded runs for the same PR when a new commit is pushed.
+concurrency:
+  group: pr-pipeline-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write        # depcheck may commit dep-sha256.json
+  packages: write        # snapshot-docker pushes to GHCR
+  pull-requests: read
+
+jobs:
+  # 1) Tests — always run, unless depcheck FAILED (skipped depcheck is fine).
+  ci-tests:
+    name: 🧪 CI - Tests
+    if: ${{ !failure() && !cancelled() }}
+    uses: ./.github/workflows/ci-tests.yml
+    secrets: inherit
+
+  # 1b) SonarCloud — runs after depcheck (success or skipped), in parallel with tests.
+  code-review:
+    name: 🔍 SonarCloud Analysis
+    if: ${{ !failure() && !cancelled() }}
+    uses: ./.github/workflows/code-review.yml
+    secrets: inherit
+
+  # 2) Snapshot — only if ci-tests succeeded. Skipped on fork PRs (no push token).
+  snapshot-docker:
+    name: 📦 Snapshot Docker
+    needs: ci-tests
+    if: >-
+      !failure() && !cancelled() &&
+      needs.ci-tests.result == 'success' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/snapshot-docker.yml
+    secrets: inherit
+

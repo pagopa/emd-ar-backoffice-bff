@@ -33,7 +33,7 @@ import static org.mockito.Mockito.when;
  * resulting in faster test execution while still verifying routing and JSON serialization.
  * </p>
  */
-class TppControllerImplV1Test {
+class TppControllerV1Test {
 
     private TppService tppService;
     private WebTestClient webTestClient;

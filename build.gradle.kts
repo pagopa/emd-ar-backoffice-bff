@@ -122,6 +122,7 @@ tasks {
   }
 }
 
+
 tasks.jacocoTestReport {
   dependsOn(tasks.test)
   reports {
@@ -136,6 +137,7 @@ val projectInfo = mapOf(
 
 tasks {
   val processResources by getting(ProcessResources::class) {
+    dependsOn("openApiGenerate")
     filesMatching("**/application.yml") {
       expand(projectInfo)
     }

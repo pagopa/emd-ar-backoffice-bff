@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono;
 
 import static org.mockito.ArgumentMatchers.anyString;
 
-class AuthControllerImplV1Test {
+class AuthControllerV1Test {
 
     private AuthServiceImpl authService;
     private WebTestClient webTestClient;

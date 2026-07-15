@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
@@ -28,4 +29,17 @@ public interface AuthControllerV1 {
      */
     @PostMapping(value = "auth/exchange", consumes = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<AuthResponseV1>> exchangeToken(@Valid @RequestBody AuthRequestDTOV1 authRequest);
+
+
+    // -----------------------------------------------------------------------------------------------
+    // --------------------------------------Admin Portal---------------------------------------------
+    /**
+     * Admin authentication callback endpoint.
+     *
+     * @param authHeader the authorization header
+     * @return a Mono emitting the response entity
+     */
+    @PostMapping(value = "auth/admin/callback", consumes = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<Void>>adminAuth(@RequestHeader(value = "Authorization", required = false) String authHeader);
+
 }

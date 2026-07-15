@@ -16,4 +16,11 @@ public interface AuthService {
      *  Keycloak token or an error response
      */
     Mono<ResponseEntity<AuthResponseV1>> exchangeToken(String token);
+
+    /**
+     * This method will decode the Admin token and log its details.
+     * 
+     * @param authHeader Authorization header containing the Admin token
+     */
+    void logAdminTokenDetails(String authHeader);
 }

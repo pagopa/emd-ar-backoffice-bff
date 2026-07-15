@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.service.auth;
 
+import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
@@ -130,5 +131,40 @@ public class AuthServiceImpl implements AuthService {
                         .status("ERROR")
                         .message("Authentication failed")
                         .build()));
+    }
+
+
+    /**
+     * Logs essential JWT token details for debugging and auditing purposes.
+     *
+     * @param jwt the decoded JWT token
+     */
+    public void logAdminTokenDetails(String authHeader) {
+        try {
+            String token = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                token = authHeader.substring(7);
+            }
+            
+            // Decodifica il JWT (senza verificare la firma)
+            DecodedJWT jwt = JWT.decode(token);
+
+            log.info("=== JWT TOKEN DETAILS ===");
+            log.info("Key ID: {}", jwt.getKeyId());
+            log.info("Issuer: {}", jwt.getIssuer());
+            log.info("Subject: {}", jwt.getSubject());
+            log.info("Audience (aud): {}", jwt.getAudience());
+            log.info("JWT ID (jti): {}", jwt.getId());
+            
+            // Safe extraction of optional claims
+            String name = jwt.getClaim("name").asString();
+            String email = jwt.getClaim("email").asString();
+            
+            log.info("Name: {}", name != null ? name : "N/A");
+            log.info("Email: {}", email != null ? email : "N/A");
+            
+        } catch (Exception e) {
+            log.warn("[AR-BFF][LOG_TOKEN_DETAILS] Error logging token details: {}", e.getMessage());
+        }
     }
 }

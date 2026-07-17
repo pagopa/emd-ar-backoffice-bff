@@ -1,9 +1,12 @@
 package it.gov.pagopa.emd.ar.backoffice.api.v1.auth.controller;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequest;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthService;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -27,16 +30,13 @@ public class AuthControllerImplV1 implements AuthControllerV1 {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<Void>> adminAuth(String authHeader) {
+    public Mono<ResponseEntity<Void>> adminAuth(AdminAuthRequest request) {
         log.info("Admin auth callback received");
         
-        return Mono.fromCallable(() -> {
-            
-            // Log token details for auditing
-            authService.logAdminTokenDetails(authHeader);
-            
-            return ResponseEntity.ok().<Void>build();
-        });
+        return authService.getPortalToken(request)
+            .map(cookie -> ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .build());
     }
 
 }

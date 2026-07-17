@@ -1,5 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak;
 
+import java.util.Map;
+
 import reactor.core.publisher.Mono;
 
 /**
@@ -25,5 +27,12 @@ public interface KeycloakTokenService {
      * @return {@code Mono<String>} containing the resulting Keycloak access token
      */
     Mono<String> getJwtBearerToken(String externalToken);
+
+    /**
+     * Retrieves a Keycloak token for portal access.
+     *
+     * @return {@code Mono<Map<String, Object>>} containing the access token
+     */
+    Mono<Map<String, Object>> getPortalToken(String code, String codeVerifier);
 }
 

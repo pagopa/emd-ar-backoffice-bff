@@ -40,6 +40,8 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
     private final String managerClientSecret;
     private final String backofficeClientId;
     private final String backofficeClientSecret;
+    private final String backofficeAdminClientId;
+    private final String backofficeAdminClientSecret;
 
     /**
      * In-memory cache for the Keycloak manager token (client_credentials grant).
@@ -63,13 +65,17 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
             @Value("${keycloak.manager.client-id}") String managerClientId,
             @Value("${keycloak.manager.client-secret}") String managerClientSecret,
             @Value("${keycloak.ar-backoffice.client-id}") String backofficeClientId,
-            @Value("${keycloak.ar-backoffice.client-secret}") String backofficeClientSecret) {
+            @Value("${keycloak.ar-backoffice.client-secret}") String backofficeClientSecret,
+            @Value("${keycloak.manager.client-id}") String backofficeAdminClientId,
+            @Value("${keycloak.manager.client-secret}") String backofficeAdminClientSecret) {
         super(authServerUrl, realm, objectMapper);
         this.webClient = webClient;
         this.managerClientId = managerClientId;
         this.managerClientSecret = managerClientSecret;
         this.backofficeClientId = backofficeClientId;
         this.backofficeClientSecret = backofficeClientSecret;
+        this.backofficeAdminClientId = backofficeAdminClientId;
+        this.backofficeAdminClientSecret = backofficeAdminClientSecret;
     }
 
     /**
@@ -199,6 +205,36 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
                 .retryWhen(WebClientRetrySpecs.connectFailureOnly())
                 .map(responseMap -> (String) responseMap.get("access_token"))
+                .doOnSuccess(t -> log.info("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer token obtained"))
+                .doOnError(e -> log.error("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer exchange failed: {}", e.getMessage()));
+    }
+    
+    /** {@inheritDoc} */
+    @Override
+    public Mono<Map<String, Object>> getPortalToken(String code, String codeVerifier) {
+        log.info("[AR-BFF][KC_TOKEN_SERVICE] Requesting portal token");
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("grant_type", "authorization_code");
+        formData.add("client_id", backofficeAdminClientId);
+        formData.add("client_secret", backofficeAdminClientSecret);
+        formData.add("code", code);
+
+        // Replace with actual redirect URI
+        formData.add("redirect_uri", "https://oauth.pstmn.io/v1/callback");
+        
+        formData.add("code_verifier", codeVerifier);
+
+        return webClient.post()
+                .uri(tokenUri())
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .accept(MediaType.APPLICATION_JSON)
+                .bodyValue(formData)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> handleKeycloakError("jwtBearerExchange", body)))
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .retryWhen(WebClientRetrySpecs.connectFailureOnly())
                 .doOnSuccess(t -> log.info("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer token obtained"))
                 .doOnError(e -> log.error("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer exchange failed: {}", e.getMessage()));
     }

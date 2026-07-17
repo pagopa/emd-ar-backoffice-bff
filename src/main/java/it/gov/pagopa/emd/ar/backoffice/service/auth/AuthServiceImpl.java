@@ -1,9 +1,9 @@
 package it.gov.pagopa.emd.ar.backoffice.service.auth;
 
-import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequest;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.Organization;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.User;
@@ -11,10 +11,12 @@ import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakTokenServic
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakUserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Map;
 
 /**
@@ -133,38 +135,28 @@ public class AuthServiceImpl implements AuthService {
                         .build()));
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseCookie> getPortalToken(AdminAuthRequest request) {
+        return tokenService.getPortalToken(request.code(), request.codeVerifier())
+            .map(responseMap -> {
+            String accessToken = (String) responseMap.get("access_token");
+            // Recuperiamo la scadenza reale da Keycloak (default 3600 se manca)
+            Number expiresIn = (Number) responseMap.getOrDefault("expires_in", 3600);
+            
+            return createAdminSessionCookie(accessToken, expiresIn.longValue());
+        });
+    }
 
-    /**
-     * Logs essential JWT token details for debugging and auditing purposes.
-     *
-     * @param jwt the decoded JWT token
-     */
-    public void logAdminTokenDetails(String authHeader) {
-        try {
-            String token = null;
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                token = authHeader.substring(7);
-            }
-            
-            // Decodifica il JWT (senza verificare la firma)
-            DecodedJWT jwt = JWT.decode(token);
-
-            log.info("=== JWT TOKEN DETAILS ===");
-            log.info("Key ID: {}", jwt.getKeyId());
-            log.info("Issuer: {}", jwt.getIssuer());
-            log.info("Subject: {}", jwt.getSubject());
-            log.info("Audience (aud): {}", jwt.getAudience());
-            log.info("JWT ID (jti): {}", jwt.getId());
-            
-            // Safe extraction of optional claims
-            String name = jwt.getClaim("name").asString();
-            String email = jwt.getClaim("email").asString();
-            
-            log.info("Name: {}", name != null ? name : "N/A");
-            log.info("Email: {}", email != null ? email : "N/A");
-            
-        } catch (Exception e) {
-            log.warn("[AR-BFF][LOG_TOKEN_DETAILS] Error logging token details: {}", e.getMessage());
-        }
+    public ResponseCookie createAdminSessionCookie(String accessToken, long expiresIn) {
+        return ResponseCookie.from("ADMIN_SESSION", accessToken)
+            .httpOnly(true)                // Protegge da XSS
+            .secure(true)                  // Obbligatorio per SameSite=None
+            .sameSite("None")              // Permette cross-site (richiesto dal task)
+            //if test on local http, SameSite=None will fail because it requires HTTPS. For local tests use SameSite=Lax.
+            //.sameSite("Lax")
+            .path("/")                     // Valido per tutti gli endpoint del BFF
+            .maxAge(Duration.ofSeconds(expiresIn))
+            .build();
     }
 }

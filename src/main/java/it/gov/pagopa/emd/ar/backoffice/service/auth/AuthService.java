@@ -1,7 +1,9 @@
 package it.gov.pagopa.emd.ar.backoffice.service.auth;
 
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequest;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
 import reactor.core.publisher.Mono;
 
@@ -17,10 +19,14 @@ public interface AuthService {
      */
     Mono<ResponseEntity<AuthResponseV1>> exchangeToken(String token);
 
+    
+
     /**
-     * This method will decode the Admin token and log its details.
-     * 
-     * @param authHeader Authorization header containing the Admin token
+     * Creates a secure, HttpOnly cookie containing the Keycloak token to be used for subsequent requests.
+     * @param request
+     * @return
      */
-    void logAdminTokenDetails(String authHeader);
+    Mono<ResponseCookie> getPortalToken(AdminAuthRequest request);
+
+
 }

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequest;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
 import reactor.core.publisher.Mono;
@@ -34,12 +35,12 @@ public interface AuthControllerV1 {
     // -----------------------------------------------------------------------------------------------
     // --------------------------------------Admin Portal---------------------------------------------
     /**
-     * Admin authentication callback endpoint.
-     *
-     * @param authHeader the authorization header
-     * @return a Mono emitting the response entity
+     * Gets a Keycloak token for the Admin Portal using the provided authorization code and code verifier.
+     * @param request
+     * @return
      */
     @PostMapping(value = "auth/admin/callback", consumes = MediaType.APPLICATION_JSON_VALUE)
-    Mono<ResponseEntity<Void>>adminAuth(@RequestHeader(value = "Authorization", required = false) String authHeader);
+    Mono<ResponseEntity<Void>>adminAuth(@RequestBody AdminAuthRequest request);
+    
 
 }

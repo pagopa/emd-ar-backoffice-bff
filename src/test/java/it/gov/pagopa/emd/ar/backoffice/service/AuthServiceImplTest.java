@@ -4,6 +4,8 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequest;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthServiceImpl;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.SelfCareTokenValidator;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakTokenService;
@@ -19,6 +21,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -188,6 +191,35 @@ class AuthServiceImplTest {
                 .verify();
 
         verifyNoInteractions(userService);
+    }
+
+    /**
+     * Happy path: valid request, cookie is created with correct attributes.
+     */
+    @Test
+    void getPortalToken_shouldReturnResponseCookie() {
+        AdminAuthRequest request = new AdminAuthRequest("test-code", "test-verifier", "state");
+        
+        Map<String, Object> mockResponse = new HashMap<>();
+        mockResponse.put("access_token", "fake-access-token");
+        mockResponse.put("expires_in", 3600);
+
+        // Quando tokenService viene chiamato, restituisce la mappa finta
+        when(tokenService.getPortalToken(anyString(), anyString()))
+                .thenReturn(Mono.just(mockResponse));
+
+        StepVerifier.create(authService.getPortalToken(request))
+                .assertNext(cookie -> {
+                    // Verifichiamo che il cookie sia stato creato correttamente
+                    assertNotNull(cookie);
+                    assertEquals("ADMIN_SESSION", cookie.getName());
+                    assertEquals("fake-access-token", cookie.getValue());
+                    assertEquals(3600, cookie.getMaxAge().getSeconds());
+                    assertTrue(cookie.isHttpOnly());
+                    assertTrue(cookie.isSecure());
+                    assertEquals("None", cookie.getSameSite());
+                })
+                .verifyComplete();
     }
 
     /**

@@ -1,6 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.controller.AuthControllerImplV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequest;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthServiceImpl;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
@@ -42,5 +44,22 @@ class AuthControllerV1Test {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.token").isEqualTo("abc");
+    }
+
+    @Test
+    void adminAuth_ShouldReturnOk() {
+        AdminAuthRequest adminRequest = new AdminAuthRequest("valid-code", "valid-verifier", "valid-redirect-uri");
+        Mockito.when(authService.getPortalToken(adminRequest))
+                .thenReturn(Mono.just(ResponseCookie.from("ADMIN_SESSION", "abc").build()));
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/auth/admin/callback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(adminRequest)
+                .exchange()
+                .expectStatus().isNoContent()
+                .expectHeader().valueMatches(org.springframework.http.HttpHeaders.SET_COOKIE, ".*ADMIN_SESSION=abc.*")
+                .expectBody().isEmpty();
+
     }
 }

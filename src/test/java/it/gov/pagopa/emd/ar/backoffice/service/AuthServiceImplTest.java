@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.test.util.ReflectionTestUtils;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -21,9 +22,8 @@ import reactor.test.StepVerifier;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -188,5 +188,18 @@ class AuthServiceImplTest {
                 .verify();
 
         verifyNoInteractions(userService);
+    }
+
+    /**
+     * Happy path: valid request, cookie is created with correct attributes.
+     */
+    @Test
+    void testCreateAdminSessionCookie() {
+        ResponseCookie cookie = authService.createAdminSessionCookie("token", 3600);
+        
+        assertEquals("ADMIN_SESSION", cookie.getName());
+        assertTrue(cookie.isHttpOnly());
+        assertEquals("None", cookie.getSameSite());
+        assertTrue(cookie.isSecure());
     }
 }

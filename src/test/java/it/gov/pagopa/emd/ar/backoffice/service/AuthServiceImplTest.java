@@ -5,7 +5,7 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequest;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequestV1;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthServiceImpl;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.SelfCareTokenValidator;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakTokenService;
@@ -198,7 +198,7 @@ class AuthServiceImplTest {
      */
     @Test
     void getPortalToken_shouldReturnResponseCookie() {
-        AdminAuthRequest request = new AdminAuthRequest("test-code", "test-verifier", "state");
+        AdminAuthRequestV1 request = new AdminAuthRequestV1("test-code", "test-verifier", "state");
         
         Map<String, Object> mockResponse = new HashMap<>();
         mockResponse.put("access_token", "fake-access-token");

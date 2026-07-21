@@ -3,7 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.auth;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequest;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequestV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.Organization;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.User;
@@ -137,7 +137,7 @@ public class AuthServiceImpl implements AuthService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseCookie> getPortalToken(AdminAuthRequest request) {
+    public Mono<ResponseCookie> getPortalToken(AdminAuthRequestV1 request) {
         return tokenService.getPortalToken(request.code(), request.codeVerifier())
             .map(responseMap -> {
                 String accessToken = (String) responseMap.get("access_token");

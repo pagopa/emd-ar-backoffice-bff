@@ -1,7 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.controller.AuthControllerImplV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequest;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequestV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthServiceImpl;
@@ -48,7 +48,7 @@ class AuthControllerV1Test {
 
     @Test
     void adminAuth_ShouldReturnOk() {
-        AdminAuthRequest adminRequest = new AdminAuthRequest("valid-code", "valid-verifier", "valid-redirect-uri");
+        AdminAuthRequestV1 adminRequest = new AdminAuthRequestV1("valid-code", "valid-verifier", "valid-redirect-uri");
         Mockito.when(authService.getPortalToken(adminRequest))
                 .thenReturn(Mono.just(ResponseCookie.from("ADMIN_SESSION", "abc").build()));
 

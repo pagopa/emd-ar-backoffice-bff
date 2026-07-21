@@ -1,6 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.api.v1.auth.controller;
 
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequest;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequestV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthService;
@@ -30,7 +30,7 @@ public class AuthControllerImplV1 implements AuthControllerV1 {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<Void>> adminAuth(AdminAuthRequest request) {
+    public Mono<ResponseEntity<Void>> adminAuth(AdminAuthRequestV1 request) {
         log.info("Admin auth callback received");
         
         return authService.getPortalToken(request)

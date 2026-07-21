@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequest;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequestV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
 import reactor.core.publisher.Mono;
@@ -39,7 +39,7 @@ public interface AuthControllerV1 {
      * @return
      */
     @PostMapping(value = "auth/admin/callback", consumes = MediaType.APPLICATION_JSON_VALUE)
-    Mono<ResponseEntity<Void>>adminAuth(@RequestBody AdminAuthRequest request);
+    Mono<ResponseEntity<Void>>adminAuth(@RequestBody AdminAuthRequestV1 request);
     
 
 }

@@ -3,7 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.auth;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequest;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AdminAuthRequestV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
 import reactor.core.publisher.Mono;
 
@@ -26,7 +26,7 @@ public interface AuthService {
      * @param request
      * @return
      */
-    Mono<ResponseCookie> getPortalToken(AdminAuthRequest request);
+    Mono<ResponseCookie> getPortalToken(AdminAuthRequestV1 request);
 
 
 }

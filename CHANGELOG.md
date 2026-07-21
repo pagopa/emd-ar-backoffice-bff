@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.9.0...v0.9.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* **deps:** bump the non-major-updates group with 12 updates ([#34](https://github.com/pagopa/emd-ar-backoffice-bff/issues/34)) ([757dc95](https://github.com/pagopa/emd-ar-backoffice-bff/commit/757dc95683f951d302e2c92371e31a80d440d285))
+
 ## [0.9.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.8.1...v0.9.0) (2026-05-20)
 
 

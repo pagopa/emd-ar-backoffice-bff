@@ -42,6 +42,7 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
     private final String backofficeClientSecret;
     private final String backofficeAdminClientId;
     private final String backofficeAdminClientSecret;
+    private final String redirectUri;
 
     /**
      * In-memory cache for the Keycloak manager token (client_credentials grant).
@@ -67,7 +68,8 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
             @Value("${keycloak.ar-backoffice.client-id}") String backofficeClientId,
             @Value("${keycloak.ar-backoffice.client-secret}") String backofficeClientSecret,
             @Value("${keycloak.manager.client-id}") String backofficeAdminClientId,
-            @Value("${keycloak.manager.client-secret}") String backofficeAdminClientSecret) {
+            @Value("${keycloak.manager.client-secret}") String backofficeAdminClientSecret,
+            @Value("${redirect.uri}") String redirectUri) {
         super(authServerUrl, realm, objectMapper);
         this.webClient = webClient;
         this.managerClientId = managerClientId;
@@ -76,6 +78,7 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
         this.backofficeClientSecret = backofficeClientSecret;
         this.backofficeAdminClientId = backofficeAdminClientId;
         this.backofficeAdminClientSecret = backofficeAdminClientSecret;
+        this.redirectUri = redirectUri;
     }
 
     /**
@@ -220,7 +223,7 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
         formData.add("code", code);
 
         // Replace with actual redirect URI
-        formData.add("redirect_uri", "https://oauth.pstmn.io/v1/callback");
+        formData.add("redirect_uri", redirectUri);
         
         formData.add("code_verifier", codeVerifier);
 
@@ -232,11 +235,11 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
-                                .flatMap(body -> handleKeycloakError("jwtBearerExchange", body)))
+                                .flatMap(body -> handleKeycloakError("getPortalToken", body)))
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
                 .retryWhen(WebClientRetrySpecs.connectFailureOnly())
-                .doOnSuccess(t -> log.info("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer token obtained"))
-                .doOnError(e -> log.error("[AR-BFF][KC_TOKEN_SERVICE] JWT-Bearer exchange failed: {}", e.getMessage()));
+                .doOnSuccess(t -> log.info("[AR-BFF][KC_TOKEN_SERVICE] Portal token obtained"))
+                .doOnError(e -> log.error("[AR-BFF][KC_TOKEN_SERVICE] Portal token exchange failed: {}", e.getMessage()));
     }
 }
 

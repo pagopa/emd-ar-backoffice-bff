@@ -42,7 +42,7 @@ import static org.mockito.Mockito.*;
   * service behavior without performing real HTTP calls.
   */
 @ExtendWith(MockitoExtension.class)
-public class KeycloakTokenServiceTest {
+class KeycloakTokenServiceTest {
     @InjectMocks
     private KeycloakTokenServiceImpl service;
 
@@ -75,6 +75,7 @@ public class KeycloakTokenServiceTest {
         ReflectionTestUtils.setField(service, "backofficeAdminClientSecret", "client-secret");
         ReflectionTestUtils.setField(service, "authServerUrl", "http://localhost/token");
         ReflectionTestUtils.setField(service, "realm", "test-realm");
+        ReflectionTestUtils.setField(service, "redirectUri", "http://localhost:5174");
 
         when(webClient.post()).thenReturn(requestBodyUriSpec);
         when(requestBodyUriSpec.uri(any(URI.class))).thenReturn(requestBodySpec);
@@ -171,8 +172,7 @@ public class KeycloakTokenServiceTest {
         assertThat(form.getFirst("client_secret")).isEqualTo("client-secret");
         assertThat(form.getFirst("code")).isEqualTo("my-code");
         assertThat(form.getFirst("code_verifier")).isEqualTo("my-verifier");
-        assertThat(form.getFirst("redirect_uri"))
-                .isEqualTo("https://oauth.pstmn.io/v1/callback");
+        assertThat(form.getFirst("redirect_uri")).isEqualTo("http://localhost:5174");
     }
 
 }

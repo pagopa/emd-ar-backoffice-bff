@@ -140,12 +140,16 @@ public class AuthServiceImpl implements AuthService {
     public Mono<ResponseCookie> getPortalToken(AdminAuthRequest request) {
         return tokenService.getPortalToken(request.code(), request.codeVerifier())
             .map(responseMap -> {
-            String accessToken = (String) responseMap.get("access_token");
-            // Recuperiamo la scadenza reale da Keycloak (default 3600 se manca)
-            Number expiresIn = (Number) responseMap.getOrDefault("expires_in", 3600);
-            
-            return createAdminSessionCookie(accessToken, expiresIn.longValue());
-        });
+                String accessToken = (String) responseMap.get("access_token");
+                // Get the actual expiration time from Keycloak (default to 3600 if missing)
+                Number expiresIn = (Number) responseMap.getOrDefault("expires_in", 3600);
+                
+                return createAdminSessionCookie(accessToken, expiresIn.longValue());
+            })
+            .onErrorResume(e -> {
+                log.warn("[AR-BFF][GET_PORTAL_TOKEN] Authentication failed via Keycloak: {}", e.getMessage());
+                return Mono.error(new InvalidTokenException("Invalid or expired authorization code"));
+            });
     }
 
     public ResponseCookie createAdminSessionCookie(String accessToken, long expiresIn) {

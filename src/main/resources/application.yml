@@ -120,6 +120,8 @@ keycloak:
   ar-backoffice:
     client-id: "\${KEYCLOAK_BACKOFFICE_CLIENT_ID}"
     client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
+  portal-client:
+    client-id: "\${KEYCLOAK_PORTAL_CLIENT_ID}"
   groups:
     tpp-name: "\${KEYCLOAK_TPP_GROUP_NAME}"
 

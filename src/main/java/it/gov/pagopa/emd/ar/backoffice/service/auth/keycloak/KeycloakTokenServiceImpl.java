@@ -40,8 +40,7 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
     private final String managerClientSecret;
     private final String backofficeClientId;
     private final String backofficeClientSecret;
-    private final String backofficeAdminClientId;
-    private final String backofficeAdminClientSecret;
+    private final String portalClientId;
     private final String redirectUri;
 
     /**
@@ -67,8 +66,7 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
             @Value("${keycloak.manager.client-secret}") String managerClientSecret,
             @Value("${keycloak.ar-backoffice.client-id}") String backofficeClientId,
             @Value("${keycloak.ar-backoffice.client-secret}") String backofficeClientSecret,
-            @Value("${keycloak.manager.client-id}") String backofficeAdminClientId,
-            @Value("${keycloak.manager.client-secret}") String backofficeAdminClientSecret,
+            @Value("${keycloak.portal-client.client-id}") String portalClientId,
             @Value("${redirect.uri}") String redirectUri) {
         super(authServerUrl, realm, objectMapper);
         this.webClient = webClient;
@@ -76,8 +74,7 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
         this.managerClientSecret = managerClientSecret;
         this.backofficeClientId = backofficeClientId;
         this.backofficeClientSecret = backofficeClientSecret;
-        this.backofficeAdminClientId = backofficeAdminClientId;
-        this.backofficeAdminClientSecret = backofficeAdminClientSecret;
+        this.portalClientId = portalClientId;
         this.redirectUri = redirectUri;
     }
 
@@ -218,8 +215,7 @@ public class KeycloakTokenServiceImpl extends AbstractKeycloakService implements
         log.info("[AR-BFF][KC_TOKEN_SERVICE] Requesting portal token");
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "authorization_code");
-        formData.add("client_id", backofficeAdminClientId);
-        formData.add("client_secret", backofficeAdminClientSecret);
+        formData.add("client_id", portalClientId);
         formData.add("code", code);
 
         // Replace with actual redirect URI

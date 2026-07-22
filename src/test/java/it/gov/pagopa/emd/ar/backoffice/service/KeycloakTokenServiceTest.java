@@ -71,8 +71,7 @@ class KeycloakTokenServiceTest {
     @BeforeEach
     void setUp() {
 
-        ReflectionTestUtils.setField(service, "backofficeAdminClientId", "client-id");
-        ReflectionTestUtils.setField(service, "backofficeAdminClientSecret", "client-secret");
+        ReflectionTestUtils.setField(service, "portalClientId", "client-id");
         ReflectionTestUtils.setField(service, "authServerUrl", "http://localhost/token");
         ReflectionTestUtils.setField(service, "realm", "test-realm");
         ReflectionTestUtils.setField(service, "redirectUri", "http://localhost:5174");
@@ -169,7 +168,6 @@ class KeycloakTokenServiceTest {
 
         assertThat(form.getFirst("grant_type")).isEqualTo("authorization_code");
         assertThat(form.getFirst("client_id")).isEqualTo("client-id");
-        assertThat(form.getFirst("client_secret")).isEqualTo("client-secret");
         assertThat(form.getFirst("code")).isEqualTo("my-code");
         assertThat(form.getFirst("code_verifier")).isEqualTo("my-verifier");
         assertThat(form.getFirst("redirect_uri")).isEqualTo("http://localhost:5174");

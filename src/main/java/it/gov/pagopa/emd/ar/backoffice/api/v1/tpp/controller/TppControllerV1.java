@@ -10,10 +10,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
@@ -142,4 +144,31 @@ public interface TppControllerV1 {
     Mono<ResponseEntity<TppResponseDTOV1>> patchTpp(
             @PathVariable("entityId") String entityId,
             @Valid @RequestBody TppPatchDTOV1 patchDTO);
+
+    /**
+     * Performs a paginated search for TPPs.
+     *
+     * <p>At least one filter ({@code entityId} or {@code businessName}) should be provided
+     * for meaningful results, though both are technically optional.</p>
+     *
+     * <ul>
+     *   <li>{@code entityId} — exact match on the fiscal/VAT code.</li>
+     *   <li>{@code businessName} — partial, case-insensitive match on the business name.</li>
+     *   <li>{@code page} — zero-based page index (default {@code 0}).</li>
+     *   <li>{@code size} — page size (default {@code 10}, upstream cap {@code 100}).</li>
+     * </ul>
+     *
+     * @param entityId     optional exact-match filter on the entity fiscal/VAT code
+     * @param businessName optional partial match on the business name
+     * @param page         zero-based page index (default 0)
+     * @param size         page size (default 10)
+     * @return {@code Mono<ResponseEntity<TppSearchResponseDTOV1>>} HTTP 200 with the
+     *         paginated result, or HTTP 502 if the upstream emd-tpp service is unavailable
+     */
+    @GetMapping(value = "tpp/search", produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<TppSearchResponseDTOV1>> searchTpp(
+            @RequestParam(required = false) String entityId,
+            @RequestParam(required = false) String businessName,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size);
 }

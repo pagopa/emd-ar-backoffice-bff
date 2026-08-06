@@ -4,6 +4,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
@@ -165,6 +166,20 @@ public class TppServiceImpl implements TppService {
                 .map(TppConnectorMapper::toTppResponseDTOV1)
                 .doOnSuccess(r -> log.info("[AR-BFF][TPP_PATCH] TPP patched successfully for entityId={}", entityId))
                 .doOnError(e -> log.error("[AR-BFF][TPP_PATCH] Failed to patch TPP for entityId={}: {}", entityId, e.getMessage()));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<TppSearchResponseDTOV1> searchTpp(String entityId, String businessName, int page, int size) {
+        log.info("[AR-BFF][TPP_SEARCH] Searching TPPs — entityId={}, businessName={}, page={}, size={}",
+                entityId != null ? "***" : null,
+                businessName != null ? "***" : null,
+                page, size);
+        return tppConnector.searchTpp(entityId, businessName, page, size)
+                .map(TppConnectorMapper::toTppSearchResponseDTOV1)
+                .doOnSuccess(r -> log.info("[AR-BFF][TPP_SEARCH] Search completed: totalElements={}, totalPages={}",
+                        r.getTotalElements(), r.getTotalPages()))
+                .doOnError(e -> log.error("[AR-BFF][TPP_SEARCH] Search failed: {}", e.getMessage()));
     }
 
     /**

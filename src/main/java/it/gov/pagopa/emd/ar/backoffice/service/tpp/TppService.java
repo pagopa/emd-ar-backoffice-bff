@@ -4,6 +4,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import reactor.core.publisher.Mono;
 
@@ -124,4 +125,22 @@ public interface TppService {
      *         or 404 if the TPP is not found, or 502 if emd-tpp is unreachable
      */
     Mono<TppResponseDTOV1> patchTpp(String entityId, TppPatchDTOV1 patchDTO);
+
+    /**
+     * Searches for TPPs using a paginated, filtered query.
+     *
+     * <p>Delegates directly to the upstream {@code GET /emd/tpp/search} endpoint via the
+     * connector. Filter parameters are optional — pass {@code null} or empty string to
+     * omit them. When both are supplied, {@code entityId} (exact match) takes precedence
+     * on the upstream side.</p>
+     *
+     * @param entityId     optional exact-match filter on the entity fiscal/VAT code
+     * @param businessName optional partial (case-insensitive) match on the business name
+     * @param page         zero-based page index (default 0)
+     * @param size         page size (default 10, max 100)
+     * @return {@code Mono<TppSearchResponseDTOV1>} with the paginated result, or an
+     *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException}
+     *         (HTTP 502) on any upstream error
+     */
+    Mono<TppSearchResponseDTOV1> searchTpp(String entityId, String businessName, int page, int size);
 }

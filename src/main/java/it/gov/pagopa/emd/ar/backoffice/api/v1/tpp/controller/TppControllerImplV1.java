@@ -4,6 +4,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import lombok.extern.slf4j.Slf4j;
@@ -75,6 +76,18 @@ public class TppControllerImplV1 implements TppControllerV1 {
     public Mono<ResponseEntity<TppResponseDTOV1>> patchTpp(String entityId, TppPatchDTOV1 patchDTO) {
         log.info("[AR-BFF][TPP_PATCH] Patching TPP for entityId={}", entityId);
         return tppService.patchTpp(entityId, patchDTO)
+                .map(ResponseEntity::ok);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<TppSearchResponseDTOV1>> searchTpp(
+            String entityId, String businessName, int page, int size) {
+        log.info("[AR-BFF][TPP_SEARCH] Searching TPPs — entityId={}, businessName={}, page={}, size={}",
+                entityId != null ? "***" : null,
+                businessName != null ? "***" : null,
+                page, size);
+        return tppService.searchTpp(entityId, businessName, page, size)
                 .map(ResponseEntity::ok);
     }
 }

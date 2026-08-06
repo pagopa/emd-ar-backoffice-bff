@@ -1,8 +1,10 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
@@ -15,8 +17,11 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.VersionDetails;
 
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -184,5 +189,59 @@ public final class TppConnectorMapper {
     private static VersionDetailsV1 toVersionDetailsV1(VersionDetails connector) {
         if (connector == null) return null;
         return VersionDetailsV1.builder().link(connector.getLink()).build();
+    }
+
+    // ── TppSearchResponse → TppSearchResponseDTOV1 ───────────────────────────
+
+    /**
+     * Maps a {@link TppSearchResponse} (connector layer) to the API-layer
+     * {@link TppSearchResponseDTOV1}, converting each content item via
+     * {@link #toTppDTOWithoutTokenSectionV1(TppEntityIdResponse)}.
+     */
+    public static TppSearchResponseDTOV1 toTppSearchResponseDTOV1(TppSearchResponse src) {
+        List<TppDTOWithoutTokenSectionV1> content = src.getContent() == null
+                ? List.of()
+                : src.getContent().stream()
+                        .map(TppConnectorMapper::toTppDTOWithoutTokenSectionV1)
+                        .collect(Collectors.toList());
+        return TppSearchResponseDTOV1.builder()
+                .content(content)
+                .page(src.getPage())
+                .size(src.getSize())
+                .totalElements(src.getTotalElements())
+                .totalPages(src.getTotalPages())
+                .build();
+    }
+
+    /**
+     * Maps a {@link TppEntityIdResponse} (connector layer) to the API-layer
+     * {@link TppDTOWithoutTokenSectionV1}, converting dates from {@code LocalDateTime}
+     * to {@code OffsetDateTime} (UTC) for the frontend.
+     *
+     * <p>{@code whitelistRecipient} is intentionally not mapped — it is
+     * potentially sensitive and not needed by the backoffice frontend.</p>
+     */
+    public static TppDTOWithoutTokenSectionV1 toTppDTOWithoutTokenSectionV1(TppEntityIdResponse src) {
+        return TppDTOWithoutTokenSectionV1.builder()
+                .tppId(src.getTppId())
+                .clientId(src.getClientId())
+                .entityId(src.getEntityId())
+                .idPsp(src.getIdPsp())
+                .businessName(src.getBusinessName())
+                .legalAddress(src.getLegalAddress())
+                .messageUrl(src.getMessageUrl())
+                .authenticationUrl(src.getAuthenticationUrl())
+                .authenticationType(toAuthenticationTypeV1(src.getAuthenticationType()))
+                .contact(toContactV1(src.getContact()))
+                .state(src.getState())
+                .creationDate(src.getCreationDate() != null
+                        ? src.getCreationDate().atOffset(ZoneOffset.UTC) : null)
+                .lastUpdateDate(src.getLastUpdateDate() != null
+                        ? src.getLastUpdateDate().atOffset(ZoneOffset.UTC) : null)
+                .pspDenomination(src.getPspDenomination())
+                .agentLinks(toAgentLinksV1(src.getAgentLinks()))
+                .isPaymentEnabled(src.getIsPaymentEnabled())
+                .messageTemplate(src.getMessageTemplate())
+                .build();
     }
 }

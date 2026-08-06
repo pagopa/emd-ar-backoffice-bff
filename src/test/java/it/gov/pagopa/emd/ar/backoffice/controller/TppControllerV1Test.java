@@ -2,9 +2,11 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller.TppControllerImplV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
@@ -418,5 +420,139 @@ class TppControllerV1Test {
                 .bodyValue(patchBody)
                 .exchange()
                 .expectStatus().is5xxServerError();
+    }
+
+    // ── searchTpp ─────────────────────────────────────────────────────────────
+
+    /**
+     * GET /emd/backoffice/api/v1/tpp/search?entityId=... — happy path → 200 con lista e paginazione.
+     */
+    @Test
+    void searchTpp_ByEntityId_Returns200WithPagedResult() {
+        TppDTOWithoutTokenSectionV1 item = TppDTOWithoutTokenSectionV1.builder()
+                .tppId("tpp-001")
+                .entityId("04256050875")
+                .businessName("Acme TPP S.r.l.")
+                .state(true)
+                .build();
+
+        TppSearchResponseDTOV1 response = TppSearchResponseDTOV1.builder()
+                .content(java.util.List.of(item))
+                .page(0)
+                .size(10)
+                .totalElements(1)
+                .totalPages(1)
+                .build();
+
+        when(tppService.searchTpp(eq("04256050875"), eq(null), eq(0), eq(10)))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?entityId=04256050875&page=0&size=10")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.totalElements").isEqualTo(1)
+                .jsonPath("$.totalPages").isEqualTo(1)
+                .jsonPath("$.page").isEqualTo(0)
+                .jsonPath("$.size").isEqualTo(10)
+                .jsonPath("$.content[0].tppId").isEqualTo("tpp-001")
+                .jsonPath("$.content[0].businessName").isEqualTo("Acme TPP S.r.l.")
+                .jsonPath("$.content[0].entityId").isEqualTo("04256050875");
+    }
+
+    /**
+     * GET .../tpp/search?businessName=MDC — happy path → 200 con lista.
+     */
+    @Test
+    void searchTpp_ByBusinessName_Returns200WithPagedResult() {
+        TppDTOWithoutTokenSectionV1 item = TppDTOWithoutTokenSectionV1.builder()
+                .tppId("tpp-002")
+                .businessName("MDC Finance Srl")
+                .build();
+
+        TppSearchResponseDTOV1 response = TppSearchResponseDTOV1.builder()
+                .content(java.util.List.of(item))
+                .page(0)
+                .size(10)
+                .totalElements(1)
+                .totalPages(1)
+                .build();
+
+        when(tppService.searchTpp(eq(null), eq("MDC"), eq(0), eq(10)))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?businessName=MDC")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.content[0].businessName").isEqualTo("MDC Finance Srl");
+    }
+
+    /**
+     * GET .../tpp/search — risposta con pagina vuota → 200 con content:[].
+     */
+    @Test
+    void searchTpp_EmptyResult_Returns200WithEmptyContent() {
+        TppSearchResponseDTOV1 response = TppSearchResponseDTOV1.builder()
+                .content(java.util.List.of())
+                .page(0)
+                .size(10)
+                .totalElements(0)
+                .totalPages(0)
+                .build();
+
+        when(tppService.searchTpp(eq("99999999999"), eq(null), eq(0), eq(10)))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?entityId=99999999999")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.totalElements").isEqualTo(0)
+                .jsonPath("$.content").isArray();
+    }
+
+    /**
+     * GET .../tpp/search — errore upstream → {@link ExternalServiceException} propagata (502 senza global handler).
+     */
+    @Test
+    void searchTpp_UpstreamError_PropagatesError() {
+        when(tppService.searchTpp(eq(null), eq("ACME"), eq(0), eq(10)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "searchTpp", "500 upstream")));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?businessName=ACME")
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    /**
+     * GET .../tpp/search — paginazione custom → i parametri page e size vengono inoltrati al service.
+     */
+    @Test
+    void searchTpp_CustomPagination_PassesParamsToService() {
+        TppSearchResponseDTOV1 response = TppSearchResponseDTOV1.builder()
+                .content(java.util.List.of())
+                .page(2)
+                .size(5)
+                .totalElements(11)
+                .totalPages(3)
+                .build();
+
+        when(tppService.searchTpp(eq(null), eq("Test"), eq(2), eq(5)))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?businessName=Test&page=2&size=5")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.page").isEqualTo(2)
+                .jsonPath("$.size").isEqualTo(5)
+                .jsonPath("$.totalPages").isEqualTo(3);
     }
 }

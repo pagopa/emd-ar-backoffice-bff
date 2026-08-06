@@ -5,6 +5,7 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
@@ -37,6 +38,7 @@ public class TppConnectorImpl implements TppConnector {
     private static final String GET_TPP_BY_ENTITY_ID_PATH = "/emd/tpp/entityId/{entityId}";
     private static final String GET_TPP_TOKEN_PATH        = "/emd/tpp/{tppId}/token";
     private static final String UPDATE_TPP_TOKEN_PATH     = "/emd/tpp/update/{tppId}/token";
+    private static final String SEARCH_TPP_PATH           = "/emd/tpp/search";
 
     private final WebClient webClient;
 
@@ -213,8 +215,46 @@ public class TppConnectorImpl implements TppConnector {
                                         new ExternalServiceException("TPP_SERVICE", "patchTpp", body))))
                 .bodyToMono(TppEntityIdResponse.class)
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
-                .doOnError(ex -> log.error(
+                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] PATCH {} failed for tppId={}: {}",
                         PATCH_TPP_PATH, tppId, ex.getMessage()));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code GET /emd/tpp/search} to the remote emd-tpp service, adding only
+     * non-null / non-blank query parameters to the URI. The full paginated
+     * {@link TppSearchResponse} is returned on success.</p>
+     *
+     * <p>GET is idempotent, so transient retries are safe via
+     * {@link WebClientRetrySpecs#transientNetwork()}.</p>
+     */
+    @Override
+    public Mono<TppSearchResponse> searchTpp(String entityId, String businessName, int page, int size) {
+        return webClient.get()
+                .uri(uriBuilder -> {
+                    uriBuilder.path(SEARCH_TPP_PATH);
+                    if (entityId != null && !entityId.isBlank()) {
+                        uriBuilder.queryParam("entityId", entityId);
+                    }
+                    if (businessName != null && !businessName.isBlank()) {
+                        uriBuilder.queryParam("businessName", businessName);
+                    }
+                    uriBuilder.queryParam("page", page);
+                    uriBuilder.queryParam("size", size);
+                    return uriBuilder.build();
+                })
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ExternalServiceException("TPP_SERVICE", "searchTpp", body))))
+                .bodyToMono(TppSearchResponse.class)
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] GET {} failed (entityId={}, businessName={}): {}",
+                        SEARCH_TPP_PATH, entityId != null ? "***" : null,
+                        businessName != null ? "***" : null, ex.getMessage()));
     }
 }

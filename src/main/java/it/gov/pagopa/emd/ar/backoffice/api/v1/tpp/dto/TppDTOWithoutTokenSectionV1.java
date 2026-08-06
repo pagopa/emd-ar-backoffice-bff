@@ -9,15 +9,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 
 /**
  * API-layer V1 representation of a single TPP returned by the search endpoint
  * ({@code GET /emd/backoffice/api/v1/tpp/search}).
  *
- * <p>Mirrors the upstream {@code TppDTOWithoutTokenSection} but intentionally
- * <strong>omits</strong> the {@code whitelistRecipient} field (potentially
- * sensitive — not needed by the backoffice frontend).</p>
+ * <p>Mirrors the upstream {@code TppDTOWithoutTokenSection} (token section excluded).</p>
  *
  * <p>Fields like {@code idPsp}, {@code legalAddress}, {@code state},
  * {@code creationDate}, {@code lastUpdateDate} and {@code isPaymentEnabled}
@@ -46,6 +45,6 @@ public class TppDTOWithoutTokenSectionV1 {
     private Map<String, AgentLinkV1> agentLinks;
     private Boolean isPaymentEnabled;
     private String messageTemplate;
-    // whitelistRecipient intentionally omitted — potentially sensitive
+    private List<String> whitelistRecipient;
 }
 

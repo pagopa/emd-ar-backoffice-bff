@@ -217,9 +217,6 @@ public final class TppConnectorMapper {
      * Maps a {@link TppEntityIdResponse} (connector layer) to the API-layer
      * {@link TppDTOWithoutTokenSectionV1}, converting dates from {@code LocalDateTime}
      * to {@code OffsetDateTime} (UTC) for the frontend.
-     *
-     * <p>{@code whitelistRecipient} is intentionally not mapped — it is
-     * potentially sensitive and not needed by the backoffice frontend.</p>
      */
     public static TppDTOWithoutTokenSectionV1 toTppDTOWithoutTokenSectionV1(TppEntityIdResponse src) {
         return TppDTOWithoutTokenSectionV1.builder()
@@ -242,6 +239,7 @@ public final class TppConnectorMapper {
                 .agentLinks(toAgentLinksV1(src.getAgentLinks()))
                 .isPaymentEnabled(src.getIsPaymentEnabled())
                 .messageTemplate(src.getMessageTemplate())
+                .whitelistRecipient(src.getWhitelistRecipient())
                 .build();
     }
 }

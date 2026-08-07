@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,10 +19,11 @@ import java.util.Map;
  *
  * <p>Mirrors the upstream {@code TppDTOWithoutTokenSection} (token section excluded).</p>
  *
- * <p>Fields like {@code idPsp}, {@code legalAddress}, {@code state},
- * {@code creationDate}, {@code lastUpdateDate} and {@code isPaymentEnabled}
- * are exposed because the backoffice list/detail view needs them.</p>
+ * <p>{@code @JsonInclude(NON_NULL)} ensures that fields not requested via the {@code fields}
+ * query parameter (and therefore absent from the upstream response) are omitted from the
+ * JSON serialized to the frontend, instead of appearing as explicit {@code null}s.</p>
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
 @Builder
 @AllArgsConstructor

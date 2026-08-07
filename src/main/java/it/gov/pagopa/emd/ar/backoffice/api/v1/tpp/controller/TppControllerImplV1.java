@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
+import java.util.List;
 
 @RestController
 @Slf4j
@@ -82,12 +83,12 @@ public class TppControllerImplV1 implements TppControllerV1 {
     /** {@inheritDoc} */
     @Override
     public Mono<ResponseEntity<TppSearchResponseDTOV1>> searchTpp(
-            String entityId, String businessName, int page, int size) {
-        log.info("[AR-BFF][TPP_SEARCH] Searching TPPs — entityId={}, businessName={}, page={}, size={}",
+            String entityId, String businessName, int page, int size, List<String> fields) {
+        log.info("[AR-BFF][TPP_SEARCH] Searching TPPs — entityId={}, businessName={}, page={}, size={}, fields={}",
                 entityId != null ? "***" : null,
                 businessName != null ? "***" : null,
-                page, size);
-        return tppService.searchTpp(entityId, businessName, page, size)
+                page, size, fields != null ? fields.size() : 0);
+        return tppService.searchTpp(entityId, businessName, page, size, fields)
                 .map(ResponseEntity::ok);
     }
 }

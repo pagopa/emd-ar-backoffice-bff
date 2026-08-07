@@ -5,6 +5,7 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -86,10 +87,10 @@ class TppSearchServiceImplTest {
                 List.of(aTpp("tpp-001", "Acme Srl", "04256050875")),
                 0, 10, 1, 1);
 
-        when(tppConnector.searchTpp(eq("04256050875"), isNull(), eq(0), eq(10)))
+        when(tppConnector.searchTpp(eq("04256050875"), isNull(), eq(0), eq(10), isNull()))
                 .thenReturn(Mono.just(connectorResponse));
 
-        StepVerifier.create(service.searchTpp("04256050875", null, 0, 10))
+        StepVerifier.create(service.searchTpp("04256050875", null, 0, 10, null))
                 .assertNext(dto -> {
                     assertThat(dto.getTotalElements()).isEqualTo(1);
                     assertThat(dto.getTotalPages()).isEqualTo(1);
@@ -114,10 +115,10 @@ class TppSearchServiceImplTest {
                         aTpp("tpp-002", "MDC Payments S.p.A.", "09876543210")),
                 0, 20, 2, 1);
 
-        when(tppConnector.searchTpp(isNull(), eq("MDC"), eq(0), eq(20)))
+        when(tppConnector.searchTpp(isNull(), eq("MDC"), eq(0), eq(20), isNull()))
                 .thenReturn(Mono.just(connectorResponse));
 
-        StepVerifier.create(service.searchTpp(null, "MDC", 0, 20))
+        StepVerifier.create(service.searchTpp(null, "MDC", 0, 20, null))
                 .assertNext(dto -> {
                     assertThat(dto.getContent()).hasSize(2);
                     assertThat(dto.getContent().get(0).getBusinessName()).isEqualTo("MDC Finance Srl");
@@ -133,10 +134,10 @@ class TppSearchServiceImplTest {
     void searchTpp_EmptyPage_ReturnsEmptyContent() {
         TppSearchResponse connectorResponse = pageOf(List.of(), 0, 10, 0, 0);
 
-        when(tppConnector.searchTpp(eq("99999999999"), isNull(), eq(0), eq(10)))
+        when(tppConnector.searchTpp(eq("99999999999"), isNull(), eq(0), eq(10), isNull()))
                 .thenReturn(Mono.just(connectorResponse));
 
-        StepVerifier.create(service.searchTpp("99999999999", null, 0, 10))
+        StepVerifier.create(service.searchTpp("99999999999", null, 0, 10, null))
                 .assertNext(dto -> {
                     assertThat(dto.getContent()).isEmpty();
                     assertThat(dto.getTotalElements()).isEqualTo(0);
@@ -150,10 +151,10 @@ class TppSearchServiceImplTest {
      */
     @Test
     void searchTpp_UpstreamError_PropagatesExternalServiceException() {
-        when(tppConnector.searchTpp(isNull(), eq("ACME"), eq(0), eq(10)))
+        when(tppConnector.searchTpp(isNull(), eq("ACME"), eq(0), eq(10), isNull()))
                 .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "searchTpp", "500 error")));
 
-        StepVerifier.create(service.searchTpp(null, "ACME", 0, 10))
+        StepVerifier.create(service.searchTpp(null, "ACME", 0, 10, null))
                 .expectErrorMatches(ex -> ex instanceof ExternalServiceException
                         && ex.getMessage().contains("searchTpp"))
                 .verify();
@@ -170,10 +171,10 @@ class TppSearchServiceImplTest {
 
         TppSearchResponse connectorResponse = pageOf(items, 3, 2, 137, 69);
 
-        when(tppConnector.searchTpp(isNull(), eq("Srl"), eq(3), eq(2)))
+        when(tppConnector.searchTpp(isNull(), eq("Srl"), eq(3), eq(2), isNull()))
                 .thenReturn(Mono.just(connectorResponse));
 
-        StepVerifier.create(service.searchTpp(null, "Srl", 3, 2))
+        StepVerifier.create(service.searchTpp(null, "Srl", 3, 2, null))
                 .assertNext((TppSearchResponseDTOV1 dto) -> {
                     assertThat(dto.getPage()).isEqualTo(3);
                     assertThat(dto.getSize()).isEqualTo(2);
@@ -181,6 +182,40 @@ class TppSearchServiceImplTest {
                     assertThat(dto.getTotalPages()).isEqualTo(69);
                 })
                 .verifyComplete();
+    }
+
+    /**
+     * Fields validi: i fields vengono inoltrati al connector e la risposta è mappata correttamente.
+     */
+    @Test
+    void searchTpp_WithValidFields_PassesFieldsToConnector() {
+        List<String> fields = List.of("tppId", "businessName");
+        TppSearchResponse connectorResponse = pageOf(
+                List.of(aTpp("tpp-001", "Acme Srl", null)), 0, 10, 1, 1);
+
+        when(tppConnector.searchTpp(isNull(), eq("Acme"), eq(0), eq(10), eq(fields)))
+                .thenReturn(Mono.just(connectorResponse));
+
+        StepVerifier.create(service.searchTpp(null, "Acme", 0, 10, fields))
+                .assertNext(dto -> assertThat(dto.getContent()).hasSize(1))
+                .verifyComplete();
+    }
+
+    /**
+     * Campo non valido: {@link InvalidSearchFieldException} viene propagata senza trasformazioni.
+     */
+    @Test
+    void searchTpp_InvalidField_PropagatesInvalidSearchFieldException() {
+        List<String> badFields = List.of("invalidField");
+
+        when(tppConnector.searchTpp(isNull(), eq("Test"), eq(0), eq(10), eq(badFields)))
+                .thenReturn(Mono.error(new InvalidSearchFieldException("invalidField",
+                        "{\"code\":\"INVALID_SEARCH_FIELD\"}")));
+
+        StepVerifier.create(service.searchTpp(null, "Test", 0, 10, badFields))
+                .expectErrorMatches(ex -> ex instanceof InvalidSearchFieldException
+                        && ex.getMessage().contains("invalidField"))
+                .verify();
     }
 }
 

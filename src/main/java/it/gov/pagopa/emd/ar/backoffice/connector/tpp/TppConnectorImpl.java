@@ -7,6 +7,7 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,8 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 /**
  * Implementation of {@link TppConnector} that uses Spring's WebClient
@@ -224,14 +227,19 @@ public class TppConnectorImpl implements TppConnector {
      * {@inheritDoc}
      *
      * <p>Sends a {@code GET /emd/tpp/search} to the remote emd-tpp service, adding only
-     * non-null / non-blank query parameters to the URI. The full paginated
+     * non-null / non-blank query parameters to the URI. The {@code fields} list, when
+     * non-empty, is added as multiple {@code fields=X} query parameters. The full paginated
      * {@link TppSearchResponse} is returned on success.</p>
+     *
+     * <p>HTTP 400 with body {@code INVALID_SEARCH_FIELD} is mapped to
+     * {@link InvalidSearchFieldException}; all other errors become
+     * {@link ExternalServiceException}.</p>
      *
      * <p>GET is idempotent, so transient retries are safe via
      * {@link WebClientRetrySpecs#transientNetwork()}.</p>
      */
     @Override
-    public Mono<TppSearchResponse> searchTpp(String entityId, String businessName, int page, int size) {
+    public Mono<TppSearchResponse> searchTpp(String entityId, String businessName, int page, int size, List<String> fields) {
         return webClient.get()
                 .uri(uriBuilder -> {
                     uriBuilder.path(SEARCH_TPP_PATH);
@@ -243,9 +251,18 @@ public class TppConnectorImpl implements TppConnector {
                     }
                     uriBuilder.queryParam("page", page);
                     uriBuilder.queryParam("size", size);
+                    if (fields != null && !fields.isEmpty()) {
+                        fields.forEach(f -> uriBuilder.queryParam("fields", f));
+                    }
                     return uriBuilder.build();
                 })
                 .retrieve()
+                .onStatus(status -> status.value() == 400, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new InvalidSearchFieldException(
+                                                fields != null ? String.join(",", fields) : "",
+                                                body))))
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
                                 .flatMap(body -> Mono.error(
@@ -253,8 +270,10 @@ public class TppConnectorImpl implements TppConnector {
                 .bodyToMono(TppSearchResponse.class)
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
                 .doOnError(ex -> log.error(
-                        "[TPP-CONNECTOR] GET {} failed (entityId={}, businessName={}): {}",
+                        "[TPP-CONNECTOR] GET {} failed (entityId={}, businessName={}, fields={}): {}",
                         SEARCH_TPP_PATH, entityId != null ? "***" : null,
-                        businessName != null ? "***" : null, ex.getMessage()));
+                        businessName != null ? "***" : null,
+                        fields != null ? fields.size() : 0,
+                        ex.getMessage()));
     }
 }

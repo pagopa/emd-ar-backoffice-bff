@@ -444,7 +444,7 @@ class TppControllerV1Test {
                 .totalPages(1)
                 .build();
 
-        when(tppService.searchTpp(eq("04256050875"), eq(null), eq(0), eq(10)))
+        when(tppService.searchTpp(eq("04256050875"), eq(null), eq(0), eq(10), eq(null)))
                 .thenReturn(Mono.just(response));
 
         webTestClient.get()
@@ -480,7 +480,7 @@ class TppControllerV1Test {
                 .totalPages(1)
                 .build();
 
-        when(tppService.searchTpp(eq(null), eq("MDC"), eq(0), eq(10)))
+        when(tppService.searchTpp(eq(null), eq("MDC"), eq(0), eq(10), eq(null)))
                 .thenReturn(Mono.just(response));
 
         webTestClient.get()
@@ -504,7 +504,7 @@ class TppControllerV1Test {
                 .totalPages(0)
                 .build();
 
-        when(tppService.searchTpp(eq("99999999999"), eq(null), eq(0), eq(10)))
+        when(tppService.searchTpp(eq("99999999999"), eq(null), eq(0), eq(10), eq(null)))
                 .thenReturn(Mono.just(response));
 
         webTestClient.get()
@@ -521,7 +521,7 @@ class TppControllerV1Test {
      */
     @Test
     void searchTpp_UpstreamError_PropagatesError() {
-        when(tppService.searchTpp(eq(null), eq("ACME"), eq(0), eq(10)))
+        when(tppService.searchTpp(eq(null), eq("ACME"), eq(0), eq(10), eq(null)))
                 .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "searchTpp", "500 upstream")));
 
         webTestClient.get()
@@ -543,7 +543,7 @@ class TppControllerV1Test {
                 .totalPages(3)
                 .build();
 
-        when(tppService.searchTpp(eq(null), eq("Test"), eq(2), eq(5)))
+        when(tppService.searchTpp(eq(null), eq("Test"), eq(2), eq(5), eq(null)))
                 .thenReturn(Mono.just(response));
 
         webTestClient.get()
@@ -554,5 +554,50 @@ class TppControllerV1Test {
                 .jsonPath("$.page").isEqualTo(2)
                 .jsonPath("$.size").isEqualTo(5)
                 .jsonPath("$.totalPages").isEqualTo(3);
+    }
+
+    /**
+     * GET .../tpp/search?fields=businessName&fields=tppId — i fields vengono inoltrati al service.
+     */
+    @Test
+    void searchTpp_WithFields_PassesFieldsToService() {
+        TppDTOWithoutTokenSectionV1 item = TppDTOWithoutTokenSectionV1.builder()
+                .tppId("tpp-003")
+                .businessName("Gamma S.r.l.")
+                .build();
+
+        TppSearchResponseDTOV1 response = TppSearchResponseDTOV1.builder()
+                .content(java.util.List.of(item))
+                .page(0).size(10).totalElements(1).totalPages(1)
+                .build();
+
+        when(tppService.searchTpp(eq(null), eq("Gamma"), eq(0), eq(10),
+                eq(java.util.List.of("businessName", "tppId"))))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?businessName=Gamma&fields=businessName&fields=tppId")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.content[0].tppId").isEqualTo("tpp-003")
+                .jsonPath("$.content[0].businessName").isEqualTo("Gamma S.r.l.");
+    }
+
+    /**
+     * GET .../tpp/search?fields=invalidField — campo non valido → 400 propagato (senza global handler → 500).
+     */
+    @Test
+    void searchTpp_InvalidField_PropagatesError() {
+        when(tppService.searchTpp(eq(null), eq("ACME"), eq(0), eq(10),
+                eq(java.util.List.of("invalidField"))))
+                .thenReturn(Mono.error(
+                        new it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException(
+                                "invalidField", "{\"code\":\"INVALID_SEARCH_FIELD\"}")));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?businessName=ACME&fields=invalidField")
+                .exchange()
+                .expectStatus().is5xxServerError(); // senza global handler → 500
     }
 }

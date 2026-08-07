@@ -7,6 +7,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import reactor.core.publisher.Mono;
+import java.util.List;
 
 public interface TppService {
 
@@ -134,13 +135,22 @@ public interface TppService {
      * omit them. When both are supplied, {@code entityId} (exact match) takes precedence
      * on the upstream side.</p>
      *
+     * <p>The optional {@code fields} list restricts which fields are populated in each
+     * element of {@code content}. When {@code null} or empty, upstream defaults apply
+     * ({@code businessName}, {@code entityId}, {@code isPaymentEnabled}, {@code tppId},
+     * {@code state}, {@code lastUpdateDate}). An invalid field name causes HTTP 400
+     * ({@link it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException}).</p>
+     *
      * @param entityId     optional exact-match filter on the entity fiscal/VAT code
      * @param businessName optional partial (case-insensitive) match on the business name
      * @param page         zero-based page index (default 0)
      * @param size         page size (default 10, max 100)
+     * @param fields       optional list of field names to include in each result element
      * @return {@code Mono<TppSearchResponseDTOV1>} with the paginated result, or an
+     *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException}
+     *         (HTTP 400) for an invalid field, or an
      *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException}
-     *         (HTTP 502) on any upstream error
+     *         (HTTP 502) on any other upstream error
      */
-    Mono<TppSearchResponseDTOV1> searchTpp(String entityId, String businessName, int page, int size);
+    Mono<TppSearchResponseDTOV1> searchTpp(String entityId, String businessName, int page, int size, List<String> fields);
 }

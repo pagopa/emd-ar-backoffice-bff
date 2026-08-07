@@ -14,6 +14,7 @@ import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientServi
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import java.util.List;
 
 /**
  * Orchestrates TPP creation:
@@ -170,12 +171,12 @@ public class TppServiceImpl implements TppService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<TppSearchResponseDTOV1> searchTpp(String entityId, String businessName, int page, int size) {
-        log.info("[AR-BFF][TPP_SEARCH] Searching TPPs — entityId={}, businessName={}, page={}, size={}",
+    public Mono<TppSearchResponseDTOV1> searchTpp(String entityId, String businessName, int page, int size, List<String> fields) {
+        log.info("[AR-BFF][TPP_SEARCH] Searching TPPs — entityId={}, businessName={}, page={}, size={}, fields={}",
                 entityId != null ? "***" : null,
                 businessName != null ? "***" : null,
-                page, size);
-        return tppConnector.searchTpp(entityId, businessName, page, size)
+                page, size, fields != null ? fields.size() : 0);
+        return tppConnector.searchTpp(entityId, businessName, page, size, fields)
                 .map(TppConnectorMapper::toTppSearchResponseDTOV1)
                 .doOnSuccess(r -> log.info("[AR-BFF][TPP_SEARCH] Search completed: totalElements={}, totalPages={}",
                         r.getTotalElements(), r.getTotalPages()))

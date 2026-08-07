@@ -33,9 +33,9 @@ public class TppControllerImplV1 implements TppControllerV1 {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<TppResponseDTOV1>> getTppByEntityId(String entityId) {
-        log.info("[AR-BFF][TPP_GET] Getting TPP by entityId={}", entityId);
-        return tppService.getTppByEntityId(entityId)
+    public Mono<ResponseEntity<TppResponseDTOV1>> getTppByEntityId(String entityId, boolean detailed) {
+        log.info("[AR-BFF][TPP_GET] Getting TPP by entityId={}, detailed={}", entityId, detailed);
+        return tppService.getTppByEntityId(entityId, detailed)
                 .map(ResponseEntity::ok);
     }
 

@@ -76,10 +76,12 @@ public class TppServiceImpl implements TppService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<TppResponseDTOV1> getTppByEntityId(String entityId) {
-        log.info("[AR-BFF][TPP_GET] Looking up TPP by entityId={}", entityId);
+    public Mono<TppResponseDTOV1> getTppByEntityId(String entityId, boolean detailed) {
+        log.info("[AR-BFF][TPP_GET] Looking up TPP by entityId={}, detailed={}", entityId, detailed);
         return tppConnector.getTppByEntityId(entityId)
-                .map(TppConnectorMapper::toTppResponseDTOV1)
+                .map(r -> detailed
+                        ? TppConnectorMapper.toTppResponseDTOV1Detailed(r)
+                        : TppConnectorMapper.toTppResponseDTOV1(r))
                 .doOnSuccess(r -> log.info("[AR-BFF][TPP_GET] Found TPP for entityId={}", entityId))
                 .doOnError(e -> log.warn("[AR-BFF][TPP_GET] TPP not found for entityId={}: {}", entityId, e.getMessage()));
     }

@@ -26,11 +26,15 @@ public interface TppService {
      * Looks up an existing TPP by its {@code entityId} (CF o P.IVA).
      *
      * @param entityId the fiscal code or VAT number
-     * @return {@code Mono<TppResponseDTOV1>} with the full TPP details if found,
+     * @param detailed when {@code true} all server-managed fields (entityId, idPsp, legalAddress,
+     *                 state, creationDate, lastUpdateDate, isPaymentEnabled, messageTemplate,
+     *                 whitelistRecipient, clientId) are included in the response;
+     *                 when {@code false} only the base subset is returned (default behaviour)
+     * @return {@code Mono<TppResponseDTOV1>} with the TPP details if found,
      *         or a {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException}
      *         (HTTP 404) if no TPP exists for that entityId
      */
-    Mono<TppResponseDTOV1> getTppByEntityId(String entityId);
+    Mono<TppResponseDTOV1> getTppByEntityId(String entityId, boolean detailed);
 
     /**
      * Deletes a TPP from the emd-tpp service and its associated Keycloak client.

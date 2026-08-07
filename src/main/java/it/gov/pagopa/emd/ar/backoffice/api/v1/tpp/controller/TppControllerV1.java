@@ -43,17 +43,25 @@ public interface TppControllerV1 {
 
     /**
      * Checks whether a TPP with the given {@code entityId} (CF or P.IVA) already exists
-     * and returns its full details.
+     * and returns its details.
      *
      * <p>Returns HTTP 200 with a {@code TppResponseDTOV1} payload if found, or HTTP 404 if no TPP
      * exists for that {@code entityId}.</p>
      *
+     * <p>When {@code detailed=true} all server-managed fields (entityId, idPsp, legalAddress,
+     * state, creationDate, lastUpdateDate, isPaymentEnabled, messageTemplate, whitelistRecipient,
+     * clientId) are included in the response. When {@code detailed=false} (default) only the
+     * standard business fields are returned.</p>
+     *
      * @param entityId the fiscal code (11 digits) or VAT number (up to 16 alphanumeric chars)
-     * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} with full TPP details, or 404
+     * @param detailed {@code true} to include all server-managed fields; {@code false} (default)
+     *                 for the standard reduced payload
+     * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} with TPP details, or 404
      */
     @GetMapping(value = "tpp/{entityId}", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TppResponseDTOV1>> getTppByEntityId(
-            @PathVariable("entityId") String entityId);
+            @PathVariable("entityId") String entityId,
+            @RequestParam(defaultValue = "false") boolean detailed);
 
     /**
      * <strong>TEST ONLY — NOT exposed on APIM.</strong>

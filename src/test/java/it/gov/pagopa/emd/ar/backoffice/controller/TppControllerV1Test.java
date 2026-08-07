@@ -82,10 +82,10 @@ class TppControllerV1Test {
     }
 
     /**
-     * GET /emd/backoffice/api/v1/tpp/{entityId} — TPP trovata → 200 con tutti i campi del DTO.
+     * GET /emd/backoffice/api/v1/tpp/{entityId} — TPP trovata senza detailed → 200 con campi base.
      */
     @Test
-    void getTppByEntityId_Found_Returns200WithFullDto() {
+    void getTppByEntityId_Found_Returns200WithBaseDto() {
         String entityId = "12345678901";
 
         TppResponseDTOV1 response = TppResponseDTOV1.builder()
@@ -95,7 +95,7 @@ class TppControllerV1Test {
                 .contact(new ContactV1("Mario Rossi", "1234567890", "mario@tpp.it"))
                 .build();
 
-        when(tppService.getTppByEntityId(eq(entityId)))
+        when(tppService.getTppByEntityId(eq(entityId), eq(false)))
                 .thenReturn(Mono.just(response));
 
         webTestClient.get()
@@ -108,7 +108,45 @@ class TppControllerV1Test {
                 .jsonPath("$.businessName").isEqualTo("My TPP Srl")
                 .jsonPath("$.authenticationType").isEqualTo("OAUTH2")
                 .jsonPath("$.contact.name").isEqualTo("Mario Rossi")
-                .jsonPath("$.contact.email").isEqualTo("mario@tpp.it");
+                .jsonPath("$.contact.email").isEqualTo("mario@tpp.it")
+                // detailed-only fields must be absent from JSON
+                .jsonPath("$.entityId").doesNotExist()
+                .jsonPath("$.state").doesNotExist();
+    }
+
+    /**
+     * GET /emd/backoffice/api/v1/tpp/{entityId}?detailed=true — TPP trovata con tutti i campi → 200.
+     */
+    @Test
+    void getTppByEntityId_DetailedTrue_Returns200WithAllFields() {
+        String entityId = "12345678901";
+
+        TppResponseDTOV1 response = TppResponseDTOV1.builder()
+                .tppId("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
+                .businessName("My TPP Srl")
+                .authenticationType(AuthenticationTypeV1.OAUTH2)
+                .entityId(entityId)
+                .idPsp("PSP_001")
+                .legalAddress("Via Roma 1, 00100 Roma")
+                .state(true)
+                .isPaymentEnabled(false)
+                .build();
+
+        when(tppService.getTppByEntityId(eq(entityId), eq(true)))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "?detailed=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
+                .jsonPath("$.businessName").isEqualTo("My TPP Srl")
+                .jsonPath("$.entityId").isEqualTo(entityId)
+                .jsonPath("$.idPsp").isEqualTo("PSP_001")
+                .jsonPath("$.legalAddress").isEqualTo("Via Roma 1, 00100 Roma")
+                .jsonPath("$.state").isEqualTo(true);
     }
 
     /**
@@ -120,7 +158,7 @@ class TppControllerV1Test {
     void getTppByEntityId_NotFound_PropagatesError() {
         String entityId = "99999999999";
 
-        when(tppService.getTppByEntityId(eq(entityId)))
+        when(tppService.getTppByEntityId(eq(entityId), eq(false)))
                 .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
 
         webTestClient.get()

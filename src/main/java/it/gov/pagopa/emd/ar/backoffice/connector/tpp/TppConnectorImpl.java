@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import org.springframework.web.util.UriBuilder;
+
+import java.net.URI;
 import java.util.List;
 
 /**
@@ -240,29 +243,15 @@ public class TppConnectorImpl implements TppConnector {
      */
     @Override
     public Mono<TppSearchResponse> searchTpp(String entityId, String businessName, int page, int size, List<String> fields) {
+        String joinedFields = fields != null ? String.join(",", fields) : "";
+        int fieldCount     = fields != null ? fields.size() : 0;
         return webClient.get()
-                .uri(uriBuilder -> {
-                    uriBuilder.path(SEARCH_TPP_PATH);
-                    if (entityId != null && !entityId.isBlank()) {
-                        uriBuilder.queryParam("entityId", entityId);
-                    }
-                    if (businessName != null && !businessName.isBlank()) {
-                        uriBuilder.queryParam("businessName", businessName);
-                    }
-                    uriBuilder.queryParam("page", page);
-                    uriBuilder.queryParam("size", size);
-                    if (fields != null && !fields.isEmpty()) {
-                        fields.forEach(f -> uriBuilder.queryParam("fields", f));
-                    }
-                    return uriBuilder.build();
-                })
+                .uri(uriBuilder -> buildSearchUri(uriBuilder, entityId, businessName, page, size, fields))
                 .retrieve()
                 .onStatus(status -> status.value() == 400, response ->
                         response.bodyToMono(String.class)
                                 .flatMap(body -> Mono.error(
-                                        new InvalidSearchFieldException(
-                                                fields != null ? String.join(",", fields) : "",
-                                                body))))
+                                        new InvalidSearchFieldException(joinedFields, body))))
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
                                 .flatMap(body -> Mono.error(
@@ -271,9 +260,32 @@ public class TppConnectorImpl implements TppConnector {
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] GET {} failed (entityId={}, businessName={}, fields={}): {}",
-                        SEARCH_TPP_PATH, entityId != null ? "***" : null,
+                        SEARCH_TPP_PATH,
+                        entityId != null ? "***" : null,
                         businessName != null ? "***" : null,
-                        fields != null ? fields.size() : 0,
+                        fieldCount,
                         ex.getMessage()));
+    }
+
+    /**
+     * Builds the URI for {@code GET /emd/tpp/search}, appending only the query parameters
+     * that are actually provided (non-null / non-blank). Extracted to keep the cognitive
+     * complexity of {@link #searchTpp} within the allowed threshold.
+     */
+    private URI buildSearchUri(UriBuilder uriBuilder, String entityId, String businessName,
+                               int page, int size, List<String> fields) {
+        uriBuilder.path(SEARCH_TPP_PATH)
+                  .queryParam("page", page)
+                  .queryParam("size", size);
+        if (entityId != null && !entityId.isBlank()) {
+            uriBuilder.queryParam("entityId", entityId);
+        }
+        if (businessName != null && !businessName.isBlank()) {
+            uriBuilder.queryParam("businessName", businessName);
+        }
+        if (fields != null && !fields.isEmpty()) {
+            fields.forEach(f -> uriBuilder.queryParam("fields", f));
+        }
+        return uriBuilder.build();
     }
 }

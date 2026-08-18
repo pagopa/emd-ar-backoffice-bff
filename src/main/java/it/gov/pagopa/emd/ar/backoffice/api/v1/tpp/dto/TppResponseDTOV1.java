@@ -15,8 +15,8 @@ import java.util.Map;
  * and {@code PATCH /tpp/{entityId}}.
  *
  * <p>Contains only the fields exposed to the frontend. Server-managed fields
- * (entityId, idPsp, legalAddress, state, creationDate, lastUpdateDate,
- * isPaymentEnabled, messageTemplate, whitelistRecipient) are intentionally omitted.</p>
+ * (entityId, idPsp, legalAddress, creationDate, lastUpdateDate,
+ * messageTemplate, whitelistRecipient) are intentionally omitted.</p>
  */
 @Data
 @Builder
@@ -32,5 +32,8 @@ public class TppResponseDTOV1 {
     private ContactV1 contact;
     private String pspDenomination;
     private Map<String, AgentLinkV1> agentLinks;
+
+    private Boolean state;
+    private Boolean isPaymentEnabled;
 }
 

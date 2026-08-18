@@ -1,5 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
@@ -37,6 +39,8 @@ public class TppConnectorImpl implements TppConnector {
     private static final String GET_TPP_BY_ENTITY_ID_PATH = "/emd/tpp/entityId/{entityId}";
     private static final String GET_TPP_TOKEN_PATH        = "/emd/tpp/{tppId}/token";
     private static final String UPDATE_TPP_TOKEN_PATH     = "/emd/tpp/update/{tppId}/token";
+    private static final String UPDATE_TPP_STATE_PATH     = "/emd/tpp";
+    private static final String UPDATE_TPP_ISPAYMENT_PATH = "/emd/tpp/{tppId}/payment-enabled";
 
     private final WebClient webClient;
 
@@ -216,5 +220,60 @@ public class TppConnectorImpl implements TppConnector {
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] PATCH {} failed for tppId={}: {}",
                         PATCH_TPP_PATH, tppId, ex.getMessage()));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code PUT /emd/tpp} to the remote service. 
+     * Safe to retry with {@link WebClientRetrySpecs#transientNetwork()} as PUT is idempotent.</p>
+     */
+    @Override
+    public Mono<TppEntityIdResponse> updateTppState(TppUpdateStateDTOV1 tppUpdateStateDTO) {
+        return webClient.put()
+                .uri(UPDATE_TPP_STATE_PATH)
+                .bodyValue(tppUpdateStateDTO)
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ResourceNotFoundException("TPP", tppUpdateStateDTO.getTppId()))))
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ExternalServiceException("TPP_SERVICE", "updateTppState", body))))
+                .bodyToMono(TppEntityIdResponse.class)
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}",
+                        UPDATE_TPP_STATE_PATH, tppUpdateStateDTO.getTppId(), ex.getMessage()));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code PUT /emd/tpp/{tppId}/payment-enabled} to the remote service.
+     * Safe to retry with {@link WebClientRetrySpecs#transientNetwork()}.</p>
+     */
+    @Override
+    public Mono<Void> updateTppIsPaymentEnabled(String tppId, TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO) {
+        return webClient.put()
+                .uri(UPDATE_TPP_ISPAYMENT_PATH, tppId)
+                .bodyValue(tppUpdateIsPaymentEnabledDTO)
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ResourceNotFoundException("TPP", tppId))))
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ExternalServiceException("TPP_SERVICE", "updateTppIsPaymentEnabled", body))))
+                .toBodilessEntity()
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}",
+                        UPDATE_TPP_ISPAYMENT_PATH, tppId, ex.getMessage()))
+                .then();
     }
 }

@@ -1,5 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
@@ -85,4 +87,22 @@ public interface TppConnector {
      *         for any other upstream error
      */
     Mono<TppEntityIdResponse> patchTpp(String tppId, TppPatchRequest patchRequest);
+
+    /**
+     * Updates the TPP state by sending a PUT request to the remote emd-tpp service.
+     *
+     * @param tppUpdateStateDTO the update payload (must include tppId)
+     * @return {@code Mono<TppEntityIdResponse>} with the updated TPP representation, 
+     *         or an error if the operation fails
+     */
+    Mono<TppEntityIdResponse> updateTppState(TppUpdateStateDTOV1 tppUpdateStateDTO);
+
+    /**
+     * Updates the payment enabled flag by sending a PUT request to the remote emd-tpp service.
+     *
+     * @param tppId                         the identifier of the TPP
+     * @param tppUpdateIsPaymentEnabledDTO  the payment status data
+     * @return {@code Mono<Void>} completing on success, or an error if the call fails
+     */
+    Mono<Void> updateTppIsPaymentEnabled(String tppId, TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO);
 }

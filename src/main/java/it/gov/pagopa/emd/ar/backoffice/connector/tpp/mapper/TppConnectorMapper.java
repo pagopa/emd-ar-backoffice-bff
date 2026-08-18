@@ -149,6 +149,8 @@ public final class TppConnectorMapper {
                 .contact(toContactV1(src.getContact()))
                 .pspDenomination(src.getPspDenomination())
                 .agentLinks(toAgentLinksV1(src.getAgentLinks()))
+                .state(src.getState())
+                .isPaymentEnabled(src.getIsPaymentEnabled())
                 .build();
     }
 

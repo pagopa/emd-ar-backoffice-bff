@@ -14,6 +14,8 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
@@ -142,4 +144,42 @@ public interface TppControllerV1 {
     Mono<ResponseEntity<TppResponseDTOV1>> patchTpp(
             @PathVariable("entityId") String entityId,
             @Valid @RequestBody TppPatchDTOV1 patchDTO);
+
+    /**
+     * Updates the operational state (active/inactive) of the TPP identified by {@code tppId}.
+     *
+     * <p>This endpoint allows administrative control over the TPP status. The BFF receives 
+     * the request and delegates the update to the emd-tpp service via {@code PUT /emd/tpp}. 
+     * Unlike other endpoints, this uses the internal {@code tppId} directly.</p>
+     *
+     * @param tppId             the internal identifier of the TPP
+     * @param tppUpdateStateDTO the payload containing the new state (true/false)
+     * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} HTTP 200 with TPP details,
+     *         404 if no TPP exists for that {@code tppId}, 502 if emd-tpp is unreachable
+     */
+    @PutMapping(value = "tpp/{tppId}/state",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<TppResponseDTOV1>> updateTppState(
+            @PathVariable("tppId") String tppId,
+            @Valid @RequestBody TppUpdateStateDTOV1 tppUpdateStateDTO);
+
+    /**
+     * Updates the TPP's ability to execute the payment. The TPP is identified by {@code tppId}.
+     *
+     * <p>The BFF delegates the update to the emd-tpp service via 
+     * {@code PUT /emd/tpp/{tppId}/payment-enabled}. This flag determines if the TPP 
+     * is allowed to perform payment operations.</p>
+     *
+     * @param tppId                         the internal identifier of the TPP
+     * @param tppUpdateIsPaymentEnabledDTO  the payload containing the payment enabled flag
+     * @return {@code Mono<ResponseEntity<Void>>} HTTP 204 No Content on success,
+     *         404 if the TPP is not found, 502 if emd-tpp is unreachable
+     */
+    @PutMapping(value = "tpp/{tppId}/payment-enabled",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<Void>> updateTppIsPaymentEnabled(
+            @PathVariable("tppId") String tppId,
+            @Valid @RequestBody TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO);
 }

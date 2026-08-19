@@ -55,7 +55,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
         log.info("[AR-BFF][UPSERT_USER] Start");
         log.debug("[AR-BFF][UPSERT_USER] uid={}", userDTO.getUid());
 
-        return getKeycloakUser(userDTO.getUid(), managerToken)
+        return getKeycloakUser(userDTO.getEmail(), managerToken)
                 .flatMap(users -> {
                     Map<String, Object> payload = buildKeycloakUserPayload(userDTO);
                     if (users.isEmpty()) {
@@ -77,13 +77,13 @@ public class KeycloakUserService extends AbstractKeycloakService {
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
-    private Mono<List<Map<String, Object>>> getKeycloakUser(String username, String adminToken) {
+    private Mono<List<Map<String, Object>>> getKeycloakUser(String email, String adminToken) {
         log.info("[AR-BFF][GET_KC_USER] Searching for user");
-        log.debug("[AR-BFF][GET_KC_USER] username={}", username);
+        log.debug("[AR-BFF][GET_KC_USER] email={}", email);
 
         URI uri = UriComponentsBuilder.fromUriString(authServerUrl)
                 .path("/admin/realms/{realm}/users")
-                .queryParam("username", username)
+                .queryParam("username", email)
                 .queryParam("exact", true)
                 .buildAndExpand(realm)
                 .toUri();
@@ -141,7 +141,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
 
     private Map<String, Object> buildKeycloakUserPayload(User userDTO) {
         Map<String, Object> body = new HashMap<>();
-        body.put("username", userDTO.getUid());
+        body.put("username", userDTO.getEmail());
         body.put("email", userDTO.getEmail());
         body.put("firstName", userDTO.getName());
         body.put("lastName", userDTO.getFamilyName());
@@ -150,6 +150,9 @@ public class KeycloakUserService extends AbstractKeycloakService {
 
         Organization org = userDTO.getOrganization();
         Map<String, List<String>> attributes = new HashMap<>();
+
+        // selfcareUserId — maps the external uid as Keycloak attribute
+        attributes.put("selfcareUserId", List.of(userDTO.getUid()));
 
         // orgId — single-value attribute
         if (org.getId() != null) {

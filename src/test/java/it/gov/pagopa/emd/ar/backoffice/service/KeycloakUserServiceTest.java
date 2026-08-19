@@ -267,7 +267,15 @@ class KeycloakUserServiceTest {
                 .verifyComplete();
 
         java.util.Map<String, Object> payload = new ObjectMapper().readValue(bodyRef.get(), java.util.Map.class);
+
+        // username deve essere la mail, non l'uid
+        assertThat(payload.get("username")).isEqualTo("mario@rossi.it");
+
         java.util.Map<String, Object> attrs = (java.util.Map<String, Object>) payload.get("attributes");
+
+        assertThat(attrs).containsKey("selfcareUserId");
+        List<String> selfcareUserId = (List<String>) attrs.get("selfcareUserId");
+        assertThat(selfcareUserId).containsExactly(USER_UID);
 
         assertThat(attrs).containsKey("orgId");
         List<String> orgId = (List<String>) attrs.get("orgId");
@@ -321,7 +329,15 @@ class KeycloakUserServiceTest {
                 .verifyComplete();
 
         java.util.Map<String, Object> payload = new ObjectMapper().readValue(bodyRef.get(), java.util.Map.class);
+
+        // username deve essere la mail, non l'uid
+        assertThat(payload.get("username")).isEqualTo("luigi@verdi.it");
+
         java.util.Map<String, Object> attrs = (java.util.Map<String, Object>) payload.get("attributes");
+
+        assertThat(attrs).containsKey("selfcareUserId");
+        List<String> selfcareUserIdMulti = (List<String>) attrs.get("selfcareUserId");
+        assertThat(selfcareUserIdMulti).containsExactly(USER_UID);
 
         List<String> orgRolesMulti = (List<String>) attrs.get("orgRoles");
         assertThat(orgRolesMulti).containsExactlyInAnyOrder("admin", "operator", "viewer");
@@ -361,8 +377,18 @@ class KeycloakUserServiceTest {
                 .verifyComplete();
 
         java.util.Map<String, Object> payload = new ObjectMapper().readValue(bodyRef.get(), java.util.Map.class);
+
+        // username deve essere la mail, non l'uid
+        assertThat(payload.get("username")).isEqualTo("anna@bianchi.it");
+
         java.util.Map<String, Object> attrs = (java.util.Map<String, Object>) payload.get("attributes");
 
+        // selfcareUserId sempre presente
+        assertThat(attrs).containsKey("selfcareUserId");
+        List<String> selfcareUserId = (List<String>) attrs.get("selfcareUserId");
+        assertThat(selfcareUserId).containsExactly(USER_UID);
+
+        // campi org assenti
         assertThat(attrs).doesNotContainKey("orgId");
         assertThat(attrs).doesNotContainKey("orgRoles");
         assertThat(attrs).doesNotContainKey("orgFiscalCode");

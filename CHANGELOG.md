@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.9.1...v0.9.2) (2026-08-19)
+
+
+### Bug Fixes
+
+* [MMC-991] set email as key in keycloak user ([#45](https://github.com/pagopa/emd-ar-backoffice-bff/issues/45)) ([1cbd6a5](https://github.com/pagopa/emd-ar-backoffice-bff/commit/1cbd6a51833a82629925dbbde6791e959eb689ba))
+
 ## [0.9.1](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.9.0...v0.9.1) (2026-07-03)
 
 

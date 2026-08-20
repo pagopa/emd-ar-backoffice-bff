@@ -5,9 +5,14 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
+import jakarta.validation.Valid;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import reactor.core.publisher.Mono;
 import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 
 public interface TppService {
 
@@ -157,4 +162,22 @@ public interface TppService {
      *         (HTTP 502) on any other upstream error
      */
     Mono<TppSearchResponseDTOV1> searchTpp(String entityId, String businessName, int page, int size, List<String> fields);
+
+    /**
+     * Adds a recipient identifier to the TPP's whitelist.
+     *
+     * @param tppId                    the internal identifier of the TPP
+     * @param recipientIdOnWhitelistDTO the DTO containing the recipient identifier
+     * @return {@code Mono<Void>} completing when the recipient has been added
+     */
+    Mono<Void> insertRecipientIdOnWhitelist(String tppId, RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO);
+
+    /**
+     * Removes a recipient identifier from the TPP's whitelist.
+     *
+     * @param tppId       the internal identifier of the TPP
+     * @param recipientId the recipient identifier to remove
+     * @return {@code Mono<Void>} completing when the recipient has been removed
+     */
+    Mono<Void> removeRecipientIdOnWhitelist(String tppId, String recipientId);
 }

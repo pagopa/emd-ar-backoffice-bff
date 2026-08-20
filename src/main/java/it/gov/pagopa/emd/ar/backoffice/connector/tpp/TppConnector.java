@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
@@ -121,4 +122,22 @@ public interface TppConnector {
      *         on any other upstream error (401/429/500)
      */
     Mono<TppSearchResponse> searchTpp(String entityId, String businessName, int page, int size, List<String> fields);
+
+    /**
+     * Sends a POST request to add a recipient to the whitelist of a TPP.
+     *
+     * @param tppId                    the identifier of the TPP
+     * @param recipientIdOnWhitelistDTO the recipient data
+     * @return {@code Mono<Void>} on success, or an error if the upstream call fails
+     */
+    Mono<Void> insertRecipientIdOnWhitelist(String tppId, RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO);
+
+    /**
+     * Sends a DELETE request to remove a recipient from the whitelist of a TPP.
+     *
+     * @param tppId       the identifier of the TPP
+     * @param recipientId the identifier of the recipient to remove
+     * @return {@code Mono<Void>} on success, or an error if the upstream call fails
+     */
+    Mono<Void> removeRecipientIdOnWhitelist(String tppId, String recipientId);
 }

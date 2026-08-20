@@ -16,6 +16,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
@@ -187,4 +188,28 @@ public interface TppControllerV1 {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) List<String> fields);
+
+    /**
+     * Adds a recipient ID to the whitelist for a specific TPP identified by {@code tppId}.
+     *
+     * <p>This operation delegates to the emd-tpp service to persist the association.
+     * If the recipient ID is already present, the return code will be 409 Conflict).
+     * </p>
+     *
+     * @param tppId                    the identifier of the TPP
+     * @param recipientIdOnWhitelistDTO containing the recipientId to be whitelisted
+     * @return {@code Mono<ResponseEntity<Void>>} HTTP 201 Created on success
+     */
+    @PostMapping("tpp/{tppId}/whitelist")
+    Mono<ResponseEntity<Void>> insertRecipientIdOnWhitelist(@PathVariable String tppId, @Valid @RequestBody RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO);
+
+    /**
+     * Removes a recipient ID from the whitelist of a specific TPP identified by {@code tppId}.
+     *
+     * @param tppId       the identifier of the TPP
+     * @param recipientId the recipient identifier to remove from the whitelist
+     * @return {@code Mono<ResponseEntity<Void>>} HTTP 204 No Content on success
+     */
+    @DeleteMapping("tpp/{tppId}/whitelist/{recipientId}")
+    Mono<ResponseEntity<Void>> removeRecipientIdOnWhitelist(@PathVariable String tppId, @PathVariable String recipientId);
 }

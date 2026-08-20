@@ -5,9 +5,12 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
@@ -90,5 +93,26 @@ public class TppControllerImplV1 implements TppControllerV1 {
                 page, size, fields != null ? fields.size() : 0);
         return tppService.searchTpp(entityId, businessName, page, size, fields)
                 .map(ResponseEntity::ok);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Mono<ResponseEntity<Void>> insertRecipientIdOnWhitelist(String tppId, RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO) {
+        log.info("[AR-BFF][TPP_WHITELIST_ADD] Adding recipientId={} to whitelist for tppId={}", 
+                recipientIdOnWhitelistDTO.getRecipientId(), tppId);
+        return tppService.insertRecipientIdOnWhitelist(tppId, recipientIdOnWhitelistDTO)
+                .then(Mono.just(ResponseEntity.status(HttpStatus.CREATED).build()));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Mono<ResponseEntity<Void>> removeRecipientIdOnWhitelist(String tppId, String recipientId) {
+        log.info("[AR-BFF][TPP_WHITELIST_DELETE] Removing recipientId={} from whitelist for tppId={}", recipientId, tppId);
+        return tppService.removeRecipientIdOnWhitelist(tppId, recipientId)
+                .then(Mono.just(ResponseEntity.noContent().build()));
     }
 }

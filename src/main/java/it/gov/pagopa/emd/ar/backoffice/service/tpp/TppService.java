@@ -1,6 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
@@ -139,10 +140,10 @@ public interface TppService {
      *
      * @param tppId             the internal identifier of the TPP
      * @param tppUpdateStateDTO the state update data
-     * @return {@code Mono<TppResponseDTOV1>} with the updated TPP details,
+     * @return {@code Mono<TppDTOWithoutTokenSectionV1>} with the updated TPP details,
      *         or 404 if the TPP is not found
      */
-    Mono<TppResponseDTOV1> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO);
+    Mono<TppDTOWithoutTokenSectionV1> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO);
 
     /**
      * Updates the payment enabled flag for a TPP in the remote service.

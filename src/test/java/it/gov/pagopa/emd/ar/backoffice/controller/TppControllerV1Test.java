@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller.TppControllerImplV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
@@ -433,7 +434,7 @@ class TppControllerV1Test {
                 .state(true)
                 .build();
 
-        TppResponseDTOV1 expectedResponse = new TppResponseDTOV1();
+        TppDTOWithoutTokenSectionV1 expectedResponse = new TppDTOWithoutTokenSectionV1();
         expectedResponse.setTppId(tppId);
         expectedResponse.setState(true);
 

@@ -1,6 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
@@ -82,7 +83,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<TppResponseDTOV1>> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO) {
+    public Mono<ResponseEntity<TppDTOWithoutTokenSectionV1>> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO) {
         log.info("[AR-BFF][TPP_STATE_UPDATE] Updating TPP state for tppId={}", tppId);
         return tppService.updateTppState(tppId, tppUpdateStateDTO)
                 .map(ResponseEntity::ok);

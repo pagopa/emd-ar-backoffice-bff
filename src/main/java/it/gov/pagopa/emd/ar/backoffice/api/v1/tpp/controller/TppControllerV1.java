@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
@@ -154,13 +155,13 @@ public interface TppControllerV1 {
      *
      * @param tppId             the internal identifier of the TPP
      * @param tppUpdateStateDTO the payload containing the new state (true/false)
-     * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} HTTP 200 with TPP details,
+     * @return {@code Mono<ResponseEntity<TppDTOWithoutTokenSectionV1>>} HTTP 200 with TPP details,
      *         404 if no TPP exists for that {@code tppId}, 502 if emd-tpp is unreachable
      */
     @PutMapping(value = "tpp/{tppId}/state",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    Mono<ResponseEntity<TppResponseDTOV1>> updateTppState(
+    Mono<ResponseEntity<TppDTOWithoutTokenSectionV1>> updateTppState(
             @PathVariable("tppId") String tppId,
             @Valid @RequestBody TppUpdateStateDTOV1 tppUpdateStateDTO);
 

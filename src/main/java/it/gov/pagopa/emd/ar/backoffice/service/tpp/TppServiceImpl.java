@@ -1,6 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
@@ -215,13 +216,13 @@ public class TppServiceImpl implements TppService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<TppResponseDTOV1> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO) {
+    public Mono<TppDTOWithoutTokenSectionV1> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO) {
         log.info("[AR-BFF][TPP_UPDATE_STATE] Updating state for tppId={}", tppId);
 
         tppUpdateStateDTO.setTppId(tppId);
 
         return tppConnector.updateTppState(tppUpdateStateDTO)
-            .map(TppConnectorMapper::toTppResponseDTOV1)
+            .map(TppConnectorMapper::toTppDTOWithoutTokenSectionV1)
             .doOnSuccess(r -> log.info("[AR-BFF][TPP_UPDATE_STATE] TPP updated successfully for tppId={}", tppId))
             .doOnError(e -> log.error("[AR-BFF][TPP_UPDATE_STATE] Failed to update TPP state for tppId={}: {}", tppId, e.getMessage()));
     }

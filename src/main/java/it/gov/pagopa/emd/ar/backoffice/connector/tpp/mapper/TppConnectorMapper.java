@@ -1,6 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
@@ -17,6 +18,7 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.VersionDetails;
 
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -186,5 +188,35 @@ public final class TppConnectorMapper {
     private static VersionDetailsV1 toVersionDetailsV1(VersionDetails connector) {
         if (connector == null) return null;
         return VersionDetailsV1.builder().link(connector.getLink()).build();
+    }
+
+    /**
+     * Maps a {@link TppEntityIdResponse} (connector layer) to the API-layer
+     * {@link TppDTOWithoutTokenSectionV1}, converting dates from {@code LocalDateTime}
+     * to {@code OffsetDateTime} (UTC) for the frontend.
+     */
+    public static TppDTOWithoutTokenSectionV1 toTppDTOWithoutTokenSectionV1(TppEntityIdResponse src) {
+        return TppDTOWithoutTokenSectionV1.builder()
+                .tppId(src.getTppId())
+                .clientId(src.getClientId())
+                .entityId(src.getEntityId())
+                .idPsp(src.getIdPsp())
+                .businessName(src.getBusinessName())
+                .legalAddress(src.getLegalAddress())
+                .messageUrl(src.getMessageUrl())
+                .authenticationUrl(src.getAuthenticationUrl())
+                .authenticationType(toAuthenticationTypeV1(src.getAuthenticationType()))
+                .contact(toContactV1(src.getContact()))
+                .state(src.getState())
+                .creationDate(src.getCreationDate() != null
+                        ? src.getCreationDate().atOffset(ZoneOffset.UTC) : null)
+                .lastUpdateDate(src.getLastUpdateDate() != null
+                        ? src.getLastUpdateDate().atOffset(ZoneOffset.UTC) : null)
+                .pspDenomination(src.getPspDenomination())
+                .agentLinks(toAgentLinksV1(src.getAgentLinks()))
+                .isPaymentEnabled(src.getIsPaymentEnabled())
+                .messageTemplate(src.getMessageTemplate())
+                .whitelistRecipient(src.getWhitelistRecipient())
+                .build();
     }
 }

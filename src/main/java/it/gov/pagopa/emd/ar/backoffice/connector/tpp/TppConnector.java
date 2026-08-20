@@ -123,6 +123,8 @@ public interface TppConnector {
      *         on any other upstream error (401/429/500)
      */
     Mono<TppSearchResponse> searchTpp(String entityId, String businessName, int page, int size, List<String> fields);
+
+    /**
      * Updates the TPP state by sending a PUT request to the remote emd-tpp service.
      *
      * @param tppUpdateStateDTO the update payload (must include tppId)

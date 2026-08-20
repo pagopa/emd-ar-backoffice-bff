@@ -277,10 +277,10 @@ public class TppConnectorImpl implements TppConnector {
      * complexity of {@link #searchTpp} within the allowed threshold.
      */
     private URI buildSearchUri(UriBuilder uriBuilder, String entityId, String businessName,
-                               int page, int size, List<String> fields) {
+                                int page, int size, List<String> fields) {
         uriBuilder.path(SEARCH_TPP_PATH)
-                  .queryParam("page", page)
-                  .queryParam("size", size);
+                    .queryParam("page", page)
+                    .queryParam("size", size);
         if (entityId != null && !entityId.isBlank()) {
             uriBuilder.queryParam("entityId", entityId);
         }
@@ -291,7 +291,12 @@ public class TppConnectorImpl implements TppConnector {
             fields.forEach(f -> uriBuilder.queryParam("fields", f));
         }
         return uriBuilder.build();
-     * <p>Sends a {@code PUT /emd/tpp} to the remote service. 
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code PUT /emd/tpp} to the remote service.
      * Safe to retry with {@link WebClientRetrySpecs#transientNetwork()} as PUT is idempotent.</p>
      */
     @Override

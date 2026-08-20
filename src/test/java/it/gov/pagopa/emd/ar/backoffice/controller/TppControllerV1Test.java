@@ -639,7 +639,9 @@ class TppControllerV1Test {
                 .uri("/emd/backoffice/api/v1/tpp/search?businessName=ACME&fields=invalidField")
                 .exchange()
                 .expectStatus().is5xxServerError(); // senza global handler → 500
-        // ── updateTppState ────────────────────────────────────────────────────────
+    }
+    
+    // ── updateTppState ────────────────────────────────────────────────────────
     /**
      * PUT /emd/backoffice/api/v1/tpp/{tppId}/state — happy path → 200 OK con i dettagli della TPP.
      */

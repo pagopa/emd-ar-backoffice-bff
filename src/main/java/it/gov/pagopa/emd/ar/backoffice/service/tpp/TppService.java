@@ -160,7 +160,9 @@ public interface TppService {
      *         (HTTP 502) on any other upstream error
      */
     Mono<TppSearchResponseDTOV1> searchTpp(String entityId, String businessName, int page, int size, List<String> fields);
-     * Updates the operational state of a TPP in the remote service.
+    
+    /**
+     *  Updates the operational state of a TPP in the remote service.
      *
      * <p>Execution order:
      * <ol>

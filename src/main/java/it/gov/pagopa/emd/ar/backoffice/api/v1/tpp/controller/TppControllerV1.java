@@ -190,6 +190,7 @@ public interface TppControllerV1 {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) List<String> fields);
+    /*
      * Updates the operational state (active/inactive) of the TPP identified by {@code tppId}.
      *
      * <p>This endpoint allows administrative control over the TPP status. The BFF receives 

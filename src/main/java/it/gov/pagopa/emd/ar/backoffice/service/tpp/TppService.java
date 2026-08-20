@@ -4,8 +4,10 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import reactor.core.publisher.Mono;
+import java.util.List;
 
 public interface TppService {
 
@@ -24,11 +26,15 @@ public interface TppService {
      * Looks up an existing TPP by its {@code entityId} (CF o P.IVA).
      *
      * @param entityId the fiscal code or VAT number
-     * @return {@code Mono<TppResponseDTOV1>} with the full TPP details if found,
+     * @param detailed when {@code true} all server-managed fields (entityId, idPsp, legalAddress,
+     *                 state, creationDate, lastUpdateDate, isPaymentEnabled, messageTemplate,
+     *                 whitelistRecipient, clientId) are included in the response;
+     *                 when {@code false} only the base subset is returned (default behaviour)
+     * @return {@code Mono<TppResponseDTOV1>} with the TPP details if found,
      *         or a {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException}
      *         (HTTP 404) if no TPP exists for that entityId
      */
-    Mono<TppResponseDTOV1> getTppByEntityId(String entityId);
+    Mono<TppResponseDTOV1> getTppByEntityId(String entityId, boolean detailed);
 
     /**
      * Deletes a TPP from the emd-tpp service and its associated Keycloak client.
@@ -124,4 +130,31 @@ public interface TppService {
      *         or 404 if the TPP is not found, or 502 if emd-tpp is unreachable
      */
     Mono<TppResponseDTOV1> patchTpp(String entityId, TppPatchDTOV1 patchDTO);
+
+    /**
+     * Searches for TPPs using a paginated, filtered query.
+     *
+     * <p>Delegates directly to the upstream {@code GET /emd/tpp/search} endpoint via the
+     * connector. Filter parameters are optional — pass {@code null} or empty string to
+     * omit them. When both are supplied, {@code entityId} (exact match) takes precedence
+     * on the upstream side.</p>
+     *
+     * <p>The optional {@code fields} list restricts which fields are populated in each
+     * element of {@code content}. When {@code null} or empty, upstream defaults apply
+     * ({@code businessName}, {@code entityId}, {@code isPaymentEnabled}, {@code tppId},
+     * {@code state}, {@code lastUpdateDate}). An invalid field name causes HTTP 400
+     * ({@link it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException}).</p>
+     *
+     * @param entityId     optional exact-match filter on the entity fiscal/VAT code
+     * @param businessName optional partial (case-insensitive) match on the business name
+     * @param page         zero-based page index (default 0)
+     * @param size         page size (default 10, max 100)
+     * @param fields       optional list of field names to include in each result element
+     * @return {@code Mono<TppSearchResponseDTOV1>} with the paginated result, or an
+     *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException}
+     *         (HTTP 400) for an invalid field, or an
+     *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException}
+     *         (HTTP 502) on any other upstream error
+     */
+    Mono<TppSearchResponseDTOV1> searchTpp(String entityId, String businessName, int page, int size, List<String> fields);
 }

@@ -263,11 +263,11 @@ public class TppServiceImplTest {
     // ── getTppByEntityId ───────────────────────────────────────────────────────
 
     /**
-     * Happy path: il connector restituisce il payload completo della TPP e il service
-     * lo mappa correttamente nel {@link TppResponseDTOV1}.
+     * Happy path (detailed=false): il connector restituisce il payload completo della TPP e il service
+     * lo mappa nel {@link TppResponseDTOV1} con solo i campi base (entityId e state esclusi).
      */
     @Test
-    void getTppByEntityId_Success_MapsAllFieldsToResponseDto() {
+    void getTppByEntityId_DetailedFalse_MapsOnlyBaseFields() {
         String entityId = "12345678901";
         String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
 
@@ -287,7 +287,7 @@ public class TppServiceImplTest {
         when(tppConnector.getTppByEntityId(entityId))
                 .thenReturn(Mono.just(connectorResponse));
 
-        StepVerifier.create(tppService.getTppByEntityId(entityId))
+        StepVerifier.create(tppService.getTppByEntityId(entityId, false))
                 .assertNext(dto -> {
                     assertThat(dto.getTppId()).isEqualTo(tppId);
                     assertThat(dto.getBusinessName()).isEqualTo("My TPP Srl");
@@ -295,6 +295,64 @@ public class TppServiceImplTest {
                     assertThat(dto.getContact()).isNotNull();
                     assertThat(dto.getContact().getName()).isEqualTo("Mario Rossi");
                     assertThat(dto.getContact().getEmail()).isEqualTo("mario@tpp.it");
+                    // detailed-only fields must NOT be populated
+                    assertThat(dto.getEntityId()).isNull();
+                    assertThat(dto.getState()).isNull();
+                    assertThat(dto.getIdPsp()).isNull();
+                    assertThat(dto.getLegalAddress()).isNull();
+                    assertThat(dto.getCreationDate()).isNull();
+                    assertThat(dto.getLastUpdateDate()).isNull();
+                })
+                .verifyComplete();
+
+        verify(tppConnector, times(1)).getTppByEntityId(entityId);
+        verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
+    }
+
+    /**
+     * Happy path (detailed=true): il connector restituisce il payload completo e il service
+     * lo mappa nel {@link TppResponseDTOV1} con TUTTI i campi (inclusi quelli server-managed).
+     */
+    @Test
+    void getTppByEntityId_DetailedTrue_MapsAllFields() {
+        String entityId = "12345678901";
+        String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
+        java.time.LocalDateTime now = java.time.LocalDateTime.of(2026, 8, 7, 10, 0);
+
+        TppEntityIdResponse connectorResponse = TppEntityIdResponse.builder()
+                .tppId(tppId)
+                .entityId(entityId)
+                .businessName("My TPP Srl")
+                .idPsp("PSP_001")
+                .legalAddress("Via Roma 1, 00100 Roma")
+                .authenticationType(it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AuthenticationType.OAUTH2)
+                .contact(new it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.Contact("Mario Rossi", "1234567890", "mario@tpp.it"))
+                .state(true)
+                .isPaymentEnabled(true)
+                .pspDenomination("My TPP Srl")
+                .creationDate(now)
+                .lastUpdateDate(now)
+                .messageTemplate("template-xyz")
+                .whitelistRecipient(java.util.List.of("user@example.com"))
+                .build();
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(connectorResponse));
+
+        StepVerifier.create(tppService.getTppByEntityId(entityId, true))
+                .assertNext(dto -> {
+                    assertThat(dto.getTppId()).isEqualTo(tppId);
+                    assertThat(dto.getBusinessName()).isEqualTo("My TPP Srl");
+                    // detailed-only fields MUST be populated
+                    assertThat(dto.getEntityId()).isEqualTo(entityId);
+                    assertThat(dto.getIdPsp()).isEqualTo("PSP_001");
+                    assertThat(dto.getLegalAddress()).isEqualTo("Via Roma 1, 00100 Roma");
+                    assertThat(dto.getState()).isTrue();
+                    assertThat(dto.getIsPaymentEnabled()).isTrue();
+                    assertThat(dto.getCreationDate()).isNotNull();
+                    assertThat(dto.getLastUpdateDate()).isNotNull();
+                    assertThat(dto.getMessageTemplate()).isEqualTo("template-xyz");
+                    assertThat(dto.getWhitelistRecipient()).containsExactly("user@example.com");
                 })
                 .verifyComplete();
 
@@ -304,7 +362,7 @@ public class TppServiceImplTest {
 
     /**
      * TPP non trovata: il connector emette {@link ResourceNotFoundException}
-     * che si propaga invariata verso il chiamante.
+     * che si propaga invariata verso il chiamante (indipendente da detailed).
      */
     @Test
     void getTppByEntityId_NotFound_PropagatesResourceNotFoundException() {
@@ -313,7 +371,7 @@ public class TppServiceImplTest {
         when(tppConnector.getTppByEntityId(entityId))
                 .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
 
-        StepVerifier.create(tppService.getTppByEntityId(entityId))
+        StepVerifier.create(tppService.getTppByEntityId(entityId, false))
                 .expectErrorMatches(ex -> ex instanceof ResourceNotFoundException
                         && ex.getMessage().contains(entityId))
                 .verify();
@@ -332,7 +390,7 @@ public class TppServiceImplTest {
         when(tppConnector.getTppByEntityId(entityId))
                 .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "getTppByEntityId", "upstream error")));
 
-        StepVerifier.create(tppService.getTppByEntityId(entityId))
+        StepVerifier.create(tppService.getTppByEntityId(entityId, false))
                 .expectErrorMatches(ex -> ex instanceof ExternalServiceException
                         && ex.getMessage().contains("TPP_SERVICE"))
                 .verify();

@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.api.handler;
 
 import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
@@ -89,6 +90,16 @@ public class ControllerExceptionHandler {
                 .status(HttpStatus.CONFLICT)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new ErrorDTO(ErrorDTO.CodeEnum.GENERIC_ERROR, "TPP already onboarded.", utilities.getTraceId()));
+    }
+
+    /**
+     * Maps {@link InvalidSearchFieldException} → HTTP 400 Bad Request.
+     * The frontend sent an unknown field name in the {@code fields} query parameter.
+     * Internal details are logged and the sanitised message is returned to the caller.
+     */
+    @ExceptionHandler(InvalidSearchFieldException.class)
+    public ResponseEntity<ErrorDTO> handleInvalidSearchFieldException(InvalidSearchFieldException ex, ServerHttpRequest request) {
+        return handleException(ex, request, HttpStatus.BAD_REQUEST, ErrorDTO.CodeEnum.BAD_REQUEST);
     }
 
     /**

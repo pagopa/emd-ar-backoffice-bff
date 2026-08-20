@@ -4,6 +4,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
@@ -16,9 +17,11 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.VersionDetails;
 
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -140,6 +143,10 @@ public final class TppConnectorMapper {
      * Maps a {@link TppEntityIdResponse} (connector layer) to the API-layer
      * {@link TppResponseDTOV1}, converting connector-layer enums and nested objects
      * to their V1 counterparts.
+     *
+     * <p>Only the "base" fields are populated; server-managed fields are omitted.
+     * Use {@link #toTppResponseDTOV1Detailed(TppEntityIdResponse)} when all fields
+     * are required (i.e. when {@code detailed=true}).</p>
      */
     public static TppResponseDTOV1 toTppResponseDTOV1(TppEntityIdResponse src) {
         return TppResponseDTOV1.builder()
@@ -151,8 +158,42 @@ public final class TppConnectorMapper {
                 .contact(toContactV1(src.getContact()))
                 .pspDenomination(src.getPspDenomination())
                 .agentLinks(toAgentLinksV1(src.getAgentLinks()))
+                .build();
+    }
+
+    /**
+     * Maps a {@link TppEntityIdResponse} (connector layer) to the API-layer
+     * {@link TppResponseDTOV1} with <em>all</em> available fields populated,
+     * including server-managed ones (entityId, idPsp, legalAddress, state, dates,
+     * isPaymentEnabled, messageTemplate, whitelistRecipient, clientId).
+     *
+     * <p>Dates are converted from {@code LocalDateTime} to {@code OffsetDateTime} (UTC).</p>
+     *
+     * <p>Used when the caller requests {@code detailed=true}.</p>
+     */
+    public static TppResponseDTOV1 toTppResponseDTOV1Detailed(TppEntityIdResponse src) {
+        return TppResponseDTOV1.builder()
+                .tppId(src.getTppId())
+                .businessName(src.getBusinessName())
+                .messageUrl(src.getMessageUrl())
+                .authenticationUrl(src.getAuthenticationUrl())
+                .authenticationType(toAuthenticationTypeV1(src.getAuthenticationType()))
+                .contact(toContactV1(src.getContact()))
+                .pspDenomination(src.getPspDenomination())
+                .agentLinks(toAgentLinksV1(src.getAgentLinks()))
+                // detailed-only fields
+                .entityId(src.getEntityId())
+                .clientId(src.getClientId())
+                .idPsp(src.getIdPsp())
+                .legalAddress(src.getLegalAddress())
                 .state(src.getState())
+                .creationDate(src.getCreationDate() != null
+                        ? src.getCreationDate().atOffset(ZoneOffset.UTC) : null)
+                .lastUpdateDate(src.getLastUpdateDate() != null
+                        ? src.getLastUpdateDate().atOffset(ZoneOffset.UTC) : null)
                 .isPaymentEnabled(src.getIsPaymentEnabled())
+                .messageTemplate(src.getMessageTemplate())
+                .whitelistRecipient(src.getWhitelistRecipient())
                 .build();
     }
 
@@ -188,6 +229,28 @@ public final class TppConnectorMapper {
     private static VersionDetailsV1 toVersionDetailsV1(VersionDetails connector) {
         if (connector == null) return null;
         return VersionDetailsV1.builder().link(connector.getLink()).build();
+    }
+
+    // ── TppSearchResponse → TppSearchResponseDTOV1 ───────────────────────────
+
+    /**
+     * Maps a {@link TppSearchResponse} (connector layer) to the API-layer
+     * {@link TppSearchResponseDTOV1}, converting each content item via
+     * {@link #toTppDTOWithoutTokenSectionV1(TppEntityIdResponse)}.
+     */
+    public static TppSearchResponseDTOV1 toTppSearchResponseDTOV1(TppSearchResponse src) {
+        List<TppDTOWithoutTokenSectionV1> content = src.getContent() == null
+                ? List.of()
+                : src.getContent().stream()
+                        .map(TppConnectorMapper::toTppDTOWithoutTokenSectionV1)
+                        .collect(Collectors.toList());
+        return TppSearchResponseDTOV1.builder()
+                .content(content)
+                .page(src.getPage())
+                .size(src.getSize())
+                .totalElements(src.getTotalElements())
+                .totalPages(src.getTotalPages())
+                .build();
     }
 
     /**

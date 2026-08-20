@@ -10,16 +10,19 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
+import java.util.List;
 
 @RequestMapping("/emd/backoffice/api/v1")
 public interface TppControllerV1 {
@@ -43,17 +46,25 @@ public interface TppControllerV1 {
 
     /**
      * Checks whether a TPP with the given {@code entityId} (CF or P.IVA) already exists
-     * and returns its full details.
+     * and returns its details.
      *
      * <p>Returns HTTP 200 with a {@code TppResponseDTOV1} payload if found, or HTTP 404 if no TPP
      * exists for that {@code entityId}.</p>
      *
+     * <p>When {@code detailed=true} all server-managed fields (entityId, idPsp, legalAddress,
+     * state, creationDate, lastUpdateDate, isPaymentEnabled, messageTemplate, whitelistRecipient,
+     * clientId) are included in the response. When {@code detailed=false} (default) only the
+     * standard business fields are returned.</p>
+     *
      * @param entityId the fiscal code (11 digits) or VAT number (up to 16 alphanumeric chars)
-     * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} with full TPP details, or 404
+     * @param detailed {@code true} to include all server-managed fields; {@code false} (default)
+     *                 for the standard reduced payload
+     * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} with TPP details, or 404
      */
     @GetMapping(value = "tpp/{entityId}", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TppResponseDTOV1>> getTppByEntityId(
-            @PathVariable("entityId") String entityId);
+            @PathVariable("entityId") String entityId,
+            @RequestParam(defaultValue = "false") boolean detailed);
 
     /**
      * <strong>TEST ONLY — NOT exposed on APIM.</strong>
@@ -147,6 +158,38 @@ public interface TppControllerV1 {
             @Valid @RequestBody TppPatchDTOV1 patchDTO);
 
     /**
+     * Performs a paginated search for TPPs.
+     *
+     * <p>At least one filter ({@code entityId} or {@code businessName}) should be provided
+     * for meaningful results, though both are technically optional.</p>
+     *
+     * <ul>
+     *   <li>{@code entityId} — exact match on the fiscal/VAT code.</li>
+     *   <li>{@code businessName} — partial, case-insensitive match on the business name.</li>
+     *   <li>{@code page} — zero-based page index (default {@code 0}).</li>
+     *   <li>{@code size} — page size (default {@code 10}, upstream cap {@code 100}).</li>
+     *   <li>{@code fields} — optional multi-value list of field names to include in each
+     *       result element. When absent, upstream defaults are used ({@code businessName},
+     *       {@code entityId}, {@code isPaymentEnabled}, {@code tppId}, {@code state},
+     *       {@code lastUpdateDate}). An unknown field name causes HTTP 400.</li>
+     * </ul>
+     *
+     * @param entityId     optional exact-match filter on the entity fiscal/VAT code
+     * @param businessName optional partial match on the business name
+     * @param page         zero-based page index (default 0)
+     * @param size         page size (default 10)
+     * @param fields       optional list of field names to project onto each result element
+     * @return {@code Mono<ResponseEntity<TppSearchResponseDTOV1>>} HTTP 200 with the
+     *         paginated result, HTTP 400 for an invalid field name, or HTTP 502 if
+     *         the upstream emd-tpp service is unavailable
+     */
+    @GetMapping(value = "tpp/search", produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<TppSearchResponseDTOV1>> searchTpp(
+            @RequestParam(required = false) String entityId,
+            @RequestParam(required = false) String businessName,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) List<String> fields);
      * Updates the operational state (active/inactive) of the TPP identified by {@code tppId}.
      *
      * <p>This endpoint allows administrative control over the TPP status. The BFF receives 

@@ -5,6 +5,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
@@ -16,6 +17,7 @@ import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientServi
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import java.util.List;
 
 /**
  * Orchestrates TPP creation:
@@ -77,10 +79,12 @@ public class TppServiceImpl implements TppService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<TppResponseDTOV1> getTppByEntityId(String entityId) {
-        log.info("[AR-BFF][TPP_GET] Looking up TPP by entityId={}", entityId);
+    public Mono<TppResponseDTOV1> getTppByEntityId(String entityId, boolean detailed) {
+        log.info("[AR-BFF][TPP_GET] Looking up TPP by entityId={}, detailed={}", entityId, detailed);
         return tppConnector.getTppByEntityId(entityId)
-                .map(TppConnectorMapper::toTppResponseDTOV1)
+                .map(r -> detailed
+                        ? TppConnectorMapper.toTppResponseDTOV1Detailed(r)
+                        : TppConnectorMapper.toTppResponseDTOV1(r))
                 .doOnSuccess(r -> log.info("[AR-BFF][TPP_GET] Found TPP for entityId={}", entityId))
                 .doOnError(e -> log.warn("[AR-BFF][TPP_GET] TPP not found for entityId={}: {}", entityId, e.getMessage()));
     }
@@ -168,6 +172,20 @@ public class TppServiceImpl implements TppService {
                 .map(TppConnectorMapper::toTppResponseDTOV1)
                 .doOnSuccess(r -> log.info("[AR-BFF][TPP_PATCH] TPP patched successfully for entityId={}", entityId))
                 .doOnError(e -> log.error("[AR-BFF][TPP_PATCH] Failed to patch TPP for entityId={}: {}", entityId, e.getMessage()));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<TppSearchResponseDTOV1> searchTpp(String entityId, String businessName, int page, int size, List<String> fields) {
+        log.info("[AR-BFF][TPP_SEARCH] Searching TPPs — entityId={}, businessName={}, page={}, size={}, fields={}",
+                entityId != null ? "***" : null,
+                businessName != null ? "***" : null,
+                page, size, fields != null ? fields.size() : 0);
+        return tppConnector.searchTpp(entityId, businessName, page, size, fields)
+                .map(TppConnectorMapper::toTppSearchResponseDTOV1)
+                .doOnSuccess(r -> log.info("[AR-BFF][TPP_SEARCH] Search completed: totalElements={}, totalPages={}",
+                        r.getTotalElements(), r.getTotalPages()))
+                .doOnError(e -> log.error("[AR-BFF][TPP_SEARCH] Search failed: {}", e.getMessage()));
     }
 
     /**

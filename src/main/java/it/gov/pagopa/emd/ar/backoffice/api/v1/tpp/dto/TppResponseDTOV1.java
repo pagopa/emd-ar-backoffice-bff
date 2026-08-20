@@ -59,3 +59,4 @@ public class TppResponseDTOV1 {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<String> whitelistRecipient;
 }
+

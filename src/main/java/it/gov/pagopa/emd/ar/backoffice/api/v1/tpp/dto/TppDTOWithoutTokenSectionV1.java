@@ -49,3 +49,4 @@ public class TppDTOWithoutTokenSectionV1 {
     private String messageTemplate;
     private List<String> whitelistRecipient;
 }
+

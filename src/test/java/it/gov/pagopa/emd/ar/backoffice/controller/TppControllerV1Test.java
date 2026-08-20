@@ -6,6 +6,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
@@ -83,10 +84,10 @@ class TppControllerV1Test {
     }
 
     /**
-     * GET /emd/backoffice/api/v1/tpp/{entityId} — TPP trovata → 200 con tutti i campi del DTO.
+     * GET /emd/backoffice/api/v1/tpp/{entityId} — TPP trovata senza detailed → 200 con campi base.
      */
     @Test
-    void getTppByEntityId_Found_Returns200WithFullDto() {
+    void getTppByEntityId_Found_Returns200WithBaseDto() {
         String entityId = "12345678901";
 
         TppResponseDTOV1 response = TppResponseDTOV1.builder()
@@ -96,7 +97,7 @@ class TppControllerV1Test {
                 .contact(new ContactV1("Mario Rossi", "1234567890", "mario@tpp.it"))
                 .build();
 
-        when(tppService.getTppByEntityId(eq(entityId)))
+        when(tppService.getTppByEntityId(eq(entityId), eq(false)))
                 .thenReturn(Mono.just(response));
 
         webTestClient.get()
@@ -109,7 +110,45 @@ class TppControllerV1Test {
                 .jsonPath("$.businessName").isEqualTo("My TPP Srl")
                 .jsonPath("$.authenticationType").isEqualTo("OAUTH2")
                 .jsonPath("$.contact.name").isEqualTo("Mario Rossi")
-                .jsonPath("$.contact.email").isEqualTo("mario@tpp.it");
+                .jsonPath("$.contact.email").isEqualTo("mario@tpp.it")
+                // detailed-only fields must be absent from JSON
+                .jsonPath("$.entityId").doesNotExist()
+                .jsonPath("$.state").doesNotExist();
+    }
+
+    /**
+     * GET /emd/backoffice/api/v1/tpp/{entityId}?detailed=true — TPP trovata con tutti i campi → 200.
+     */
+    @Test
+    void getTppByEntityId_DetailedTrue_Returns200WithAllFields() {
+        String entityId = "12345678901";
+
+        TppResponseDTOV1 response = TppResponseDTOV1.builder()
+                .tppId("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
+                .businessName("My TPP Srl")
+                .authenticationType(AuthenticationTypeV1.OAUTH2)
+                .entityId(entityId)
+                .idPsp("PSP_001")
+                .legalAddress("Via Roma 1, 00100 Roma")
+                .state(true)
+                .isPaymentEnabled(false)
+                .build();
+
+        when(tppService.getTppByEntityId(eq(entityId), eq(true)))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "?detailed=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
+                .jsonPath("$.businessName").isEqualTo("My TPP Srl")
+                .jsonPath("$.entityId").isEqualTo(entityId)
+                .jsonPath("$.idPsp").isEqualTo("PSP_001")
+                .jsonPath("$.legalAddress").isEqualTo("Via Roma 1, 00100 Roma")
+                .jsonPath("$.state").isEqualTo(true);
     }
 
     /**
@@ -121,7 +160,7 @@ class TppControllerV1Test {
     void getTppByEntityId_NotFound_PropagatesError() {
         String entityId = "99999999999";
 
-        when(tppService.getTppByEntityId(eq(entityId)))
+        when(tppService.getTppByEntityId(eq(entityId), eq(false)))
                 .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
 
         webTestClient.get()
@@ -423,6 +462,183 @@ class TppControllerV1Test {
                 .expectStatus().is5xxServerError();
     }
 
+    // ── searchTpp ─────────────────────────────────────────────────────────────
+
+    /**
+     * GET /emd/backoffice/api/v1/tpp/search?entityId=... — happy path → 200 con lista e paginazione.
+     */
+    @Test
+    void searchTpp_ByEntityId_Returns200WithPagedResult() {
+        TppDTOWithoutTokenSectionV1 item = TppDTOWithoutTokenSectionV1.builder()
+                .tppId("tpp-001")
+                .entityId("04256050875")
+                .businessName("Acme TPP S.r.l.")
+                .state(true)
+                .build();
+
+        TppSearchResponseDTOV1 response = TppSearchResponseDTOV1.builder()
+                .content(java.util.List.of(item))
+                .page(0)
+                .size(10)
+                .totalElements(1)
+                .totalPages(1)
+                .build();
+
+        when(tppService.searchTpp(eq("04256050875"), eq(null), eq(0), eq(10), eq(null)))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?entityId=04256050875&page=0&size=10")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.totalElements").isEqualTo(1)
+                .jsonPath("$.totalPages").isEqualTo(1)
+                .jsonPath("$.page").isEqualTo(0)
+                .jsonPath("$.size").isEqualTo(10)
+                .jsonPath("$.content[0].tppId").isEqualTo("tpp-001")
+                .jsonPath("$.content[0].businessName").isEqualTo("Acme TPP S.r.l.")
+                .jsonPath("$.content[0].entityId").isEqualTo("04256050875");
+    }
+
+    /**
+     * GET .../tpp/search?businessName=MDC — happy path → 200 con lista.
+     */
+    @Test
+    void searchTpp_ByBusinessName_Returns200WithPagedResult() {
+        TppDTOWithoutTokenSectionV1 item = TppDTOWithoutTokenSectionV1.builder()
+                .tppId("tpp-002")
+                .businessName("MDC Finance Srl")
+                .build();
+
+        TppSearchResponseDTOV1 response = TppSearchResponseDTOV1.builder()
+                .content(java.util.List.of(item))
+                .page(0)
+                .size(10)
+                .totalElements(1)
+                .totalPages(1)
+                .build();
+
+        when(tppService.searchTpp(eq(null), eq("MDC"), eq(0), eq(10), eq(null)))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?businessName=MDC")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.content[0].businessName").isEqualTo("MDC Finance Srl");
+    }
+
+    /**
+     * GET .../tpp/search — risposta con pagina vuota → 200 con content:[].
+     */
+    @Test
+    void searchTpp_EmptyResult_Returns200WithEmptyContent() {
+        TppSearchResponseDTOV1 response = TppSearchResponseDTOV1.builder()
+                .content(java.util.List.of())
+                .page(0)
+                .size(10)
+                .totalElements(0)
+                .totalPages(0)
+                .build();
+
+        when(tppService.searchTpp(eq("99999999999"), eq(null), eq(0), eq(10), eq(null)))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?entityId=99999999999")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.totalElements").isEqualTo(0)
+                .jsonPath("$.content").isArray();
+    }
+
+    /**
+     * GET .../tpp/search — errore upstream → {@link ExternalServiceException} propagata (502 senza global handler).
+     */
+    @Test
+    void searchTpp_UpstreamError_PropagatesError() {
+        when(tppService.searchTpp(eq(null), eq("ACME"), eq(0), eq(10), eq(null)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "searchTpp", "500 upstream")));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?businessName=ACME")
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    /**
+     * GET .../tpp/search — paginazione custom → i parametri page e size vengono inoltrati al service.
+     */
+    @Test
+    void searchTpp_CustomPagination_PassesParamsToService() {
+        TppSearchResponseDTOV1 response = TppSearchResponseDTOV1.builder()
+                .content(java.util.List.of())
+                .page(2)
+                .size(5)
+                .totalElements(11)
+                .totalPages(3)
+                .build();
+
+        when(tppService.searchTpp(eq(null), eq("Test"), eq(2), eq(5), eq(null)))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?businessName=Test&page=2&size=5")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.page").isEqualTo(2)
+                .jsonPath("$.size").isEqualTo(5)
+                .jsonPath("$.totalPages").isEqualTo(3);
+    }
+
+    /**
+     * GET .../tpp/search?fields=businessName&fields=tppId — i fields vengono inoltrati al service.
+     */
+    @Test
+    void searchTpp_WithFields_PassesFieldsToService() {
+        TppDTOWithoutTokenSectionV1 item = TppDTOWithoutTokenSectionV1.builder()
+                .tppId("tpp-003")
+                .businessName("Gamma S.r.l.")
+                .build();
+
+        TppSearchResponseDTOV1 response = TppSearchResponseDTOV1.builder()
+                .content(java.util.List.of(item))
+                .page(0).size(10).totalElements(1).totalPages(1)
+                .build();
+
+        when(tppService.searchTpp(eq(null), eq("Gamma"), eq(0), eq(10),
+                eq(java.util.List.of("businessName", "tppId"))))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?businessName=Gamma&fields=businessName&fields=tppId")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.content[0].tppId").isEqualTo("tpp-003")
+                .jsonPath("$.content[0].businessName").isEqualTo("Gamma S.r.l.");
+    }
+
+    /**
+     * GET .../tpp/search?fields=invalidField — campo non valido → 400 propagato (senza global handler → 500).
+     */
+    @Test
+    void searchTpp_InvalidField_PropagatesError() {
+        when(tppService.searchTpp(eq(null), eq("ACME"), eq(0), eq(10),
+                eq(java.util.List.of("invalidField"))))
+                .thenReturn(Mono.error(
+                        new it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException(
+                                "invalidField", "{\"code\":\"INVALID_SEARCH_FIELD\"}")));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/search?businessName=ACME&fields=invalidField")
+                .exchange()
+                .expectStatus().is5xxServerError(); // senza global handler → 500
         // ── updateTppState ────────────────────────────────────────────────────────
     /**
      * PUT /emd/backoffice/api/v1/tpp/{tppId}/state — happy path → 200 OK con i dettagli della TPP.

@@ -6,7 +6,10 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 /**
  * Abstraction for the outbound TPP persistence adapter.
@@ -89,6 +92,37 @@ public interface TppConnector {
     Mono<TppEntityIdResponse> patchTpp(String tppId, TppPatchRequest patchRequest);
 
     /**
+     * Performs a paginated search for TPPs by calling
+     * {@code GET /emd/tpp/search} on the emd-tpp service.
+     *
+     * <p>Parameters are optional: pass {@code null} or empty string for those that
+     * should be omitted from the query string. When both {@code entityId} and
+     * {@code businessName} are provided, {@code entityId} (exact match) takes
+     * precedence on the upstream side.</p>
+     *
+     * <p>The optional {@code fields} parameter allows requesting only a subset of the
+     * fields of each TPP element in {@code content}. When {@code null} or empty, the
+     * upstream default set is returned ({@code businessName}, {@code entityId},
+     * {@code isPaymentEnabled}, {@code tppId}, {@code state}, {@code lastUpdateDate}).
+     * {@code tppId} is always included even if not explicitly requested.</p>
+     *
+     * <p>If an unknown field name is included in {@code fields}, the upstream returns
+     * HTTP 400 ({@code INVALID_SEARCH_FIELD}), which is mapped to
+     * {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException}.</p>
+     *
+     * @param entityId     optional exact-match filter on the entity fiscal/VAT code
+     * @param businessName optional partial (case-insensitive) match on the business name
+     * @param page         zero-based page index (negative values are normalised to 0 upstream)
+     * @param size         page size (values &lt;= 0 default to 10 upstream; values &gt; 100 are capped at 100)
+     * @param fields       optional list of field names to include in each {@code content} element;
+     *                     {@code null} or empty means use upstream defaults
+     * @return {@code Mono<TppSearchResponse>} with the paginated result, or an
+     *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException}
+     *         for an invalid field name (upstream 400), or an
+     *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException}
+     *         on any other upstream error (401/429/500)
+     */
+    Mono<TppSearchResponse> searchTpp(String entityId, String businessName, int page, int size, List<String> fields);
      * Updates the TPP state by sending a PUT request to the remote emd-tpp service.
      *
      * @param tppUpdateStateDTO the update payload (must include tppId)

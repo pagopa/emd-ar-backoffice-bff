@@ -21,6 +21,7 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.VersionDetails;
 
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -87,6 +88,8 @@ public final class TppConnectorMapper {
                 .pspDenomination(input.getPspDenomination())
                 .agentLinks(input.getAgentLinks() == null ? null
                         : new java.util.HashMap<>(toAgentLinks(input.getAgentLinks())))
+                .whitelistRecipient(input.getWhitelistRecipient() == null ? null
+                        : new ArrayList<>(input.getWhitelistRecipient()))
                 .build();
     }
 

@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Connector-layer DTO for {@code PATCH /emd/tpp/{tppId}}.
@@ -31,4 +32,5 @@ public class TppPatchRequest {
     private Contact contact;
     private String pspDenomination;
     private HashMap<String, AgentLink> agentLinks;
+    private List<String> whitelistRecipient;
 }

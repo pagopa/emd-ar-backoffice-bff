@@ -4,6 +4,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
@@ -29,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -1017,5 +1019,87 @@ public class TppServiceImplTest {
         verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
         verify(keycloakClientService, never()).createKeycloakClient(anyString(), any(), any());
         verify(keycloakClientService, never()).deleteKeycloakClient(anyString());
+    }
+
+    // ── Whitelist Service Tests ────────────────────────────────────────────────
+
+    /**
+     * Test inserimento recipient: il service deve delegare correttamente al connector.
+     */
+    @Test
+    void insertRecipientIdOnWhitelist_Success() {
+        RecipientIdOnWhitelistDTOV1 dto = new RecipientIdOnWhitelistDTOV1("rec1");
+        when(tppConnector.insertRecipientIdOnWhitelist("tpp1", dto)).thenReturn(Mono.empty());
+
+        StepVerifier.create(tppService.insertRecipientIdOnWhitelist("tpp1", dto))
+                .verifyComplete();
+        
+        verify(tppConnector).insertRecipientIdOnWhitelist("tpp1", dto);
+    }
+
+    /**
+     * Test inserimento recipient: errore propagato dal connector.
+     */
+    @Test
+    void insertRecipientIdOnWhitelist_Fails_PropagatesError() {
+        when(tppConnector.insertRecipientIdOnWhitelist(any(), any()))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP", "op", "error")));
+
+        StepVerifier.create(tppService.insertRecipientIdOnWhitelist("tpp1", new RecipientIdOnWhitelistDTOV1("rec1")))
+                .expectError(ExternalServiceException.class)
+                .verify();
+    }
+
+    /**
+     * Test rimozione recipient: il service deve delegare al connector.
+     */
+    @Test
+    void removeRecipientIdOnWhitelist_Success() {
+        when(tppConnector.removeRecipientIdOnWhitelist("tpp1", "rec1")).thenReturn(Mono.empty());
+
+        StepVerifier.create(tppService.removeRecipientIdOnWhitelist("tpp1", "rec1"))
+                .verifyComplete();
+
+        verify(tppConnector).removeRecipientIdOnWhitelist("tpp1", "rec1");
+    }
+
+    /**
+     * Test rimozione recipient: fallimento se il recipient non esiste.
+     */
+    @Test
+    void removeRecipientIdOnWhitelist_NotFound_PropagatesError() {
+        when(tppConnector.removeRecipientIdOnWhitelist("tpp1", "rec1"))
+                .thenReturn(Mono.error(new it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientNotFoundException("Not found")));
+
+        StepVerifier.create(tppService.removeRecipientIdOnWhitelist("tpp1", "rec1"))
+                .expectError(it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientNotFoundException.class)
+                .verify();
+    }
+
+    /**
+     * Test aggiornamento whitelist: delegazione al connector.
+     */
+    @Test
+    void updateRecipientIdOnWhitelist_Success() {
+        List<String> recipients = List.of("rec1", "rec2");
+        when(tppConnector.updateRecipientIdOnWhitelist("tpp1", recipients)).thenReturn(Mono.empty());
+
+        StepVerifier.create(tppService.updateRecipientIdOnWhitelist("tpp1", recipients))
+                .verifyComplete();
+
+        verify(tppConnector).updateRecipientIdOnWhitelist("tpp1", recipients);
+    }
+
+    /**
+     * Test aggiornamento whitelist: fallimento se il TPP non esiste.
+     */
+    @Test
+    void updateRecipientIdOnWhitelist_TppNotFound_PropagatesError() {
+        when(tppConnector.updateRecipientIdOnWhitelist(anyString(), any()))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", "tpp1")));
+
+        StepVerifier.create(tppService.updateRecipientIdOnWhitelist("tpp1", List.of("rec1")))
+                .expectError(ResourceNotFoundException.class)
+                .verify();
     }
 }

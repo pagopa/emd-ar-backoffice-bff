@@ -113,7 +113,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
     public Mono<ResponseEntity<Void>> removeRecipientIdOnWhitelist(String tppId, String recipientId) {
         log.info("[AR-BFF][TPP_WHITELIST_DELETE] Removing recipientId={} from whitelist for tppId={}", recipientId, tppId);
         return tppService.removeRecipientIdOnWhitelist(tppId, recipientId)
-                .thenReturn((ResponseEntity.noContent().build()));
+                .thenReturn(ResponseEntity.noContent().build());
     }
 
     /** {@inheritDoc} */

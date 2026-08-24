@@ -151,14 +151,36 @@ class TppConnectorWhitelistTest {
     }
 
     /**
-     * Upstream 404 (Not Found) per recipient inesistente → {@link RecipientNotFoundException} deve essere propagata.
+     * Upstream 404 con body "RECIPIENT_NOT_FOUND" → {@link RecipientNotFoundException} deve essere propagata.
      */
     @Test
-    void removeRecipientIdOnWhitelist_Upstream404_ThrowsRecipientNotFoundException() {
-        TppConnectorImpl connector = connectorWith(request -> Mono.just(emptyResponse(HttpStatus.NOT_FOUND)));
+    void removeRecipientIdOnWhitelist_Upstream404_RecipientNotFound_ThrowsRecipientNotFoundException() {
+        ClientResponse response404 = ClientResponse.create(HttpStatus.NOT_FOUND)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .body("{\"code\":\"RECIPIENT_NOT_FOUND\",\"description\":\"Recipient is missing\"}")
+                .build();
+        
+        TppConnectorImpl connector = connectorWith(request -> Mono.just(response404));
 
         StepVerifier.create(connector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
                 .expectErrorMatches(ex -> ex instanceof RecipientNotFoundException)
+                .verify();
+    }
+
+    /**
+     * Upstream 404 con body "TPP_NOT_ONBOARDED" → {@link ResourceNotFoundException} deve essere propagata.
+     */
+    @Test
+    void removeRecipientIdOnWhitelist_Upstream404_TppNotFound_ThrowsResourceNotFoundException() {
+        ClientResponse response404 = ClientResponse.create(HttpStatus.NOT_FOUND)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .body("{\"code\":\"TPP_NOT_ONBOARDED\",\"description\":\"TPP not found\"}")
+                .build();
+
+        TppConnectorImpl connector = connectorWith(request -> Mono.just(response404));
+
+        StepVerifier.create(connector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
+                .expectErrorMatches(ex -> ex instanceof ResourceNotFoundException)
                 .verify();
     }
 

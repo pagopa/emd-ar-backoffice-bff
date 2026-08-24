@@ -330,7 +330,19 @@ public class TppConnectorImpl implements TppConnector {
                 .uri(DELETE_RECIPIENT_ID_FROM_WHITELIST_PATH, tppId, recipientId)
                 .retrieve()
                 .onStatus(status -> status.value() == 404, response ->
-                        Mono.error(new RecipientNotFoundException("Recipient not found in whitelist")))
+                        response.bodyToMono(String.class)
+                                .defaultIfEmpty("") //Prevents generic errors if the server returns an empty body
+                                .flatMap(body -> {
+                                    if (body.contains("TPP_NOT_ONBOARDED")) {
+                                        return Mono.error(new ResourceNotFoundException("TPP", tppId));
+                                    } else if (body.contains("RECIPIENT_NOT_FOUND")) {
+                                        return Mono.error(new RecipientNotFoundException("Recipient not found in whitelist"));
+                                    } else {
+                                        // Generic fallback for any other 404 reason, including empty body
+                                        return Mono.error(new ResourceNotFoundException("Whitelist Element", recipientId));
+                                    }
+                                })
+                )
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
                                 .flatMap(body -> Mono.error(

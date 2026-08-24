@@ -171,7 +171,7 @@ public interface TppService {
      * </ol>
      * </p>
      *
-     * @param tppId             the internal identifier of the TPP
+     * @param tppId             the identifier of the TPP
      * @param tppUpdateStateDTO the state update data
      * @return {@code Mono<TppDTOWithoutTokenSectionV1>} with the updated TPP details,
      *         or 404 if the TPP is not found
@@ -187,7 +187,7 @@ public interface TppService {
      * </ol>
      * </p>
      *
-     * @param tppId                         the internal identifier of the TPP
+     * @param tppId                         the identifier of the TPP
      * @param tppUpdateIsPaymentEnabledDTO  the payment enablement status to persist
      * @return {@code Mono<Void>} completing when the update is successful
      */

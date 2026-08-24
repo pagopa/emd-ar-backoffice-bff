@@ -94,6 +94,8 @@ public class TppControllerImplV1 implements TppControllerV1 {
         return tppService.searchTpp(entityId, businessName, page, size, fields)
                 .map(ResponseEntity::ok);
     }
+
+    /** {@inheritDoc} */
     public Mono<ResponseEntity<TppDTOWithoutTokenSectionV1>> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO) {
         log.info("[AR-BFF][TPP_STATE_UPDATE] Updating TPP state for tppId={}", tppId);
         return tppService.updateTppState(tppId, tppUpdateStateDTO)

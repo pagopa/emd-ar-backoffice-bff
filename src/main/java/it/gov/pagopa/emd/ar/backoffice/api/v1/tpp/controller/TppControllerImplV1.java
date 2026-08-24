@@ -103,7 +103,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
         log.info("[AR-BFF][TPP_WHITELIST_ADD] Adding recipientId={} to whitelist for tppId={}", 
                 recipientIdOnWhitelistDTO.getRecipientId(), tppId);
         return tppService.insertRecipientIdOnWhitelist(tppId, recipientIdOnWhitelistDTO)
-                .then(Mono.just(ResponseEntity.status(HttpStatus.CREATED).build()));
+                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
     }
 
     /**
@@ -113,6 +113,14 @@ public class TppControllerImplV1 implements TppControllerV1 {
     public Mono<ResponseEntity<Void>> removeRecipientIdOnWhitelist(String tppId, String recipientId) {
         log.info("[AR-BFF][TPP_WHITELIST_DELETE] Removing recipientId={} from whitelist for tppId={}", recipientId, tppId);
         return tppService.removeRecipientIdOnWhitelist(tppId, recipientId)
-                .then(Mono.just(ResponseEntity.noContent().build()));
+                .thenReturn((ResponseEntity.noContent().build()));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<Void>> updateRecipientIdOnWhitelist(String tppId, List<String> recipientIds) {
+        log.info("[AR-BFF][TPP_WHITELIST_UPDATE] Updating whitelist for tppId={}", tppId);
+        return tppService.updateRecipientIdOnWhitelist(tppId, recipientIds)
+                .thenReturn(ResponseEntity.noContent().build());
     }
 }

@@ -52,6 +52,7 @@ public class TppConnectorImpl implements TppConnector {
     private static final String SEARCH_TPP_PATH           = "/emd/tpp/search";
     private static final String ADD_RECIPIENT_ID_ON_WHITELIST_PATH = "/emd/tpp/{tppId}/whitelist";
     private static final String DELETE_RECIPIENT_ID_FROM_WHITELIST_PATH = "/emd/tpp/{tppId}/whitelist/{recipientId}";
+    private static final String UPDATE_RECIPIENT_ID_ON_WHITELIST_PATH = "/emd/tpp/{tppId}/whitelist";
 
     private final WebClient webClient;
 
@@ -338,6 +339,27 @@ public class TppConnectorImpl implements TppConnector {
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] DELETE {} failed for tppId={}: {}", DELETE_RECIPIENT_ID_FROM_WHITELIST_PATH, tppId, ex.getMessage()));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Mono<Void> updateRecipientIdOnWhitelist(String tppId, List<String> recipientIds) {
+        return webClient.put()
+                .uri(UPDATE_RECIPIENT_ID_ON_WHITELIST_PATH, tppId)
+                .bodyValue(recipientIds)
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        Mono.error(new ResourceNotFoundException("TPP", tppId)))
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ExternalServiceException("TPP_SERVICE", "updateRecipientIdOnWhitelist", body))))
+                .bodyToMono(Void.class)
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}", UPDATE_RECIPIENT_ID_ON_WHITELIST_PATH, tppId, ex.getMessage()));
     }
 
 }

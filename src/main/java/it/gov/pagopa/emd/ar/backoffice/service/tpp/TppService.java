@@ -166,7 +166,7 @@ public interface TppService {
     /**
      * Adds a recipient identifier to the TPP's whitelist.
      *
-     * @param tppId                    the internal identifier of the TPP
+     * @param tppId                    the identifier of the TPP
      * @param recipientIdOnWhitelistDTO the DTO containing the recipient identifier
      * @return {@code Mono<Void>} completing when the recipient has been added
      */
@@ -175,9 +175,18 @@ public interface TppService {
     /**
      * Removes a recipient identifier from the TPP's whitelist.
      *
-     * @param tppId       the internal identifier of the TPP
+     * @param tppId       the identifier of the TPP
      * @param recipientId the recipient identifier to remove
      * @return {@code Mono<Void>} completing when the recipient has been removed
      */
     Mono<Void> removeRecipientIdOnWhitelist(String tppId, String recipientId);
+
+    /**
+     * Replaces the entire whitelist for the specified TPP.
+     *
+     * @param tppId        the identifier of the TPP
+     * @param recipientIds the new list of recipient identifiers
+     * @return {@code Mono<Void>} completing when the whitelist has been updated
+     */
+    Mono<Void> updateRecipientIdOnWhitelist(String tppId, List<String> recipientIds);
 }

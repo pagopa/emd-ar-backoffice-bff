@@ -198,9 +198,9 @@ public interface TppControllerV1 {
      *
      * @param tppId                    the identifier of the TPP
      * @param recipientIdOnWhitelistDTO containing the recipientId to be whitelisted
-     * @return {@code Mono<ResponseEntity<Void>>} HTTP 201 Created on success
+     * @return {@code Mono<ResponseEntity<Void>>} HTTP 201 Created on success, 404 if TPP not found, 409 if already exists
      */
-    @PostMapping("tpp/{tppId}/whitelist")
+    @PostMapping(value = "tpp/{tppId}/whitelist", consumes = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<Void>> insertRecipientIdOnWhitelist(@PathVariable String tppId, @Valid @RequestBody RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO);
 
     /**
@@ -208,8 +208,21 @@ public interface TppControllerV1 {
      *
      * @param tppId       the identifier of the TPP
      * @param recipientId the recipient identifier to remove from the whitelist
-     * @return {@code Mono<ResponseEntity<Void>>} HTTP 204 No Content on success
+     * @return {@code Mono<ResponseEntity<Void>>} HTTP 204 No Content on success, 404 if TPP or recipient not found
      */
     @DeleteMapping("tpp/{tppId}/whitelist/{recipientId}")
     Mono<ResponseEntity<Void>> removeRecipientIdOnWhitelist(@PathVariable String tppId, @PathVariable String recipientId);
+
+    /**
+     * Replace the entire whitelist of a specific tpp with the provided list.
+     * 
+     * <p>Note: This is a destructive operation. All previous whitelist entries for this TPP
+     * will be replaced by the new list.</p>
+     *
+     * @param tppId        of the tpp whose whitelist is to be replaced
+     * @param recipientIds new list of recipientId to set on whitelist
+     * @return {@code Mono<ResponseEntity<Void>>} HTTP 204 No Content on success, 404 if TPP not found
+     */
+    @PutMapping(value = "tpp/{tppId}/whitelist", consumes = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<Void>> updateRecipientIdOnWhitelist(@PathVariable String tppId, @RequestBody List<String> recipientIds);
 }

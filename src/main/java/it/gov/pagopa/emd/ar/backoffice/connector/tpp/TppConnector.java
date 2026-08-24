@@ -140,4 +140,13 @@ public interface TppConnector {
      * @return {@code Mono<Void>} on success, or an error if the upstream call fails
      */
     Mono<Void> removeRecipientIdOnWhitelist(String tppId, String recipientId);
+
+    /**
+     * Sends a PUT request to replace the entire whitelist of a TPP with a new list.
+     *
+     * @param tppId        the identifier of the TPP
+     * @param recipientIds the new list of recipient identifiers to set on the whitelist
+     * @return {@code Mono<Void>} on success, or an error if the upstream call fails
+     */
+    Mono<Void> updateRecipientIdOnWhitelist(String tppId, List<String> recipientIds);
 }

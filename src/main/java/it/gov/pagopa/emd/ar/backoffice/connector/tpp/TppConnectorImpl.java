@@ -307,10 +307,12 @@ public class TppConnectorImpl implements TppConnector {
                 .retrieve()
                 .onStatus(status -> status.value() == 404, response ->
                         response.bodyToMono(String.class)
+                                .defaultIfEmpty("Not Found")
                                 .flatMap(body -> Mono.error(
                                         new ResourceNotFoundException("TPP", tppUpdateStateDTO.getTppId()))))
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
+                                .defaultIfEmpty("Error")
                                 .flatMap(body -> Mono.error(
                                         new ExternalServiceException("TPP_SERVICE", "updateTppState", body))))
                 .bodyToMono(TppEntityIdResponse.class)
@@ -334,10 +336,12 @@ public class TppConnectorImpl implements TppConnector {
                 .retrieve()
                 .onStatus(status -> status.value() == 404, response ->
                         response.bodyToMono(String.class)
+                                .defaultIfEmpty("Not Found")
                                 .flatMap(body -> Mono.error(
                                         new ResourceNotFoundException("TPP", tppId))))
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
+                                .defaultIfEmpty("Error")
                                 .flatMap(body -> Mono.error(
                                         new ExternalServiceException("TPP_SERVICE", "updateTppIsPaymentEnabled", body))))
                 .toBodilessEntity()

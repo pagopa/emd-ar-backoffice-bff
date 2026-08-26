@@ -243,7 +243,7 @@ public class TppServiceImpl implements TppService {
 
     @Override
     public Mono<Void> removeRecipientIdOnWhitelist(String tppId, String recipientId) {
-        log.info("[AR-BFF][TPP_WHITELIST_DELETE] Processing whitelist removal for tppId={}, recipientId={}", tppId, recipientId);
+        log.info("[AR-BFF][TPP_WHITELIST_DELETE] Processing whitelist removal for tppId={}}", tppId);
 
         return tppConnector.removeRecipientIdOnWhitelist(tppId, recipientId)
             .doOnSuccess(v -> log.info("[AR-BFF][TPP_WHITELIST_DELETE] Recipient removed successfully from tppId={}", tppId))

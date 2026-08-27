@@ -6,6 +6,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
@@ -15,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Orchestrates TPP creation:
@@ -230,11 +230,12 @@ public class TppServiceImpl implements TppService {
                 .then(Mono.error(keycloakException));
     }
 
-    /** @inheritDoc */
+    /** {@inheritDoc} */
     @Override
-    public Mono<Map<String, Object>> testAuthConnection(String tppId) {
+    public Mono<TppConnectionResponseDTOV1> testAuthConnection(String tppId) {
+        log.info("[AR-BFF][TPP_AUTH_TEST] Processing auth test request for tppId={}", tppId);
         return tppConnector.testAuthConnection(tppId)
-            .doOnSuccess(r -> log.info("[AR-BFF][TPP_AUTH_TEST] Connection test completed for tppId={}", tppId))
+            .doOnSuccess(r -> log.info("[AR-BFF][TPP_AUTH_TEST] Connection test completed for tppId={} with status: {}", tppId, r.getStatus()))
             .doOnError(e -> log.error("[AR-BFF][TPP_AUTH_TEST] Connection test failed for tppId={}: {}", tppId, e.getMessage()));
     }
 }

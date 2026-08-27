@@ -6,9 +6,9 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import reactor.core.publisher.Mono;
 import java.util.List;
-import java.util.Map;
 
 public interface TppService {
 
@@ -163,8 +163,8 @@ public interface TppService {
      * Performs a connectivity and authentication test for the specified TPP.
      *
      * @param tppId the identifier of the TPP
-     * @return {@code Mono<Map<String, Object>>} the result of the test as a key-value map
-     * @throws it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException if the upstream test service fails
+     * @return {@code Mono<TppConnectionResponseDTOV1>} structured result of the test
+     * @throws it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException if the upstream service is unreachable
      */
-    Mono<Map<String, Object>> testAuthConnection(String tppId);
+    Mono<TppConnectionResponseDTOV1> testAuthConnection(String tppId);
 }

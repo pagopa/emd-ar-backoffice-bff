@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
@@ -8,7 +9,6 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Abstraction for the outbound TPP persistence adapter.
@@ -130,9 +130,7 @@ public interface TppConnector {
      * endpoint via the connector.</p>
      *
      * @param tppId the identifier of the TPP
-     * @return {@code Mono<Map<String, Object>>} with the test result, or an
-     *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException}
-     *         (HTTP 502) on any upstream error
+     * @return {@code Mono<TppConnectionResponseDTOV1>} the response from the upstream service
      */
-    Mono<Map<String, Object>> testAuthConnection(String tppId);
+    Mono<TppConnectionResponseDTOV1> testAuthConnection(String tppId);
 }

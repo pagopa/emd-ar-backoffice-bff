@@ -41,18 +41,34 @@ class TppConnectorImplTest {
         tppConnector = new TppConnectorImpl(webClientBuilder, baseUrl);
     }
 
+    /**
+     * Verifica che la chiamata al microservizio upstream avvenga all'URI corretto
+     * e che il JSON ricevuto venga mappato correttamente nel DTO.
+     */
     @Test
     void testAuthConnection_Success_CallsCorrectUri() throws InterruptedException {
         String tppId = "tpp-123";
         
-        // Mock della risposta upstream
+        // Prepariamo un JSON che rispecchia la struttura di TppConnectionResponseDTOV1
+        String jsonResponse = "{"
+                + "\"status\": \"SUCCESS\","
+                + "\"httpStatus\": 200,"
+                + "\"description\": \"Test connection successful\""
+                + "}";
+
+        // Mock della risposta del microservizio upstream (emd-tpp)
         mockWebServer.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .setBody("{\"status\": \"OK\"}"));
+                .setBody(jsonResponse));
 
         StepVerifier.create(tppConnector.testAuthConnection(tppId))
-                .assertNext(result -> assertThat(result.get("status")).isEqualTo("OK"))
+                .assertNext(result -> {
+                    // Verifichiamo il mapping del DTO
+                    assertThat(result.getStatus()).isEqualTo("SUCCESS");
+                    assertThat(result.getHttpStatus()).isEqualTo(200);
+                    assertThat(result.getDescription()).contains("successful");
+                })
                 .verifyComplete();
 
         RecordedRequest recordedRequest = mockWebServer.takeRequest();
@@ -61,11 +77,15 @@ class TppConnectorImplTest {
         assertThat(recordedRequest.getPath()).isEqualTo(expectedPath);
     }
 
+    /**
+     * Verifica che se il microservizio upstream (emd-tpp) risponde con un errore (5xx),
+     * il connector del BFF lanci correttamente l'eccezione ExternalServiceException.
+     */
     @Test
     void testAuthConnection_UpstreamError_ThrowsExternalServiceException() {
         String tppId = "tpp-123";
         
-        // Mock di un errore 500 dall'upstream
+        // Mock di un errore 500 dal microservizio emd-tpp
         mockWebServer.enqueue(new MockResponse()
                 .setResponseCode(500)
                 .setBody("Internal Server Error"));

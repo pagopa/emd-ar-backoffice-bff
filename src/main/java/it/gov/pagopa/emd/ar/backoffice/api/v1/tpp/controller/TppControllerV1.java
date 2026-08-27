@@ -17,10 +17,10 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
 import java.util.List;
-import java.util.Map;
 
 @RequestMapping("/emd/backoffice/api/v1")
 public interface TppControllerV1 {
@@ -190,16 +190,16 @@ public interface TppControllerV1 {
             @RequestParam(required = false) List<String> fields);
 
     /**
-     * Tests the authentication endpoint for a specific TPP.
+     * Tests the connectivity and authentication for a specific TPP.
      * 
-     * <p>This endpoint triggers a network and authentication check towards the TPP's 
-     * configured authorization server to verify if the credentials and connectivity are valid.</p>
+     * <p>This endpoint orchestrates a real-time test toward the TPP's authorization server.
+     * It returns a structured response capturing successes, HTTP errors, or network timeouts
+     * without throwing system exceptions for external connectivity failures.</p>
      *
-     * @param tppId the unique identifier of the TPP to test
-     * @return {@code Mono<ResponseEntity<Map<String, Object>>>} a map containing the test results 
-     *         (e.g., status, response time, error details if any) with HTTP 200.
+     * @param tppId the unique identifier of the TPP
+     * @return {@code Mono<ResponseEntity<TppConnectionResponseDTOV1>>} the structured test result with HTTP 200
      */
     @GetMapping(value = "tpp/{tppId}/network/connection/test", produces = MediaType.APPLICATION_JSON_VALUE)
-    Mono<ResponseEntity<Map<String, Object>>> testAuthConnection(@PathVariable("tppId") String tppId);
+    Mono<ResponseEntity<TppConnectionResponseDTOV1>> testAuthConnection(@PathVariable("tppId") String tppId);
 
 }

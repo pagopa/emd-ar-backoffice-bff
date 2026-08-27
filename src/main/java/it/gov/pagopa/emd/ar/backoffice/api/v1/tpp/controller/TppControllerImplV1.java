@@ -6,13 +6,13 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @Slf4j
@@ -93,12 +93,10 @@ public class TppControllerImplV1 implements TppControllerV1 {
                 .map(ResponseEntity::ok);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<Map<String, Object>>> testAuthConnection(String tppId) {
-        log.info("[AR-BFF][TPP_AUTH_TEST] Initiating connection test for TPP with tppId={}", tppId);
+    public Mono<ResponseEntity<TppConnectionResponseDTOV1>> testAuthConnection(String tppId) {
+        log.info("[AR-BFF][TPP_AUTH_TEST] Initiating connection test for tppId={}", tppId);
         return tppService.testAuthConnection(tppId)
                 .map(ResponseEntity::ok);
     }

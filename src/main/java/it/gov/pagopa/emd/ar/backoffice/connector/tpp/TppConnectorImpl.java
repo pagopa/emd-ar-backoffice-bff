@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
@@ -12,7 +13,6 @@ import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundExceptio
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -22,7 +22,6 @@ import org.springframework.web.util.UriBuilder;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Implementation of {@link TppConnector} that uses Spring's WebClient
@@ -293,24 +292,25 @@ public class TppConnectorImpl implements TppConnector {
     }
 
         /**
-         * {@inheritDoc}
-         *
-         * <p>Sends a {@code GET /emd/tpp/network/connection/test} to the remote emd-tpp service.
-         * The response body is returned as a {@code Map<String, Object>}.</p>
-         */
-        @Override
-        public Mono<Map<String, Object>> testAuthConnection(String tppId) {
-            return webClient.get()
-                    .uri(TPP_CONNECTION_TEST_PATH, tppId)
-                    .retrieve()
-                    .onStatus(HttpStatusCode::isError, response ->
-                            response.bodyToMono(String.class)
-                                    .flatMap(body -> Mono.error(
-                                            new ExternalServiceException("TPP_SERVICE", "testAuthConnection", body))))
-                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
-                    .retryWhen(WebClientRetrySpecs.transientNetwork())
-                    .doOnError(ex -> log.error(
-                            "[TPP-CONNECTOR] GET {} failed for tppId={}: {}",
-                            TPP_CONNECTION_TEST_PATH, tppId, ex.getMessage()));
-        }
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code GET /emd/tpp/{tppId}/network/connection/test} to the remote emd-tpp service.
+     * The response is deserialized into a structured DTO. If the upstream service itself
+     * returns an error (5xx), it is wrapped in an {@link ExternalServiceException}.</p>
+     */
+    @Override
+    public Mono<TppConnectionResponseDTOV1> testAuthConnection(String tppId) {
+        return webClient.get()
+                .uri(TPP_CONNECTION_TEST_PATH, tppId) // Scenario A: Path Variable
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(
+                                        new ExternalServiceException("TPP_SERVICE", "testAuthConnection", body))))
+                .bodyToMono(TppConnectionResponseDTOV1.class)
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] GET {} failed for tppId={}: {}",
+                        TPP_CONNECTION_TEST_PATH, tppId, ex.getMessage()));
+    }
 }

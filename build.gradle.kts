@@ -103,6 +103,7 @@ dependencies {
   testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("io.projectreactor:reactor-test")
   testImplementation("org.projectlombok:lombok")
+  testImplementation("com.squareup.okhttp3:mockwebserver:5.4.0")
 }
 
 tasks.withType<Test> {

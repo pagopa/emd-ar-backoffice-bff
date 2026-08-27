@@ -57,8 +57,8 @@ class TppConnectorImplTest {
 
         RecordedRequest recordedRequest = mockWebServer.takeRequest();
         assertThat(recordedRequest.getMethod()).isEqualTo("GET");
-        assertThat(recordedRequest.getPath()).contains("/emd/tpp/network/connection/test");
-        assertThat(recordedRequest.getPath()).contains("tppId=" + tppId);
+        String expectedPath = "/emd/tpp/" + tppId + "/network/connection/test";
+        assertThat(recordedRequest.getPath()).isEqualTo(expectedPath);
     }
 
     @Test

@@ -8,6 +8,7 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Abstraction for the outbound TPP persistence adapter.
@@ -121,4 +122,17 @@ public interface TppConnector {
      *         on any other upstream error (401/429/500)
      */
     Mono<TppSearchResponse> searchTpp(String entityId, String businessName, int page, int size, List<String> fields);
+
+    /**
+     * Tests the authentication connection for the TPP identified by {@code tppId}.
+     *
+     * <p>Delegates to the upstream {@code GET /emd/tpp/{tppId}/network/connection/test}
+     * endpoint via the connector.</p>
+     *
+     * @param tppId the identifier of the TPP
+     * @return {@code Mono<Map<String, Object>>} with the test result, or an
+     *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException}
+     *         (HTTP 502) on any upstream error
+     */
+    Mono<Map<String, Object>> testAuthConnection(String tppId);
 }

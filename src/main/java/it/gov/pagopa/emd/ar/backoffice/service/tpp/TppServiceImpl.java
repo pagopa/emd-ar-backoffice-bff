@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Orchestrates TPP creation:
@@ -227,5 +228,13 @@ public class TppServiceImpl implements TppService {
                     return Mono.empty();
                 })
                 .then(Mono.error(keycloakException));
+    }
+
+    /** @inheritDoc */
+    @Override
+    public Mono<Map<String, Object>> testAuthConnection(String tppId) {
+        return tppConnector.testAuthConnection(tppId)
+            .doOnSuccess(r -> log.info("[AR-BFF][TPP_AUTH_TEST] Connection test completed for tppId={}", tppId))
+            .doOnError(e -> log.error("[AR-BFF][TPP_AUTH_TEST] Connection test failed for tppId={}: {}", tppId, e.getMessage()));
     }
 }

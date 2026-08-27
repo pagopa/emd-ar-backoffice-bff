@@ -1018,4 +1018,41 @@ public class TppServiceImplTest {
         verify(keycloakClientService, never()).createKeycloakClient(anyString(), any(), any());
         verify(keycloakClientService, never()).deleteKeycloakClient(anyString());
     }
+
+    // ── testAuthConnection ────────────────────────────────────────────────────
+    /**
+     * Verifica che il service chiami correttamente il connector con il tppId fornito.
+     */
+    @Test
+    void testAuthConnection_Success_CallsConnector() {
+        String tppId = "tpp-123";
+        Map<String, Object> expectedMap = Map.of("connected", true);
+
+        when(tppConnector.testAuthConnection(tppId)).thenReturn(Mono.just(expectedMap));
+
+        StepVerifier.create(tppService.testAuthConnection(tppId))
+                .assertNext(result -> {
+                    assertThat(result).containsKey("connected");
+                    assertThat(result.get("connected")).isEqualTo(true);
+                })
+                .verifyComplete();
+
+        verify(tppConnector, times(1)).testAuthConnection(tppId);
+    }
+
+    /**
+     * Verifica che se il connector fallisce, il service propaghi l'errore.
+     */
+    @Test
+    void testAuthConnection_ConnectorFails_PropagatesError() {
+        String tppId = "tpp-123";
+        when(tppConnector.testAuthConnection(tppId))
+                .thenReturn(Mono.error(new RuntimeException("Connection error")));
+
+        StepVerifier.create(tppService.testAuthConnection(tppId))
+                .expectError(RuntimeException.class)
+                .verify();
+
+        verify(tppConnector, times(1)).testAuthConnection(tppId);
+    }
 }

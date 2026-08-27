@@ -638,4 +638,45 @@ class TppControllerV1Test {
                 .exchange()
                 .expectStatus().is5xxServerError(); // senza global handler → 500
     }
+
+    // ── testAuthConnection ────────────────────────────────────────────────────
+    /**
+     * GET /emd/backoffice/api/v1/tpp/{tppId}/network/connection/test — happy path → 200 OK con risultato mappa.
+     */
+    @Test
+    void testAuthConnection_Success_Returns200WithMap() {
+        String tppId = "tpp-test-123";
+        Map<String, Object> result = Map.of(
+                "status", "SUCCESS",
+                "responseTime", 120,
+                "details", "Connection established"
+        );
+
+        when(tppService.testAuthConnection(eq(tppId)))
+                .thenReturn(Mono.just(result));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/network/connection/test")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("SUCCESS")
+                .jsonPath("$.responseTime").isEqualTo(120);
+    }
+
+    /**
+     * GET .../network/connection/test — Errore nel servizio upstream → Propagazione errore.
+     */
+    @Test
+    void testAuthConnection_ServiceError_PropagatesError() {
+        String tppId = "tpp-test-fail";
+        when(tppService.testAuthConnection(eq(tppId)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "testAuthConnection", "Timeout")));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/network/connection/test")
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
 }

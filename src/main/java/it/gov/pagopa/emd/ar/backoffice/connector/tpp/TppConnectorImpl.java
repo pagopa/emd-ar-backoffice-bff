@@ -12,6 +12,7 @@ import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundExceptio
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -21,6 +22,7 @@ import org.springframework.web.util.UriBuilder;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Implementation of {@link TppConnector} that uses Spring's WebClient
@@ -45,6 +47,7 @@ public class TppConnectorImpl implements TppConnector {
     private static final String GET_TPP_TOKEN_PATH        = "/emd/tpp/{tppId}/token";
     private static final String UPDATE_TPP_TOKEN_PATH     = "/emd/tpp/update/{tppId}/token";
     private static final String SEARCH_TPP_PATH           = "/emd/tpp/search";
+    private static final String TPP_CONNECTION_TEST_PATH  = "/emd/tpp/{tppId}/network/connection/test";
 
     private final WebClient webClient;
 
@@ -288,4 +291,26 @@ public class TppConnectorImpl implements TppConnector {
         }
         return uriBuilder.build();
     }
+
+        /**
+         * {@inheritDoc}
+         *
+         * <p>Sends a {@code GET /emd/tpp/network/connection/test} to the remote emd-tpp service.
+         * The response body is returned as a {@code Map<String, Object>}.</p>
+         */
+        @Override
+        public Mono<Map<String, Object>> testAuthConnection(String tppId) {
+            return webClient.get()
+                    .uri(TPP_CONNECTION_TEST_PATH, tppId)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, response ->
+                            response.bodyToMono(String.class)
+                                    .flatMap(body -> Mono.error(
+                                            new ExternalServiceException("TPP_SERVICE", "testAuthConnection", body))))
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                    .retryWhen(WebClientRetrySpecs.transientNetwork())
+                    .doOnError(ex -> log.error(
+                            "[TPP-CONNECTOR] GET {} failed for tppId={}: {}",
+                            TPP_CONNECTION_TEST_PATH, tppId, ex.getMessage()));
+        }
 }

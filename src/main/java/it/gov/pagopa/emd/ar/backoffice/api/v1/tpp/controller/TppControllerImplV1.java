@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @Slf4j
@@ -89,6 +90,16 @@ public class TppControllerImplV1 implements TppControllerV1 {
                 businessName != null ? "***" : null,
                 page, size, fields != null ? fields.size() : 0);
         return tppService.searchTpp(entityId, businessName, page, size, fields)
+                .map(ResponseEntity::ok);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Mono<ResponseEntity<Map<String, Object>>> testAuthConnection(String tppId) {
+        log.info("[AR-BFF][TPP_AUTH_TEST] Initiating connection test for TPP with tppId={}", tppId);
+        return tppService.testAuthConnection(tppId)
                 .map(ResponseEntity::ok);
     }
 }

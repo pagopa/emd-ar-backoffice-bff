@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.3](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.9.2...v0.9.3) (2026-08-20)
+
+
+### Bug Fixes
+
+* [MMC-961] add tpp search endpoint ([#43](https://github.com/pagopa/emd-ar-backoffice-bff/issues/43)) ([ca40918](https://github.com/pagopa/emd-ar-backoffice-bff/commit/ca40918510a8feeb496428f3e5a26be6da3323e0))
+
 ## [0.9.2](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.9.1...v0.9.2) (2026-08-19)
 
 

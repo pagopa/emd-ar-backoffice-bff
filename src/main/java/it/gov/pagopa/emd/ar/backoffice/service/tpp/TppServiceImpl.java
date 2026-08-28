@@ -14,7 +14,6 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper.TppConnectorMapper;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import java.util.List;
@@ -243,7 +242,7 @@ public class TppServiceImpl implements TppService {
 
     @Override
     public Mono<Void> removeRecipientIdOnWhitelist(String tppId, String recipientId) {
-        log.info("[AR-BFF][TPP_WHITELIST_DELETE] Processing whitelist removal for tppId={}}", tppId);
+        log.info("[AR-BFF][TPP_WHITELIST_DELETE] Processing whitelist removal for tppId={}", tppId);
 
         return tppConnector.removeRecipientIdOnWhitelist(tppId, recipientId)
             .doOnSuccess(v -> log.info("[AR-BFF][TPP_WHITELIST_DELETE] Recipient removed successfully from tppId={}", tppId))

@@ -18,6 +18,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+
 import reactor.core.publisher.Mono;
 
 import org.springframework.web.util.UriBuilder;
@@ -309,12 +311,12 @@ public class TppConnectorImpl implements TppConnector {
                                 .flatMap(body -> Mono.error(new RecipientAlreadyPresentException("Recipient already present in whitelist"))))
                 .onStatus(status -> status.value() == 404, response ->
                         Mono.error(new ResourceNotFoundException("TPP", tppId)))
-                .onStatus(HttpStatusCode::isError, response ->
-                        response.bodyToMono(String.class)
-                                .flatMap(body -> Mono.error(
-                                        new ExternalServiceException("TPP_SERVICE", "insertRecipientIdOnWhitelist", body))))
                 .bodyToMono(Void.class)
                 .retryWhen(WebClientRetrySpecs.connectFailureOnly())
+                .onErrorMap(
+                    WebClientResponseException.class,
+                    ex -> new ExternalServiceException("TPP_SERVICE", "insertRecipientIdOnWhitelist", ex.getResponseBodyAsString())
+                )
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] POST {} failed: {}", ADD_RECIPIENT_ID_ON_WHITELIST_PATH, ex.getMessage()));
     }
@@ -341,12 +343,12 @@ public class TppConnectorImpl implements TppConnector {
                                     }
                                 })
                 )
-                .onStatus(HttpStatusCode::isError, response ->
-                        response.bodyToMono(String.class)
-                                .flatMap(body -> Mono.error(
-                                        new ExternalServiceException("TPP_SERVICE", "removeRecipientIdOnWhitelist", body))))
                 .bodyToMono(Void.class)
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .onErrorMap(
+                    WebClientResponseException.class,
+                    ex -> new ExternalServiceException("TPP_SERVICE", "removeRecipientIdOnWhitelist", ex.getResponseBodyAsString())
+                )
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] DELETE {} failed for tppId={}: {}", DELETE_RECIPIENT_ID_FROM_WHITELIST_PATH, tppId, ex.getMessage()));
     }
@@ -362,12 +364,12 @@ public class TppConnectorImpl implements TppConnector {
                 .retrieve()
                 .onStatus(status -> status.value() == 404, response ->
                         Mono.error(new ResourceNotFoundException("TPP", tppId)))
-                .onStatus(HttpStatusCode::isError, response ->
-                        response.bodyToMono(String.class)
-                                .flatMap(body -> Mono.error(
-                                        new ExternalServiceException("TPP_SERVICE", "updateRecipientIdOnWhitelist", body))))
                 .bodyToMono(Void.class)
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .onErrorMap(
+                    WebClientResponseException.class,
+                    ex -> new ExternalServiceException("TPP_SERVICE", "updateRecipientIdOnWhitelist", ex.getResponseBodyAsString())
+                )
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}", UPDATE_RECIPIENT_ID_ON_WHITELIST_PATH, tppId, ex.getMessage()));
     }

@@ -98,7 +98,8 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void insertRecipientIdOnWhitelist_409_Conflict() {
-        TppConnectorImpl connector = connectorWith(request -> Mono.just(emptyResponse(HttpStatus.CONFLICT)));
+        TppConnectorImpl connector = connectorWith(request -> 
+            Mono.just(responseWithBody(HttpStatus.CONFLICT, "Conflict")));
 
         StepVerifier.create(connector.insertRecipientIdOnWhitelist(TPP_ID, new RecipientIdOnWhitelistDTOV1()))
                 .expectError(RecipientAlreadyPresentException.class)
@@ -122,7 +123,8 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void insertRecipientIdOnWhitelist_500_ServerError() {
-        TppConnectorImpl connector = connectorWith(request -> Mono.just(emptyResponse(HttpStatus.INTERNAL_SERVER_ERROR)));
+        TppConnectorImpl connector = connectorWith(request -> 
+            Mono.just(responseWithBody(HttpStatus.INTERNAL_SERVER_ERROR, "Error")));
 
         StepVerifier.create(connector.insertRecipientIdOnWhitelist(TPP_ID, new RecipientIdOnWhitelistDTOV1()))
                 .expectError(ExternalServiceException.class)
@@ -191,7 +193,8 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void removeRecipientIdOnWhitelist_500_ServerError() {
-        TppConnectorImpl connector = connectorWith(request -> Mono.just(emptyResponse(HttpStatus.INTERNAL_SERVER_ERROR)));
+        TppConnectorImpl connector = connectorWith(request -> 
+            Mono.just(responseWithBody(HttpStatus.INTERNAL_SERVER_ERROR, "Error")));
 
         StepVerifier.create(connector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
                 .expectError(ExternalServiceException.class)
@@ -234,7 +237,8 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void updateRecipientIdOnWhitelist_500_ServerError() {
-        TppConnectorImpl connector = connectorWith(request -> Mono.just(emptyResponse(HttpStatus.INTERNAL_SERVER_ERROR)));
+        TppConnectorImpl connector = connectorWith(request -> 
+            Mono.just(responseWithBody(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Error")));
 
         StepVerifier.create(connector.updateRecipientIdOnWhitelist(TPP_ID, List.of("rec1")))
                 .expectError(ExternalServiceException.class)

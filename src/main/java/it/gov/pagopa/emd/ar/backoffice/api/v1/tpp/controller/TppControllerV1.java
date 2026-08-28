@@ -190,7 +190,8 @@ public interface TppControllerV1 {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) List<String> fields);
-    /*
+
+    /**
      * Updates the operational state (active/inactive) of the TPP identified by {@code tppId}.
      *
      * <p>This endpoint allows administrative control over the TPP status. The BFF receives 
@@ -222,8 +223,7 @@ public interface TppControllerV1 {
      *         404 if the TPP is not found, 502 if emd-tpp is unreachable
      */
     @PutMapping(value = "tpp/{tppId}/payment-enabled",
-            consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE)
+            consumes = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<Void>> updateTppIsPaymentEnabled(
             @PathVariable("tppId") String tppId,
             @Valid @RequestBody TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO);

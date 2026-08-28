@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Unit tests per TppConnectorImpl utilizzando MockWebServer (OkHttp3).
  */
-class TppConnectorUpdateTest {
+class TppConnectorImplTest {
 
     private MockWebServer mockWebServer;
     private TppConnectorImpl tppConnector;

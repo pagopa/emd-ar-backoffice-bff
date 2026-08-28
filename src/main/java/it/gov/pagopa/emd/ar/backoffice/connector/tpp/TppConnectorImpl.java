@@ -17,6 +17,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+
 import reactor.core.publisher.Mono;
 
 import org.springframework.web.util.UriBuilder;
@@ -306,17 +308,13 @@ public class TppConnectorImpl implements TppConnector {
                 .bodyValue(tppUpdateStateDTO)
                 .retrieve()
                 .onStatus(status -> status.value() == 404, response ->
-                        response.bodyToMono(String.class)
-                                .defaultIfEmpty("Not Found")
-                                .flatMap(body -> Mono.error(
-                                        new ResourceNotFoundException("TPP", tppUpdateStateDTO.getTppId()))))
-                .onStatus(HttpStatusCode::isError, response ->
-                        response.bodyToMono(String.class)
-                                .defaultIfEmpty("Error")
-                                .flatMap(body -> Mono.error(
-                                        new ExternalServiceException("TPP_SERVICE", "updateTppState", body))))
+                        Mono.error(new ResourceNotFoundException("TPP", tppUpdateStateDTO.getTppId())))
                 .bodyToMono(TppEntityIdResponse.class)
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .onErrorMap(
+                    WebClientResponseException.class,
+                    ex -> new ExternalServiceException("TPP_SERVICE", "updateTppState", ex.getResponseBodyAsString())
+                )
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}",
                         UPDATE_TPP_STATE_PATH, tppUpdateStateDTO.getTppId(), ex.getMessage()));
@@ -336,16 +334,15 @@ public class TppConnectorImpl implements TppConnector {
                 .retrieve()
                 .onStatus(status -> status.value() == 404, response ->
                         response.bodyToMono(String.class)
-                                .defaultIfEmpty("Not Found")
-                                .flatMap(body -> Mono.error(
+                            .defaultIfEmpty("Not Found")
+                            .flatMap(body -> Mono.error(
                                         new ResourceNotFoundException("TPP", tppId))))
-                .onStatus(HttpStatusCode::isError, response ->
-                        response.bodyToMono(String.class)
-                                .defaultIfEmpty("Error")
-                                .flatMap(body -> Mono.error(
-                                        new ExternalServiceException("TPP_SERVICE", "updateTppIsPaymentEnabled", body))))
                 .toBodilessEntity()
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .onErrorMap(
+                    WebClientResponseException.class,
+                    ex -> new ExternalServiceException("TPP_SERVICE","updateTppIsPaymentEnabled",ex.getResponseBodyAsString())
+                )
                 .doOnError(ex -> log.error(
                         "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}",
                         UPDATE_TPP_ISPAYMENT_PATH, tppId, ex.getMessage()))

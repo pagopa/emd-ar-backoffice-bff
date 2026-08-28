@@ -251,7 +251,7 @@ public class TppServiceImpl implements TppService {
         log.info("[AR-BFF][TPP_IS_PAYMENT_ENABLED_UPDATE] Updating isPaymentEnabled for tppId={}", tppId);
 
         return tppConnector.updateTppIsPaymentEnabled(tppId, tppUpdateIsPaymentEnabledDTO)
-            .doOnSuccess(r -> log.info("[AR-BFF][TPP_IS_PAYMENT_ENABLED] TPP updated successfully for tppId={}", tppId))
-            .doOnError(e -> log.error("[AR-BFF][TPP_IS_PAYMENT_ENABLED] Failed to update TPP isPaymentEnabled for tppId={}: {}", tppId, e.getMessage()));
+            .doOnSuccess(r -> log.info("[AR-BFF][TPP_IS_PAYMENT_ENABLED_UPDATE] TPP updated successfully for tppId={}", tppId))
+            .doOnError(e -> log.error("[AR-BFF][TPP_IS_PAYMENT_ENABLED_UPDATE] Failed to update TPP isPaymentEnabled for tppId={}: {}", tppId, e.getMessage()));
     }
 }

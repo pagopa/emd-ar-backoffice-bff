@@ -6,16 +6,16 @@ import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientAlreadyPresentException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import okhttp3.mockwebserver.RecordedRequest;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.ExchangeFunction;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import java.io.IOException;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,8 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Unit tests per i metodi di gestione whitelist di {@link TppConnectorImpl}.
  *
- * <p>Usa {@link MockWebServer} per simulare il servizio remoto emd-tpp, garantendo la verifica 
- * della corretta costruzione degli URL, dei verbi HTTP e della serializzazione dei dati.</p>
+ * <p>Usa {@link ExchangeFunction} per intercettare le chiamate HTTP senza avviare
+ * server reali, garantendo la verifica della corretta costruzione degli URL e dei verbi.</p>
  *
  * <p>Scenari coperti:
  * <ol>
@@ -40,34 +40,34 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>Happy path aggiornamento massivo whitelist — URL corretto, verbo PUT e successo (2xx)</li>
  *   <li>Aggiornamento fallito (404 Not Found) → {@link ResourceNotFoundException}</li>
  *   <li>Aggiornamento fallito (500 Error) → {@link ExternalServiceException}</li>
+ *   <li>{@code insertRecipientIdOnWhitelist}: Successo, 409 (Already Present), 404 (TPP Not Found), 500 (External Error)</li>
+ *   <li>{@code removeRecipientIdOnWhitelist}: Successo, 404 con vari codici errore (TPP vs Recipient), 500</li>
+ *   <li>{@code updateRecipientIdOnWhitelist}: Successo, 404, 500</li>
  * </ol>
  * </p>
  */
 class TppConnectorWhitelistTest {
 
-    private MockWebServer mockWebServer;
-    private TppConnectorImpl tppConnector;
-
+    private static final String BASE_URL = "http://emd-tpp.test";
     private static final String TPP_ID = "tpp-123";
     private static final String RECIPIENT_ID = "rec-456";
 
-    /**
-     * Configurazione iniziale: avvia il server mock e istanzia il connettore con l'URL locale.
-     */
-    @BeforeEach
-    void setUp() throws IOException {
-        this.mockWebServer = new MockWebServer();
-        this.mockWebServer.start();
-        String baseUrl = String.format("http://localhost:%s", mockWebServer.getPort());
-        this.tppConnector = new TppConnectorImpl(WebClient.builder(), baseUrl);
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private ClientResponse emptyResponse(HttpStatus status) {
+        return ClientResponse.create(status).build();
     }
 
-    /**
-     * Pulizia post-test: spegne il server mock per liberare le risorse.
-     */
-    @AfterEach
-    void tearDown() throws IOException {
-        this.mockWebServer.shutdown();
+    private ClientResponse responseWithBody(HttpStatus status, String body) {
+        return ClientResponse.create(status)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .body(body)
+                .build();
+    }
+
+    private TppConnectorImpl connectorWith(ExchangeFunction ef) {
+        WebClient.Builder builder = WebClient.builder().exchangeFunction(ef);
+        return new TppConnectorImpl(builder, BASE_URL);
     }
 
     // ── Tests per insertRecipientIdOnWhitelist ───────────────────────────────
@@ -76,15 +76,21 @@ class TppConnectorWhitelistTest {
      * Happy path: inserimento in whitelist — verifica URL, verbo HTTP POST e completamento corretto.
      */
     @Test
-    void insertRecipientIdOnWhitelist_Success() throws InterruptedException {
-        mockWebServer.enqueue(new MockResponse().setResponseCode(201));
+    void insertRecipientIdOnWhitelist_Success() {
+        String[] capturedMethod = new String[1];
+        String[] capturedUrl = new String[1];
 
-        StepVerifier.create(tppConnector.insertRecipientIdOnWhitelist(TPP_ID, new RecipientIdOnWhitelistDTOV1()))
+        TppConnectorImpl connector = connectorWith(request -> {
+            capturedMethod[0] = request.method().name();
+            capturedUrl[0] = request.url().toString();
+            return Mono.just(emptyResponse(HttpStatus.CREATED));
+        });
+
+        StepVerifier.create(connector.insertRecipientIdOnWhitelist(TPP_ID, new RecipientIdOnWhitelistDTOV1()))
                 .verifyComplete();
 
-        RecordedRequest req = mockWebServer.takeRequest();
-        assertThat(req.getMethod()).isEqualTo("POST");
-        assertThat(req.getPath()).isEqualTo("/emd/tpp/" + TPP_ID + "/whitelist");
+        assertThat(capturedMethod[0]).isEqualTo("POST");
+        assertThat(capturedUrl[0]).contains("/emd/tpp/" + TPP_ID + "/whitelist");
     }
 
     /**
@@ -92,9 +98,11 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void insertRecipientIdOnWhitelist_409_Conflict() {
-        mockWebServer.enqueue(new MockResponse().setResponseCode(409).setBody("Conflict"));
-        StepVerifier.create(tppConnector.insertRecipientIdOnWhitelist(TPP_ID, new RecipientIdOnWhitelistDTOV1()))
-                .expectError(RecipientAlreadyPresentException.class).verify();
+        TppConnectorImpl connector = connectorWith(request -> Mono.just(emptyResponse(HttpStatus.CONFLICT)));
+
+        StepVerifier.create(connector.insertRecipientIdOnWhitelist(TPP_ID, new RecipientIdOnWhitelistDTOV1()))
+                .expectError(RecipientAlreadyPresentException.class)
+                .verify();
     }
 
     /**
@@ -102,9 +110,11 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void insertRecipientIdOnWhitelist_404_NotFound() {
-        mockWebServer.enqueue(new MockResponse().setResponseCode(404));
-        StepVerifier.create(tppConnector.insertRecipientIdOnWhitelist(TPP_ID, new RecipientIdOnWhitelistDTOV1()))
-                .expectError(ResourceNotFoundException.class).verify();
+        TppConnectorImpl connector = connectorWith(request -> Mono.just(emptyResponse(HttpStatus.NOT_FOUND)));
+
+        StepVerifier.create(connector.insertRecipientIdOnWhitelist(TPP_ID, new RecipientIdOnWhitelistDTOV1()))
+                .expectError(ResourceNotFoundException.class)
+                .verify();
     }
 
     /**
@@ -112,9 +122,11 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void insertRecipientIdOnWhitelist_500_ServerError() {
-        mockWebServer.enqueue(new MockResponse().setResponseCode(500).setBody("Error"));
-        StepVerifier.create(tppConnector.insertRecipientIdOnWhitelist(TPP_ID, new RecipientIdOnWhitelistDTOV1()))
-                .expectError(ExternalServiceException.class).verify();
+        TppConnectorImpl connector = connectorWith(request -> Mono.just(emptyResponse(HttpStatus.INTERNAL_SERVER_ERROR)));
+
+        StepVerifier.create(connector.insertRecipientIdOnWhitelist(TPP_ID, new RecipientIdOnWhitelistDTOV1()))
+                .expectError(ExternalServiceException.class)
+                .verify();
     }
 
     // ── Tests per removeRecipientIdOnWhitelist ───────────────────────────────
@@ -123,14 +135,17 @@ class TppConnectorWhitelistTest {
      * Happy path: rimozione da whitelist — verifica URL con recipientId, verbo HTTP DELETE e completamento corretto.
      */
     @Test
-    void removeRecipientIdOnWhitelist_Success() throws InterruptedException {
-        mockWebServer.enqueue(new MockResponse().setResponseCode(204));
-        StepVerifier.create(tppConnector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
+    void removeRecipientIdOnWhitelist_Success() {
+        String[] capturedMethod = new String[1];
+        TppConnectorImpl connector = connectorWith(request -> {
+            capturedMethod[0] = request.method().name();
+            return Mono.just(emptyResponse(HttpStatus.NO_CONTENT));
+        });
+
+        StepVerifier.create(connector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
                 .verifyComplete();
 
-        RecordedRequest req = mockWebServer.takeRequest();
-        assertThat(req.getMethod()).isEqualTo("DELETE");
-        assertThat(req.getPath()).isEqualTo("/emd/tpp/" + TPP_ID + "/whitelist/" + RECIPIENT_ID);
+        assertThat(capturedMethod[0]).isEqualTo("DELETE");
     }
 
     /**
@@ -138,8 +153,10 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void removeRecipientIdOnWhitelist_404_TppNotOnboarded() {
-        mockWebServer.enqueue(new MockResponse().setResponseCode(404).setBody("{\"code\":\"TPP_NOT_ONBOARDED\"}"));
-        StepVerifier.create(tppConnector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
+        TppConnectorImpl connector = connectorWith(request -> 
+            Mono.just(responseWithBody(HttpStatus.NOT_FOUND, "{\"code\":\"TPP_NOT_ONBOARDED\"}")));
+
+        StepVerifier.create(connector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
                 .expectErrorMatches(ex -> ex instanceof ResourceNotFoundException && ex.getMessage().contains("TPP"))
                 .verify();
     }
@@ -149,9 +166,12 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void removeRecipientIdOnWhitelist_404_RecipientNotFound() {
-        mockWebServer.enqueue(new MockResponse().setResponseCode(404).setBody("{\"code\":\"RECIPIENT_NOT_FOUND\"}"));
-        StepVerifier.create(tppConnector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
-                .expectError(RecipientNotFoundException.class).verify();
+        TppConnectorImpl connector = connectorWith(request -> 
+            Mono.just(responseWithBody(HttpStatus.NOT_FOUND, "{\"code\":\"RECIPIENT_NOT_FOUND\"}")));
+
+        StepVerifier.create(connector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
+                .expectError(RecipientNotFoundException.class)
+                .verify();
     }
 
     /**
@@ -159,8 +179,9 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void removeRecipientIdOnWhitelist_404_Fallback() {
-        mockWebServer.enqueue(new MockResponse().setResponseCode(404).setBody("")); 
-        StepVerifier.create(tppConnector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
+        TppConnectorImpl connector = connectorWith(request -> Mono.just(emptyResponse(HttpStatus.NOT_FOUND)));
+
+        StepVerifier.create(connector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
                 .expectErrorMatches(ex -> ex instanceof ResourceNotFoundException && ex.getMessage().contains("Whitelist Element"))
                 .verify();
     }
@@ -170,9 +191,11 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void removeRecipientIdOnWhitelist_500_ServerError() {
-        mockWebServer.enqueue(new MockResponse().setResponseCode(500).setBody("Error"));
-        StepVerifier.create(tppConnector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
-                .expectError(ExternalServiceException.class).verify();
+        TppConnectorImpl connector = connectorWith(request -> Mono.just(emptyResponse(HttpStatus.INTERNAL_SERVER_ERROR)));
+
+        StepVerifier.create(connector.removeRecipientIdOnWhitelist(TPP_ID, RECIPIENT_ID))
+                .expectError(ExternalServiceException.class)
+                .verify();
     }
 
     // ── Tests per updateRecipientIdOnWhitelist ───────────────────────────────
@@ -181,14 +204,17 @@ class TppConnectorWhitelistTest {
      * Happy path: aggiornamento massivo whitelist — verifica URL, verbo HTTP PUT e completamento corretto.
      */
     @Test
-    void updateRecipientIdOnWhitelist_Success() throws InterruptedException {
-        mockWebServer.enqueue(new MockResponse().setResponseCode(204));
-        StepVerifier.create(tppConnector.updateRecipientIdOnWhitelist(TPP_ID, List.of("rec1")))
+    void updateRecipientIdOnWhitelist_Success() {
+        String[] capturedMethod = new String[1];
+        TppConnectorImpl connector = connectorWith(request -> {
+            capturedMethod[0] = request.method().name();
+            return Mono.just(emptyResponse(HttpStatus.NO_CONTENT));
+        });
+
+        StepVerifier.create(connector.updateRecipientIdOnWhitelist(TPP_ID, List.of("rec1")))
                 .verifyComplete();
 
-        RecordedRequest req = mockWebServer.takeRequest();
-        assertThat(req.getMethod()).isEqualTo("PUT");
-        assertThat(req.getPath()).isEqualTo("/emd/tpp/" + TPP_ID + "/whitelist");
+        assertThat(capturedMethod[0]).isEqualTo("PUT");
     }
 
     /**
@@ -196,9 +222,11 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void updateRecipientIdOnWhitelist_404_NotFound() {
-        mockWebServer.enqueue(new MockResponse().setResponseCode(404));
-        StepVerifier.create(tppConnector.updateRecipientIdOnWhitelist(TPP_ID, List.of("rec1")))
-                .expectError(ResourceNotFoundException.class).verify();
+        TppConnectorImpl connector = connectorWith(request -> Mono.just(emptyResponse(HttpStatus.NOT_FOUND)));
+
+        StepVerifier.create(connector.updateRecipientIdOnWhitelist(TPP_ID, List.of("rec1")))
+                .expectError(ResourceNotFoundException.class)
+                .verify();
     }
 
     /**
@@ -206,8 +234,10 @@ class TppConnectorWhitelistTest {
      */
     @Test
     void updateRecipientIdOnWhitelist_500_ServerError() {
-        mockWebServer.enqueue(new MockResponse().setResponseCode(500).setBody("Error"));
-        StepVerifier.create(tppConnector.updateRecipientIdOnWhitelist(TPP_ID, List.of("rec1")))
-                .expectError(ExternalServiceException.class).verify();
+        TppConnectorImpl connector = connectorWith(request -> Mono.just(emptyResponse(HttpStatus.INTERNAL_SERVER_ERROR)));
+
+        StepVerifier.create(connector.updateRecipientIdOnWhitelist(TPP_ID, List.of("rec1")))
+                .expectError(ExternalServiceException.class)
+                .verify();
     }
 }

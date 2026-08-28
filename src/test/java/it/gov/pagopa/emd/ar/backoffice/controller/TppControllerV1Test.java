@@ -715,7 +715,7 @@ class TppControllerV1Test {
     }
 
     /**
-     * DELETE /tpp/{tppId}/whitelist/{recipientId} — Recipient non trovato → errore 404 propagato.
+     * DELETE /tpp/{tppId}/whitelist/{recipientId} — Recipient non trovato → errore propagato.
      */
     @Test
     void removeRecipientIdOnWhitelist_NotFound_PropagatesError() {
@@ -749,7 +749,7 @@ class TppControllerV1Test {
     }
 
     /**
-     * PUT /tpp/{tppId}/whitelist — TPP non trovato → errore 404 propagato.
+     * PUT /tpp/{tppId}/whitelist — TPP non trovato → errore propagato.
      */
     @Test
     void updateRecipientIdOnWhitelist_TppNotFound_PropagatesError() {

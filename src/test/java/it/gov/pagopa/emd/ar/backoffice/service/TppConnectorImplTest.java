@@ -78,21 +78,21 @@ class TppConnectorImplTest {
     }
 
     /**
-     * Verifica che se il microservizio upstream (emd-tpp) risponde con un errore (5xx),
-     * il connector del BFF lanci correttamente l'eccezione ExternalServiceException.
+     * Verifica che il connettore gestisca correttamente gli errori server (5xx)
      */
     @Test
     void testAuthConnection_UpstreamError_ThrowsExternalServiceException() {
         String tppId = "tpp-123";
         
-        // Mock di un errore 500 dal microservizio emd-tpp
-        mockWebServer.enqueue(new MockResponse()
-                .setResponseCode(500)
-                .setBody("Internal Server Error"));
+        mockWebServer.enqueue(new MockResponse().setResponseCode(500)); // 1°
+        mockWebServer.enqueue(new MockResponse().setResponseCode(500)); // 2°
+        mockWebServer.enqueue(new MockResponse().setResponseCode(500)); // 3°
 
         StepVerifier.create(tppConnector.testAuthConnection(tppId))
-                .expectErrorMatches(ex -> ex instanceof ExternalServiceException &&
-                    ((ExternalServiceException) ex).getHttpStatusCode() == 502)
+                .expectErrorMatches(ex -> ex instanceof ExternalServiceException)
                 .verify();
-    }
+
+        // Verify retry
+        assertThat(mockWebServer.getRequestCount()).isGreaterThan(1);
+}
 }

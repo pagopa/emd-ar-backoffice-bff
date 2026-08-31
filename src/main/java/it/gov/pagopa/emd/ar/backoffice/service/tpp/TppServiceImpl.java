@@ -235,7 +235,7 @@ public class TppServiceImpl implements TppService {
     public Mono<TppConnectionResponseDTOV1> testAuthConnection(String tppId) {
         log.info("[AR-BFF][TPP_AUTH_TEST] Processing auth test request for tppId={}", tppId);
         return tppConnector.testAuthConnection(tppId)
-            .doOnSuccess(r -> log.info("[AR-BFF][TPP_AUTH_TEST] Connection test completed for tppId={} with status: {}", tppId, r.getStatus()))
+            .doOnNext(r -> log.info("[AR-BFF][TPP_AUTH_TEST] Connection test completed for tppId={} with status: {}", tppId, r.getStatus()))
             .doOnError(e -> log.error("[AR-BFF][TPP_AUTH_TEST] Connection test failed for tppId={}: {}", tppId, e.getMessage()));
     }
 }

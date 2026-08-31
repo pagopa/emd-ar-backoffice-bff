@@ -333,10 +333,7 @@ public class TppConnectorImpl implements TppConnector {
                 .bodyValue(tppUpdateIsPaymentEnabledDTO)
                 .retrieve()
                 .onStatus(status -> status.value() == 404, response ->
-                        response.bodyToMono(String.class)
-                            .defaultIfEmpty("Not Found")
-                            .flatMap(body -> Mono.error(
-                                        new ResourceNotFoundException("TPP", tppId))))
+                        Mono.error(new ResourceNotFoundException("TPP", tppId)))
                 .toBodilessEntity()
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
                 .onErrorMap(

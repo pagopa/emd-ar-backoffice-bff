@@ -8,6 +8,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
@@ -15,6 +16,7 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper.TppConnectorMapper;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import java.util.List;
@@ -253,5 +255,32 @@ public class TppServiceImpl implements TppService {
         return tppConnector.updateTppIsPaymentEnabled(tppId, tppUpdateIsPaymentEnabledDTO)
             .doOnSuccess(r -> log.info("[AR-BFF][TPP_IS_PAYMENT_ENABLED_UPDATE] TPP updated successfully for tppId={}", tppId))
             .doOnError(e -> log.error("[AR-BFF][TPP_IS_PAYMENT_ENABLED_UPDATE] Failed to update TPP isPaymentEnabled for tppId={}: {}", tppId, e.getMessage()));
+    }
+    
+    @Override
+    public Mono<Void> insertRecipientIdOnWhitelist(String tppId, RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO) {
+        log.info("[AR-BFF][TPP_WHITELIST_ADD] Processing whitelist addition for tppId={}", tppId);
+
+        return tppConnector.insertRecipientIdOnWhitelist(tppId, recipientIdOnWhitelistDTO)
+            .doOnSuccess(v -> log.info("[AR-BFF][TPP_WHITELIST_ADD] Recipient added successfully for tppId={}", tppId))
+            .doOnError(e -> log.error("[AR-BFF][TPP_WHITELIST_ADD] Failed to add recipient to whitelist for tppId={}: {}", tppId, e.getMessage()));
+    }
+
+    @Override
+    public Mono<Void> removeRecipientIdOnWhitelist(String tppId, String recipientId) {
+        log.info("[AR-BFF][TPP_WHITELIST_DELETE] Processing whitelist removal for tppId={}", tppId);
+
+        return tppConnector.removeRecipientIdOnWhitelist(tppId, recipientId)
+            .doOnSuccess(v -> log.info("[AR-BFF][TPP_WHITELIST_DELETE] Recipient removed successfully from tppId={}", tppId))
+            .doOnError(e -> log.error("[AR-BFF][TPP_WHITELIST_DELETE] Failed to remove recipient from whitelist for tppId={}: {}", tppId, e.getMessage()));
+    }
+
+    @Override
+    public Mono<Void> updateRecipientIdOnWhitelist(String tppId, List<String> recipientIds) {
+        log.info("[AR-BFF][TPP_WHITELIST_UPDATE] Processing whitelist update for tppId={}", tppId);
+
+        return tppConnector.updateRecipientIdOnWhitelist(tppId, recipientIds)
+            .doOnSuccess(v -> log.info("[AR-BFF][TPP_WHITELIST_UPDATE] Whitelist updated successfully for tppId={}", tppId))
+            .doOnError(e -> log.error("[AR-BFF][TPP_WHITELIST_UPDATE] Failed to update whitelist for tppId={}: {}", tppId, e.getMessage()));
     }
 }

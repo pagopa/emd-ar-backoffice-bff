@@ -4,6 +4,8 @@ import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientAlreadyPresentException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
 import it.gov.pagopa.emd.ar.backoffice.dto.generated.ErrorDTO;
@@ -232,5 +234,31 @@ public class ControllerExceptionHandler {
 
     static String getRequestDetails(ServerHttpRequest request) {
         return "%s %s".formatted(request.getMethod(), request.getPath().value());
+    }
+
+    /**
+     * Maps {@link RecipientAlreadyPresentException} → HTTP 409 Conflict.
+     */
+    @ExceptionHandler(RecipientAlreadyPresentException.class)
+    public ResponseEntity<ErrorDTO> handleRecipientAlreadyPresentException(RecipientAlreadyPresentException ex, ServerHttpRequest request) {
+        logException(ex, request, HttpStatus.CONFLICT);
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ErrorDTO(ErrorDTO.CodeEnum.GENERIC_ERROR, "Recipient already present in whitelist.", utilities.getTraceId()));
+    }
+
+    /**
+     * Maps {@link RecipientNotFoundException} → HTTP 404 Not Found.
+     * Note: This is specific to the whitelist recipient not found, 
+     * distinct from the TPP resource not found.
+     */
+    @ExceptionHandler(RecipientNotFoundException.class)
+    public ResponseEntity<ErrorDTO> handleRecipientNotFoundException(RecipientNotFoundException ex, ServerHttpRequest request) {
+        logException(ex, request, HttpStatus.NOT_FOUND);
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ErrorDTO(ErrorDTO.CodeEnum.NOT_FOUND, "Recipient not found in whitelist.", utilities.getTraceId()));
     }
 }

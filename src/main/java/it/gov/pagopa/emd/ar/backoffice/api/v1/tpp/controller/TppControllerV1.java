@@ -19,6 +19,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
@@ -227,4 +228,41 @@ public interface TppControllerV1 {
     Mono<ResponseEntity<Void>> updateTppIsPaymentEnabled(
             @PathVariable("tppId") String tppId,
             @Valid @RequestBody TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO);
+            
+    /**
+     * Adds a recipient ID to the whitelist for a specific TPP identified by {@code tppId}.
+     *
+     * <p>This operation delegates to the emd-tpp service to persist the association.
+     * If the recipient ID is already present, the return code will be 409 Conflict).
+     * </p>
+     *
+     * @param tppId                    the identifier of the TPP
+     * @param recipientIdOnWhitelistDTO containing the recipientId to be whitelisted
+     * @return {@code Mono<ResponseEntity<Void>>} HTTP 201 Created on success, 404 if TPP not found, 409 if already exists
+     */
+    @PostMapping(value = "tpp/{tppId}/whitelist", consumes = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<Void>> insertRecipientIdOnWhitelist(@PathVariable("tppId") String tppId, @Valid @RequestBody RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO);
+
+    /**
+     * Removes a recipient ID from the whitelist of a specific TPP identified by {@code tppId}.
+     *
+     * @param tppId       the identifier of the TPP
+     * @param recipientId the recipient identifier to remove from the whitelist
+     * @return {@code Mono<ResponseEntity<Void>>} HTTP 204 No Content on success, 404 if TPP or recipient not found
+     */
+    @DeleteMapping("tpp/{tppId}/whitelist/{recipientId}")
+    Mono<ResponseEntity<Void>> removeRecipientIdOnWhitelist(@PathVariable("tppId") String tppId, @PathVariable("recipientId") String recipientId);
+
+    /**
+     * Replace the entire whitelist of a specific tpp with the provided list.
+     * 
+     * <p>Note: This is a destructive operation. All previous whitelist entries for this TPP
+     * will be replaced by the new list.</p>
+     *
+     * @param tppId        of the tpp whose whitelist is to be replaced
+     * @param recipientIds new list of recipientId to set on whitelist
+     * @return {@code Mono<ResponseEntity<Void>>} HTTP 204 No Content on success, 404 if TPP not found
+     */
+    @PutMapping(value = "tpp/{tppId}/whitelist", consumes = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<Void>> updateRecipientIdOnWhitelist(@PathVariable("tppId") String tppId, @RequestBody List<String> recipientIds);
 }

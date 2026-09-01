@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * API request DTO for {@code PATCH /tpp/{entityId}}.
@@ -45,4 +46,6 @@ public class TppPatchDTOV1 {
     private String pspDenomination;
 
     private HashMap<String, AgentLinkV1> agentLinks;
+
+    private List<String> whitelistRecipient;
 }

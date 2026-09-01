@@ -10,6 +10,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledD
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
@@ -282,5 +283,13 @@ public class TppServiceImpl implements TppService {
         return tppConnector.updateRecipientIdOnWhitelist(tppId, recipientIds)
             .doOnSuccess(v -> log.info("[AR-BFF][TPP_WHITELIST_UPDATE] Whitelist updated successfully for tppId={}", tppId))
             .doOnError(e -> log.error("[AR-BFF][TPP_WHITELIST_UPDATE] Failed to update whitelist for tppId={}: {}", tppId, e.getMessage()));
+    }
+    
+    @Override
+    public Mono<TppConnectionResponseDTOV1> testAuthConnection(String tppId) {
+        log.info("[AR-BFF][TPP_AUTH_TEST] Processing auth test request for tppId={}", tppId);
+        return tppConnector.testAuthConnection(tppId)
+            .doOnNext(r -> log.info("[AR-BFF][TPP_AUTH_TEST] Connection test completed for tppId={} with status: {}", tppId, r.getStatus()))
+            .doOnError(e -> log.error("[AR-BFF][TPP_AUTH_TEST] Connection test failed for tppId={}: {}", tppId, e.getMessage()));
     }
 }

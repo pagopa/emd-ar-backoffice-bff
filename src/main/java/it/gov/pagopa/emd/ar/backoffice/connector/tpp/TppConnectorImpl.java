@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
@@ -57,6 +58,7 @@ public class TppConnectorImpl implements TppConnector {
     private static final String ADD_RECIPIENT_ID_ON_WHITELIST_PATH = "/emd/tpp/{tppId}/whitelist";
     private static final String DELETE_RECIPIENT_ID_FROM_WHITELIST_PATH = "/emd/tpp/{tppId}/whitelist/{recipientId}";
     private static final String UPDATE_RECIPIENT_ID_ON_WHITELIST_PATH = "/emd/tpp/{tppId}/whitelist";
+    private static final String TPP_CONNECTION_TEST_PATH  = "/emd/tpp/{tppId}/network/connection/test";
 
     private final WebClient webClient;
 
@@ -429,4 +431,29 @@ public class TppConnectorImpl implements TppConnector {
                         "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}", UPDATE_RECIPIENT_ID_ON_WHITELIST_PATH, tppId, ex.getMessage()));
     }
 
+        /**
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code GET /emd/tpp/{tppId}/network/connection/test} to the remote emd-tpp service.
+     * The response is deserialized into a structured DTO. If the upstream service itself
+     * returns an error (4xx/5xx), it is wrapped in an {@link ExternalServiceException}.</p>
+     */
+    @Override
+    public Mono<TppConnectionResponseDTOV1> testAuthConnection(String tppId) {
+        return webClient.get()
+                .uri(TPP_CONNECTION_TEST_PATH, tppId) // Scenario A: Path Variable
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, response ->
+                    response.bodyToMono(String.class)
+                            .flatMap(body -> Mono.error(
+                                    new ExternalServiceException("TPP_SERVICE", "testAuthConnection", body))))
+
+                .bodyToMono(TppConnectionResponseDTOV1.class)
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .onErrorMap(WebClientResponseException.class, ex -> 
+                    new ExternalServiceException("TPP_SERVICE", "testAuthConnection", ex.getResponseBodyAsString()))
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] GET {} failed for tppId={}: {}",
+                        TPP_CONNECTION_TEST_PATH, tppId, ex.getMessage()));
+    }
 }

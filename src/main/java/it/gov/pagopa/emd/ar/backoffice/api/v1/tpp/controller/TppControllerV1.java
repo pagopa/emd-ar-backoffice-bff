@@ -21,6 +21,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledD
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
 import java.util.List;
@@ -265,4 +266,18 @@ public interface TppControllerV1 {
      */
     @PutMapping(value = "tpp/{tppId}/whitelist", consumes = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<Void>> updateRecipientIdOnWhitelist(@PathVariable("tppId") String tppId, @RequestBody List<String> recipientIds);
+    
+    /**
+     * Tests the connectivity and authentication for a specific TPP.
+     * 
+     * <p>This endpoint orchestrates a real-time test toward the TPP's authorization server.
+      * It returns a structured response capturing successes, while upstream connectivity failures
+      * are mapped to HTTP 502 by {@link it.gov.pagopa.emd.ar.backoffice.api.handler.ControllerExceptionHandler}.</p>
+     *
+     * @param tppId the unique identifier of the TPP
+     * @return {@code Mono<ResponseEntity<TppConnectionResponseDTOV1>>} the structured test result with HTTP 200
+     */
+    @GetMapping(value = "tpp/{tppId}/network/connection/test", produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<TppConnectionResponseDTOV1>> testAuthConnection(@PathVariable("tppId") String tppId);
+
 }

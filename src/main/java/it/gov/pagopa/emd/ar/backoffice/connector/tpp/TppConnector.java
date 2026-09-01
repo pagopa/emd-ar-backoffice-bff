@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
@@ -169,4 +170,15 @@ public interface TppConnector {
      * @return {@code Mono<Void>} on success, or an error if the upstream call fails
      */
     Mono<Void> updateRecipientIdOnWhitelist(String tppId, List<String> recipientIds);
+    
+    /**
+     * Tests the authentication connection for the TPP identified by {@code tppId}.
+     *
+     * <p>Delegates to the upstream {@code GET /emd/tpp/{tppId}/network/connection/test}
+     * endpoint via the connector.</p>
+     *
+     * @param tppId the identifier of the TPP
+     * @return {@code Mono<TppConnectionResponseDTOV1>} the response from the upstream service
+     */
+    Mono<TppConnectionResponseDTOV1> testAuthConnection(String tppId);
 }

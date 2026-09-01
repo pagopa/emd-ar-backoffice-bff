@@ -10,6 +10,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledD
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import reactor.core.publisher.Mono;
 import java.util.List;
 
@@ -220,4 +221,13 @@ public interface TppService {
      * @return {@code Mono<Void>} completing when the whitelist has been updated
      */
     Mono<Void> updateRecipientIdOnWhitelist(String tppId, List<String> recipientIds);
+
+    /**
+     * Performs a connectivity and authentication test for the specified TPP.
+     *
+     * @param tppId the identifier of the TPP
+     * @return {@code Mono<TppConnectionResponseDTOV1>} structured result of the test
+     * @throws it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException if the upstream service is unreachable
+     */
+    Mono<TppConnectionResponseDTOV1> testAuthConnection(String tppId);
 }

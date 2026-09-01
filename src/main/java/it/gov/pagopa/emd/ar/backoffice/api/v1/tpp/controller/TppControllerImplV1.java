@@ -10,6 +10,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledD
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -141,5 +142,13 @@ public class TppControllerImplV1 implements TppControllerV1 {
         log.info("[AR-BFF][TPP_WHITELIST_UPDATE] Updating whitelist for tppId={}", tppId);
         return tppService.updateRecipientIdOnWhitelist(tppId, recipientIds)
                 .thenReturn(ResponseEntity.noContent().build());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<TppConnectionResponseDTOV1>> testAuthConnection(String tppId) {
+        log.info("[AR-BFF][TPP_AUTH_TEST] Initiating connection test for tppId={}", tppId);
+        return tppService.testAuthConnection(tppId)
+                .map(ResponseEntity::ok);
     }
 }

@@ -11,6 +11,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledD
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
@@ -856,6 +857,53 @@ class TppControllerV1Test {
                 .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/whitelist")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(List.of("rec1"))
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    // ── testAuthConnection ────────────────────────────────────────────────────
+    /**
+     * GET /emd/backoffice/api/v1/tpp/{tppId}/network/connection/test — happy path -> 200 OK
+     */
+    @Test
+    void testAuthConnection_Success_Returns200WithDTO() {
+        String tppId = "tpp-test-123";
+        
+        // Prepariamo il DTO strutturato invece della Map
+        TppConnectionResponseDTOV1 result = TppConnectionResponseDTOV1.builder()
+                .status("SUCCESS")
+                .httpStatus(200)
+                .description("Connection established")
+                .build();
+
+        when(tppService.testAuthConnection(eq(tppId)))
+                .thenReturn(Mono.just(result));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/network/connection/test")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("SUCCESS")
+                .jsonPath("$.httpStatus").isEqualTo(200)
+                .jsonPath("$.description").isEqualTo("Connection established");
+    }
+
+    /**
+     * GET .../network/connection/test — Caso in cui il servizio upstream fallisce
+     * (es. timeout o errore 5xx del microservizio emd-tpp) -> Propagazione errore.
+     */
+    @Test
+    void testAuthConnection_ServiceError_PropagatesError() {
+        String tppId = "tpp-test-fail";
+        
+        // Mocking dell'errore (Mono.error gestisce automaticamente il tipo generico)
+        when(tppService.testAuthConnection(eq(tppId)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "testAuthConnection", "Timeout")));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/network/connection/test")
                 .exchange()
                 .expectStatus().is5xxServerError();
     }

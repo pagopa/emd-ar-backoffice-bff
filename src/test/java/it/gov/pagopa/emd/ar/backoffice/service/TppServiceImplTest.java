@@ -8,6 +8,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledD
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
@@ -1197,5 +1198,50 @@ public class TppServiceImplTest {
         StepVerifier.create(tppService.updateRecipientIdOnWhitelist("tpp1", List.of("rec1")))
                 .expectError(ResourceNotFoundException.class)
                 .verify();
+    }
+    // ── testAuthConnection ────────────────────────────────────────────────────
+    /**
+     * Verifica che il service chiami correttamente il connector con il tppId fornito
+     * e restituisca il DTO strutturato.
+     */
+    @Test
+    void testAuthConnection_Success_CallsConnector() {
+        String tppId = "tpp-123";
+        
+        TppConnectionResponseDTOV1 expectedDto = TppConnectionResponseDTOV1.builder()
+                .status("SUCCESS")
+                .httpStatus(200)
+                .description("Connection test successful")
+                .build();
+
+        when(tppConnector.testAuthConnection(tppId)).thenReturn(Mono.just(expectedDto));
+
+        StepVerifier.create(tppService.testAuthConnection(tppId))
+                .assertNext(result -> {
+                    assertThat(result.getStatus()).isEqualTo("SUCCESS");
+                    assertThat(result.getHttpStatus()).isEqualTo(200);
+                    assertThat(result.getDescription()).isEqualTo("Connection test successful");
+                })
+                .verifyComplete();
+
+        verify(tppConnector, times(1)).testAuthConnection(tppId);
+    }
+
+    /**
+     * Verifica che se il connector emette un errore reattivo (es. timeout o 500 del connector stesso),
+     * il service propaghi correttamente il segnale di errore.
+     */
+    @Test
+    void testAuthConnection_ConnectorFails_PropagatesError() {
+        String tppId = "tpp-123";
+        
+        when(tppConnector.testAuthConnection(tppId))
+                .thenReturn(Mono.error(new RuntimeException("Connection error")));
+
+        StepVerifier.create(tppService.testAuthConnection(tppId))
+                .expectError(RuntimeException.class)
+                .verify();
+
+        verify(tppConnector, times(1)).testAuthConnection(tppId);
     }
 }

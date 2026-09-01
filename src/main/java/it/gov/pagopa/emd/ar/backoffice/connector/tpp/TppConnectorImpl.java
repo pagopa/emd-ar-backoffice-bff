@@ -1,5 +1,8 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
@@ -9,6 +12,8 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientAlreadyPresentException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +53,11 @@ public class TppConnectorImpl implements TppConnector {
     private static final String GET_TPP_TOKEN_PATH        = "/emd/tpp/{tppId}/token";
     private static final String UPDATE_TPP_TOKEN_PATH     = "/emd/tpp/update/{tppId}/token";
     private static final String SEARCH_TPP_PATH           = "/emd/tpp/search";
+    private static final String UPDATE_TPP_STATE_PATH     = "/emd/tpp";
+    private static final String UPDATE_TPP_ISPAYMENT_PATH = "/emd/tpp/{tppId}/payment-enabled";
+    private static final String ADD_RECIPIENT_ID_ON_WHITELIST_PATH = "/emd/tpp/{tppId}/whitelist";
+    private static final String DELETE_RECIPIENT_ID_FROM_WHITELIST_PATH = "/emd/tpp/{tppId}/whitelist/{recipientId}";
+    private static final String UPDATE_RECIPIENT_ID_ON_WHITELIST_PATH = "/emd/tpp/{tppId}/whitelist";
     private static final String TPP_CONNECTION_TEST_PATH  = "/emd/tpp/{tppId}/network/connection/test";
 
     private final WebClient webClient;
@@ -277,10 +287,10 @@ public class TppConnectorImpl implements TppConnector {
      * complexity of {@link #searchTpp} within the allowed threshold.
      */
     private URI buildSearchUri(UriBuilder uriBuilder, String entityId, String businessName,
-                               int page, int size, List<String> fields) {
+                                int page, int size, List<String> fields) {
         uriBuilder.path(SEARCH_TPP_PATH)
-                  .queryParam("page", page)
-                  .queryParam("size", size);
+                    .queryParam("page", page)
+                    .queryParam("size", size);
         if (entityId != null && !entityId.isBlank()) {
             uriBuilder.queryParam("entityId", entityId);
         }
@@ -291,6 +301,134 @@ public class TppConnectorImpl implements TppConnector {
             fields.forEach(f -> uriBuilder.queryParam("fields", f));
         }
         return uriBuilder.build();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code PUT /emd/tpp} to the remote service.
+     * Safe to retry with {@link WebClientRetrySpecs#transientNetwork()} as PUT is idempotent.</p>
+     */
+    @Override
+    public Mono<TppEntityIdResponse> updateTppState(TppUpdateStateDTOV1 tppUpdateStateDTO) {
+        return webClient.put()
+                .uri(UPDATE_TPP_STATE_PATH)
+                .bodyValue(tppUpdateStateDTO)
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        Mono.error(new ResourceNotFoundException("TPP", tppUpdateStateDTO.getTppId())))
+                .bodyToMono(TppEntityIdResponse.class)
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .onErrorMap(
+                    WebClientResponseException.class,
+                    ex -> new ExternalServiceException("TPP_SERVICE", "updateTppState", ex.getResponseBodyAsString())
+                )
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}",
+                        UPDATE_TPP_STATE_PATH, tppUpdateStateDTO.getTppId(), ex.getMessage()));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code PUT /emd/tpp/{tppId}/payment-enabled} to the remote service.
+     * Safe to retry with {@link WebClientRetrySpecs#transientNetwork()}.</p>
+     */
+    @Override
+    public Mono<Void> updateTppIsPaymentEnabled(String tppId, TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO) {
+        return webClient.put()
+                .uri(UPDATE_TPP_ISPAYMENT_PATH, tppId)
+                .bodyValue(tppUpdateIsPaymentEnabledDTO)
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        Mono.error(new ResourceNotFoundException("TPP", tppId)))
+                .toBodilessEntity()
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .onErrorMap(
+                    WebClientResponseException.class,
+                    ex -> new ExternalServiceException("TPP_SERVICE","updateTppIsPaymentEnabled",ex.getResponseBodyAsString())
+                )
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}",
+                        UPDATE_TPP_ISPAYMENT_PATH, tppId, ex.getMessage()))
+                .then();
+    }
+     
+     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Mono<Void> insertRecipientIdOnWhitelist(String tppId, RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO) {
+        return webClient.post()
+                .uri(ADD_RECIPIENT_ID_ON_WHITELIST_PATH, tppId)
+                .bodyValue(recipientIdOnWhitelistDTO)
+                .retrieve()
+                .onStatus(status -> status.value() == 409, response ->
+                        response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(new RecipientAlreadyPresentException("Recipient already present in whitelist"))))
+                .onStatus(status -> status.value() == 404, response ->
+                        Mono.error(new ResourceNotFoundException("TPP", tppId)))
+                .bodyToMono(Void.class)
+                .retryWhen(WebClientRetrySpecs.connectFailureOnly())
+                .onErrorMap(
+                    WebClientResponseException.class,
+                    ex -> new ExternalServiceException("TPP_SERVICE", "insertRecipientIdOnWhitelist", ex.getResponseBodyAsString())
+                )
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] POST {} failed: {}", ADD_RECIPIENT_ID_ON_WHITELIST_PATH, ex.getMessage()));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Mono<Void> removeRecipientIdOnWhitelist(String tppId, String recipientId) {
+        return webClient.delete()
+                .uri(DELETE_RECIPIENT_ID_FROM_WHITELIST_PATH, tppId, recipientId)
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        response.bodyToMono(String.class)
+                                .defaultIfEmpty("") //Prevents generic errors if the server returns an empty body
+                                .flatMap(body -> {
+                                    if (body.contains("TPP_NOT_ONBOARDED")) {
+                                        return Mono.error(new ResourceNotFoundException("TPP", tppId));
+                                    } else if (body.contains("RECIPIENT_NOT_FOUND")) {
+                                        return Mono.error(new RecipientNotFoundException("Recipient not found in whitelist"));
+                                    } else {
+                                        // Generic fallback for any other 404 reason, including empty body
+                                        return Mono.error(new ResourceNotFoundException("Whitelist Element", recipientId));
+                                    }
+                                })
+                )
+                .bodyToMono(Void.class)
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .onErrorMap(
+                    WebClientResponseException.class,
+                    ex -> new ExternalServiceException("TPP_SERVICE", "removeRecipientIdOnWhitelist", ex.getResponseBodyAsString())
+                )
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] DELETE {} failed for tppId={}: {}", DELETE_RECIPIENT_ID_FROM_WHITELIST_PATH, tppId, ex.getMessage()));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Mono<Void> updateRecipientIdOnWhitelist(String tppId, List<String> recipientIds) {
+        return webClient.put()
+                .uri(UPDATE_RECIPIENT_ID_ON_WHITELIST_PATH, tppId)
+                .bodyValue(recipientIds)
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        Mono.error(new ResourceNotFoundException("TPP", tppId)))
+                .bodyToMono(Void.class)
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .onErrorMap(
+                    WebClientResponseException.class,
+                    ex -> new ExternalServiceException("TPP_SERVICE", "updateRecipientIdOnWhitelist", ex.getResponseBodyAsString())
+                )
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}", UPDATE_RECIPIENT_ID_ON_WHITELIST_PATH, tppId, ex.getMessage()));
     }
 
         /**

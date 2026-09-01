@@ -7,6 +7,9 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
@@ -22,6 +25,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -638,6 +642,223 @@ class TppControllerV1Test {
                 .uri("/emd/backoffice/api/v1/tpp/search?businessName=ACME&fields=invalidField")
                 .exchange()
                 .expectStatus().is5xxServerError(); // senza global handler → 500
+    }
+    
+    // ── updateTppState ────────────────────────────────────────────────────────
+    /**
+     * PUT /emd/backoffice/api/v1/tpp/{tppId}/state — happy path → 200 OK con i dettagli della TPP.
+     */
+    @Test
+    void updateTppState_Success_Returns200WithBody() {
+        String tppId = "tpp-internal-id-123";
+        TppUpdateStateDTOV1 requestBody = TppUpdateStateDTOV1.builder()
+                .state(true)
+                .build();
+
+        TppDTOWithoutTokenSectionV1 expectedResponse = new TppDTOWithoutTokenSectionV1();
+        expectedResponse.setTppId(tppId);
+        expectedResponse.setState(true);
+
+        when(tppService.updateTppState(eq(tppId), any(TppUpdateStateDTOV1.class)))
+                .thenReturn(Mono.just(expectedResponse));
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/state")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo(tppId)
+                .jsonPath("$.state").isEqualTo(true);
+    }
+
+    /**
+     * PUT .../state — TPP non trovata → errore 404 propagato.
+     */
+    @Test
+    void updateTppState_NotFound_PropagatesError() {
+        String tppId = "non-existent-id";
+        TppUpdateStateDTOV1 requestBody = TppUpdateStateDTOV1.builder().state(false).build();
+
+        when(tppService.updateTppState(eq(tppId), any(TppUpdateStateDTOV1.class)))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", tppId)));
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/state")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchange()
+                //Without global handler, the default in the test is 500
+                .expectStatus().is5xxServerError();
+    }
+
+    // ── updateTppIsPaymentEnabled ─────────────────────────────────────────────
+    /**
+     * PUT /emd/backoffice/api/v1/tpp/{tppId}/payment-enabled — happy path → 204 No Content.
+     */
+    @Test
+    void updateTppIsPaymentEnabled_Success_Returns204() {
+        String tppId = "tpp-internal-id-123";
+        TppUpdateIsPaymentEnabledDTOV1 requestBody = TppUpdateIsPaymentEnabledDTOV1.builder()
+                .isPaymentEnabled(true)
+                .build();
+
+        when(tppService.updateTppIsPaymentEnabled(eq(tppId), any(TppUpdateIsPaymentEnabledDTOV1.class)))
+                .thenReturn(Mono.empty());
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/payment-enabled")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchange()
+                .expectStatus().isNoContent()
+                .expectBody().isEmpty();
+    }
+
+    /**
+     * PUT .../payment-enabled — Errore del servizio → si propaga.
+     */
+    @Test
+    void updateTppIsPaymentEnabled_ServiceError_PropagatesError() {
+        String tppId = "tpp-failing-id";
+        TppUpdateIsPaymentEnabledDTOV1 requestBody = TppUpdateIsPaymentEnabledDTOV1.builder()
+                .isPaymentEnabled(false)
+                .build();
+
+        when(tppService.updateTppIsPaymentEnabled(eq(tppId), any(TppUpdateIsPaymentEnabledDTOV1.class)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "updatePayment", "error")));
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/payment-enabled")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    // ── Whitelist Tests ───────────────────────────────────────────────────────
+
+    /**
+     * POST /tpp/{tppId}/whitelist — happy path → 201 Created.
+     */
+    @Test
+    void insertRecipientIdOnWhitelist_Success_Returns201() {
+        String tppId = "tpp-123";
+        RecipientIdOnWhitelistDTOV1 dto = new RecipientIdOnWhitelistDTOV1("recipient-999");
+        when(tppService.insertRecipientIdOnWhitelist(eq(tppId), any(RecipientIdOnWhitelistDTOV1.class)))
+                .thenReturn(Mono.empty());
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/whitelist")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(dto)
+                .exchange()
+                .expectStatus().isCreated();
+    }
+
+    /**
+     * POST /emd/backoffice/api/v1/tpp/{tppId}/whitelist — TPP non trovato non trovata → errore 404 propagato.
+     */
+    @Test
+    void insertRecipientIdOnWhitelist_TppNotFound_PropagatesError() {
+        String tppId = "unknown-tpp-id";
+        RecipientIdOnWhitelistDTOV1 dto = new RecipientIdOnWhitelistDTOV1("recipient-123");
+
+        when(tppService.insertRecipientIdOnWhitelist(eq(tppId), any(RecipientIdOnWhitelistDTOV1.class)))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", tppId)));
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/whitelist")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(dto)
+                .exchange()
+                .expectStatus().is5xxServerError(); 
+    }
+
+    /**
+     * POST /tpp/{tppId}/whitelist — Recipient già presente → errore 409 propagato.
+     */
+    @Test
+    void insertRecipientIdOnWhitelist_AlreadyPresent_PropagatesError() {
+        String tppId = "tpp-123";
+        RecipientIdOnWhitelistDTOV1 dto = new RecipientIdOnWhitelistDTOV1("rec-999");
+        when(tppService.insertRecipientIdOnWhitelist(eq(tppId), any()))
+                .thenReturn(Mono.error(new it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientAlreadyPresentException("Already present")));
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/whitelist")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(dto)
+                .exchange()
+                .expectStatus().is5xxServerError(); 
+    }
+
+    /**
+     * DELETE /tpp/{tppId}/whitelist/{recipientId} — happy path → 204 No Content.
+     */
+    @Test
+    void removeRecipientIdOnWhitelist_Success_Returns204() {
+        String tppId = "tpp-123";
+        String recipientId = "recipient-999";
+        when(tppService.removeRecipientIdOnWhitelist(eq(tppId), eq(recipientId)))
+                .thenReturn(Mono.empty());
+
+        webTestClient.delete()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/whitelist/" + recipientId)
+                .exchange()
+                .expectStatus().isNoContent();
+    }
+
+    /**
+     * DELETE /tpp/{tppId}/whitelist/{recipientId} — Recipient non trovato → errore propagato.
+     */
+    @Test
+    void removeRecipientIdOnWhitelist_NotFound_PropagatesError() {
+        String tppId = "tpp-123";
+        String recId = "not-found";
+        when(tppService.removeRecipientIdOnWhitelist(eq(tppId), eq(recId)))
+                .thenReturn(Mono.error(new it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientNotFoundException("Not found")));
+
+        webTestClient.delete()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/whitelist/" + recId)
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    /**
+     * PUT /tpp/{tppId}/whitelist — happy path → 204 No Content.
+     */
+    @Test
+    void updateRecipientIdOnWhitelist_Success_Returns204() {
+        String tppId = "tpp-123";
+        List<String> recipients = List.of("rec-1", "rec-2");
+        when(tppService.updateRecipientIdOnWhitelist(eq(tppId), any()))
+                .thenReturn(Mono.empty());
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/whitelist")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(recipients)
+                .exchange()
+                .expectStatus().isNoContent();
+    }
+
+    /**
+     * PUT /tpp/{tppId}/whitelist — TPP non trovato → errore propagato.
+     */
+    @Test
+    void updateRecipientIdOnWhitelist_TppNotFound_PropagatesError() {
+        String tppId = "unknown-tpp";
+        when(tppService.updateRecipientIdOnWhitelist(eq(tppId), any()))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", tppId)));
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/whitelist")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(List.of("rec1"))
+                .exchange()
+                .expectStatus().is5xxServerError();
     }
 
     // ── testAuthConnection ────────────────────────────────────────────────────

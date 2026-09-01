@@ -1,14 +1,20 @@
 package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
@@ -95,6 +101,48 @@ public class TppControllerImplV1 implements TppControllerV1 {
 
     /** {@inheritDoc} */
     @Override
+    public Mono<ResponseEntity<TppDTOWithoutTokenSectionV1>> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO) {
+        log.info("[AR-BFF][TPP_STATE_UPDATE] Updating TPP state for tppId={}", tppId);
+        return tppService.updateTppState(tppId, tppUpdateStateDTO)
+                .map(ResponseEntity::ok);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<Void>> updateTppIsPaymentEnabled(String tppId, TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO) {
+        log.info("[AR-BFF][TPP_PAYMENT_ENABLED_UPDATE] Updating TPP payment enabled status for tppId={}", tppId);
+        return tppService.updateTppIsPaymentEnabled(tppId, tppUpdateIsPaymentEnabledDTO)
+                .thenReturn(ResponseEntity.noContent().build());
+    }
+                
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Mono<ResponseEntity<Void>> insertRecipientIdOnWhitelist(String tppId, RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO) {
+        log.info("[AR-BFF][TPP_WHITELIST_ADD] Adding recipientId={} to whitelist for tppId={}", 
+                recipientIdOnWhitelistDTO.getRecipientId(), tppId);
+        return tppService.insertRecipientIdOnWhitelist(tppId, recipientIdOnWhitelistDTO)
+                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Mono<ResponseEntity<Void>> removeRecipientIdOnWhitelist(String tppId, String recipientId) {
+        log.info("[AR-BFF][TPP_WHITELIST_DELETE] Removing recipientId={} from whitelist for tppId={}", recipientId, tppId);
+        return tppService.removeRecipientIdOnWhitelist(tppId, recipientId)
+                .thenReturn(ResponseEntity.noContent().build());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<Void>> updateRecipientIdOnWhitelist(String tppId, List<String> recipientIds) {
+        log.info("[AR-BFF][TPP_WHITELIST_UPDATE] Updating whitelist for tppId={}", tppId);
+        return tppService.updateRecipientIdOnWhitelist(tppId, recipientIds)
+                .thenReturn(ResponseEntity.noContent().build());
+    }
     public Mono<ResponseEntity<TppConnectionResponseDTOV1>> testAuthConnection(String tppId) {
         log.info("[AR-BFF][TPP_AUTH_TEST] Initiating connection test for tppId={}", tppId);
         return tppService.testAuthConnection(tppId)

@@ -1,10 +1,14 @@
 package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import reactor.core.publisher.Mono;
@@ -159,6 +163,65 @@ public interface TppService {
      */
     Mono<TppSearchResponseDTOV1> searchTpp(String entityId, String businessName, int page, int size, List<String> fields);
     
+    /**
+     *  Updates the operational state of a TPP in the remote service.
+     *
+     * <p>Execution order:
+     * <ol>
+     *   <li>Enriches the DTO with the {@code tppId} provided in the path.</li>
+     *   <li>Sends the update request to the emd-tpp service via {@code PUT /emd/tpp}.</li>
+     * </ol>
+     * </p>
+     *
+     * @param tppId             the identifier of the TPP
+     * @param tppUpdateStateDTO the state update data
+     * @return {@code Mono<TppDTOWithoutTokenSectionV1>} with the updated TPP details,
+     *         or 404 if the TPP is not found
+     */
+    Mono<TppDTOWithoutTokenSectionV1> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO);
+
+    /**
+     * Updates the payment enabled flag for a TPP in the remote service.
+     *
+     * <p>Execution order:
+     * <ol>
+     *   <li>Sends the update request to emd-tpp via {@code PUT /emd/tpp/{tppId}/payment-enabled}.</li>
+     * </ol>
+     * </p>
+     *
+     * @param tppId                         the identifier of the TPP
+     * @param tppUpdateIsPaymentEnabledDTO  the payment enablement status to persist
+     * @return {@code Mono<Void>} completing when the update is successful
+     */
+    Mono<Void> updateTppIsPaymentEnabled(String tppId, TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO);
+
+    /**
+     * Adds a recipient identifier to the TPP's whitelist.
+     *
+     * @param tppId                    the identifier of the TPP
+     * @param recipientIdOnWhitelistDTO the DTO containing the recipient identifier
+     * @return {@code Mono<Void>} completing when the recipient has been added
+     */
+    Mono<Void> insertRecipientIdOnWhitelist(String tppId, RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO);
+
+    /**
+     * Removes a recipient identifier from the TPP's whitelist.
+     *
+     * @param tppId       the identifier of the TPP
+     * @param recipientId the recipient identifier to remove
+     * @return {@code Mono<Void>} completing when the recipient has been removed
+     */
+    Mono<Void> removeRecipientIdOnWhitelist(String tppId, String recipientId);
+
+    /**
+     * Replaces the entire whitelist for the specified TPP.
+     *
+     * @param tppId        the identifier of the TPP
+     * @param recipientIds the new list of recipient identifiers
+     * @return {@code Mono<Void>} completing when the whitelist has been updated
+     */
+    Mono<Void> updateRecipientIdOnWhitelist(String tppId, List<String> recipientIds);
+
     /**
      * Performs a connectivity and authentication test for the specified TPP.
      *

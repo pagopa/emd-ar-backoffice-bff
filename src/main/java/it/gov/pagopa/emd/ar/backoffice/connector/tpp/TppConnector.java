@@ -1,5 +1,8 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
@@ -123,6 +126,51 @@ public interface TppConnector {
      */
     Mono<TppSearchResponse> searchTpp(String entityId, String businessName, int page, int size, List<String> fields);
 
+    /**
+     * Updates the TPP state by sending a PUT request to the remote emd-tpp service.
+     *
+     * @param tppUpdateStateDTO the update payload (must include tppId)
+     * @return {@code Mono<TppEntityIdResponse>} with the updated TPP representation, 
+     *         or an error if the operation fails
+     */
+    Mono<TppEntityIdResponse> updateTppState(TppUpdateStateDTOV1 tppUpdateStateDTO);
+
+    /**
+     * Updates the payment enabled flag by sending a PUT request to the remote emd-tpp service.
+     *
+     * @param tppId                         the identifier of the TPP
+     * @param tppUpdateIsPaymentEnabledDTO  the payment status data
+     * @return {@code Mono<Void>} completing on success, or an error if the call fails
+     */
+    Mono<Void> updateTppIsPaymentEnabled(String tppId, TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO);
+    
+    /**
+     * Sends a POST request to add a recipient to the whitelist of a TPP.
+     *
+     * @param tppId                    the identifier of the TPP
+     * @param recipientIdOnWhitelistDTO the recipient data
+     * @return {@code Mono<Void>} on success, or an error if the upstream call fails
+     */
+    Mono<Void> insertRecipientIdOnWhitelist(String tppId, RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO);
+
+    /**
+     * Sends a DELETE request to remove a recipient from the whitelist of a TPP.
+     *
+     * @param tppId       the identifier of the TPP
+     * @param recipientId the identifier of the recipient to remove
+     * @return {@code Mono<Void>} on success, or an error if the upstream call fails
+     */
+    Mono<Void> removeRecipientIdOnWhitelist(String tppId, String recipientId);
+
+    /**
+     * Sends a PUT request to replace the entire whitelist of a TPP with a new list.
+     *
+     * @param tppId        the identifier of the TPP
+     * @param recipientIds the new list of recipient identifiers to set on the whitelist
+     * @return {@code Mono<Void>} on success, or an error if the upstream call fails
+     */
+    Mono<Void> updateRecipientIdOnWhitelist(String tppId, List<String> recipientIds);
+    
     /**
      * Tests the authentication connection for the TPP identified by {@code tppId}.
      *

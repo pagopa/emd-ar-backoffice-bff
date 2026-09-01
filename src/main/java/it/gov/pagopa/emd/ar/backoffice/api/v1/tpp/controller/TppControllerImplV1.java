@@ -143,6 +143,9 @@ public class TppControllerImplV1 implements TppControllerV1 {
         return tppService.updateRecipientIdOnWhitelist(tppId, recipientIds)
                 .thenReturn(ResponseEntity.noContent().build());
     }
+
+    /** {@inheritDoc} */
+    @Override
     public Mono<ResponseEntity<TppConnectionResponseDTOV1>> testAuthConnection(String tppId) {
         log.info("[AR-BFF][TPP_AUTH_TEST] Initiating connection test for tppId={}", tppId);
         return tppService.testAuthConnection(tppId)

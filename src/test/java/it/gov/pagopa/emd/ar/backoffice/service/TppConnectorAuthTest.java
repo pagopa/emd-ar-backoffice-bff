@@ -2,7 +2,6 @@ package it.gov.pagopa.emd.ar.backoffice.service;
 
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnectorImpl;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
-import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -15,9 +14,10 @@ import reactor.test.StepVerifier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
+
 /**
  * Unit tests per il metodo testAuthConnection di {@link TppConnectorImpl}.
- * Utilizza ExchangeFunction per intercettare le chiamate WebClient senza MockWebServer.
  */
 class TppConnectorAuthTest {
 
@@ -77,15 +77,21 @@ class TppConnectorAuthTest {
     }
 
     /**
-     * Test errore 404: verifica che venga sollevata l'eccezione ResourceNotFoundException.
+     * Test errore 404: verifica che venga sollevata l'eccezione ExternalServiceException.
      */
     @Test
-    void testAuthConnection_404_NotFound() {
+    void testAuthConnection_404_NotFound_ThrowsExternalServiceException() {
+        String errorBody = "{\"error\":\"not_found\"}";
         TppConnectorImpl connector = connectorWith(request -> 
-            Mono.just(emptyResponse(HttpStatus.NOT_FOUND)));
+            Mono.just(responseWithBody(HttpStatus.NOT_FOUND, errorBody)));
 
         StepVerifier.create(connector.testAuthConnection(TPP_ID))
-                .expectError(ResourceNotFoundException.class)
+                .expectErrorSatisfies(ex -> {
+                    assertThat(ex).isInstanceOf(ExternalServiceException.class);
+                    // Il messaggio contiene il prefisso loggato e il body ricevuto
+                    assertThat(ex.getMessage()).contains("[TPP_SERVICE][testAuthConnection]");
+                    assertThat(ex.getMessage()).contains(errorBody);
+                })
                 .verify();
     }
 
@@ -108,28 +114,27 @@ class TppConnectorAuthTest {
     }
 
     /**
-     * Test di resilienza/retry: simulazione di fallimento con ExchangeFunction.
-     * Nota: Per testare il retry effettivo con ExchangeFunction, bisognerebbe contare 
-     * le invocazioni della lambda della request.
+     * Test di resilienza/retry: simulazione di un singolo fallimento seguito da un successo.
      */
     @Test
-    void testAuthConnection_Retry_OnServerError() {
+    void testAuthConnection_Retry_SuccessOnSecondAttempt() {
         int[] attempts = {0};
         
         TppConnectorImpl connector = connectorWith(request -> {
             attempts[0]++;
-            // Fallisce i primi due tentativi, riesce al terzo
-            if (attempts[0] < 3) {
-                return Mono.just(emptyResponse(HttpStatus.INTERNAL_SERVER_ERROR));
+            if (attempts[0] == 1) {
+                // Simula un errore 503 (transitorio)
+                return Mono.just(ClientResponse.create(HttpStatus.SERVICE_UNAVAILABLE).build());
             }
             return Mono.just(responseWithBody(HttpStatus.OK, "{\"status\":\"SUCCESS\"}"));
         });
 
-        StepVerifier.create(connector.testAuthConnection(TPP_ID))
-                .assertNext(dto -> assertThat(dto.getStatus()).isEqualTo("SUCCESS"))
+        // withVirtualTime permette di saltare i tempi di attesa del retry (backoff)
+        StepVerifier.withVirtualTime(() -> connector.testAuthConnection(TPP_ID))
+                .thenAwait(Duration.ofSeconds(10)) // Aspetta virtualmente il tempo del retry
+                .assertNext(res -> assertThat(res.getStatus()).isEqualTo("SUCCESS"))
                 .verifyComplete();
 
-        // Verifica che il connector abbia effettivamente ritentato (se configurato nel connector)
         assertThat(attempts[0]).isGreaterThan(1);
     }
 }

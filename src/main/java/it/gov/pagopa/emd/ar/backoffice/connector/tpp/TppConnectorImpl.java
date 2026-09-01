@@ -1,5 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
@@ -50,6 +52,8 @@ public class TppConnectorImpl implements TppConnector {
     private static final String GET_TPP_TOKEN_PATH        = "/emd/tpp/{tppId}/token";
     private static final String UPDATE_TPP_TOKEN_PATH     = "/emd/tpp/update/{tppId}/token";
     private static final String SEARCH_TPP_PATH           = "/emd/tpp/search";
+    private static final String UPDATE_TPP_STATE_PATH     = "/emd/tpp";
+    private static final String UPDATE_TPP_ISPAYMENT_PATH = "/emd/tpp/{tppId}/payment-enabled";
     private static final String ADD_RECIPIENT_ID_ON_WHITELIST_PATH = "/emd/tpp/{tppId}/whitelist";
     private static final String DELETE_RECIPIENT_ID_FROM_WHITELIST_PATH = "/emd/tpp/{tppId}/whitelist/{recipientId}";
     private static final String UPDATE_RECIPIENT_ID_ON_WHITELIST_PATH = "/emd/tpp/{tppId}/whitelist";
@@ -281,10 +285,10 @@ public class TppConnectorImpl implements TppConnector {
      * complexity of {@link #searchTpp} within the allowed threshold.
      */
     private URI buildSearchUri(UriBuilder uriBuilder, String entityId, String businessName,
-                               int page, int size, List<String> fields) {
+                                int page, int size, List<String> fields) {
         uriBuilder.path(SEARCH_TPP_PATH)
-                  .queryParam("page", page)
-                  .queryParam("size", size);
+                    .queryParam("page", page)
+                    .queryParam("size", size);
         if (entityId != null && !entityId.isBlank()) {
             uriBuilder.queryParam("entityId", entityId);
         }
@@ -298,6 +302,57 @@ public class TppConnectorImpl implements TppConnector {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code PUT /emd/tpp} to the remote service.
+     * Safe to retry with {@link WebClientRetrySpecs#transientNetwork()} as PUT is idempotent.</p>
+     */
+    @Override
+    public Mono<TppEntityIdResponse> updateTppState(TppUpdateStateDTOV1 tppUpdateStateDTO) {
+        return webClient.put()
+                .uri(UPDATE_TPP_STATE_PATH)
+                .bodyValue(tppUpdateStateDTO)
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        Mono.error(new ResourceNotFoundException("TPP", tppUpdateStateDTO.getTppId())))
+                .bodyToMono(TppEntityIdResponse.class)
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .onErrorMap(
+                    WebClientResponseException.class,
+                    ex -> new ExternalServiceException("TPP_SERVICE", "updateTppState", ex.getResponseBodyAsString())
+                )
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}",
+                        UPDATE_TPP_STATE_PATH, tppUpdateStateDTO.getTppId(), ex.getMessage()));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Sends a {@code PUT /emd/tpp/{tppId}/payment-enabled} to the remote service.
+     * Safe to retry with {@link WebClientRetrySpecs#transientNetwork()}.</p>
+     */
+    @Override
+    public Mono<Void> updateTppIsPaymentEnabled(String tppId, TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO) {
+        return webClient.put()
+                .uri(UPDATE_TPP_ISPAYMENT_PATH, tppId)
+                .bodyValue(tppUpdateIsPaymentEnabledDTO)
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        Mono.error(new ResourceNotFoundException("TPP", tppId)))
+                .toBodilessEntity()
+                .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .onErrorMap(
+                    WebClientResponseException.class,
+                    ex -> new ExternalServiceException("TPP_SERVICE","updateTppIsPaymentEnabled",ex.getResponseBodyAsString())
+                )
+                .doOnError(ex -> log.error(
+                        "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}",
+                        UPDATE_TPP_ISPAYMENT_PATH, tppId, ex.getMessage()))
+                .then();
+    }
+     
+     /**
      * {@inheritDoc}
      */
     @Override

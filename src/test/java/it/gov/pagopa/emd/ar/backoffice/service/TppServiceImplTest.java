@@ -4,6 +4,8 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
@@ -1017,5 +1019,99 @@ public class TppServiceImplTest {
         verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
         verify(keycloakClientService, never()).createKeycloakClient(anyString(), any(), any());
         verify(keycloakClientService, never()).deleteKeycloakClient(anyString());
+    }
+
+    // ── updateTppState ────────────────────────────────────────────────────────
+    /**
+     * Happy path: lo stato della TPP viene aggiornato correttamente.
+     * Verifica che il tppId venga iniettato nel DTO prima della chiamata al connettore.
+     */
+    @Test
+    void updateTppState_Success_SetsIdInDtoAndCallsConnector() {
+        String tppId = "tpp-123";
+        TppUpdateStateDTOV1 requestDto = TppUpdateStateDTOV1.builder().state(true).build();
+        TppEntityIdResponse connectorResponse = TppEntityIdResponse.builder()
+                .tppId(tppId)
+                .state(true)
+                .build();
+
+        when(tppConnector.updateTppState(any(TppUpdateStateDTOV1.class)))
+                .thenReturn(Mono.just(connectorResponse));
+
+        StepVerifier.create(tppService.updateTppState(tppId, requestDto))
+                .assertNext(response -> {
+                    assertThat(response.getTppId()).isEqualTo(tppId);
+                    assertThat(response.getState()).isTrue();
+                    // Verifica che il tppId sia stato settato nel DTO dal service
+                    assertThat(requestDto.getTppId()).isEqualTo(tppId);
+                })
+                .verifyComplete();
+
+        verify(tppConnector, times(1)).updateTppState(requestDto);
+        verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
+        verify(keycloakClientService, never()).createKeycloakClient(anyString(), any(), any());
+        verify(keycloakClientService, never()).deleteKeycloakClient(anyString());
+    }
+
+    /**
+     * Errore sul connettore durante l'aggiornamento dello stato: l'errore si propaga.
+     */
+    @Test
+    void updateTppState_ConnectorFails_PropagatesError() {
+        String tppId = "tpp-fail";
+        TppUpdateStateDTOV1 requestDto = TppUpdateStateDTOV1.builder().state(false).build();
+
+        when(tppConnector.updateTppState(any(TppUpdateStateDTOV1.class)))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", tppId)));
+
+        StepVerifier.create(tppService.updateTppState(tppId, requestDto))
+                .expectError(ResourceNotFoundException.class)
+                .verify();
+
+        verify(tppConnector, times(1)).updateTppState(any(TppUpdateStateDTOV1.class));
+    }
+
+    // ── updateTppIsPaymentEnabled ─────────────────────────────────────────────
+    /**
+     * Happy path: l'abilitazione al pagamento viene aggiornata con successo.
+     * Restituisce Mono<Void>.
+     */
+    @Test
+    void updateTppIsPaymentEnabled_Success_CallsConnector() {
+        String tppId = "tpp-456";
+        TppUpdateIsPaymentEnabledDTOV1 requestDto = TppUpdateIsPaymentEnabledDTOV1.builder()
+                .isPaymentEnabled(true)
+                .build();
+
+        when(tppConnector.updateTppIsPaymentEnabled(eq(tppId), any(TppUpdateIsPaymentEnabledDTOV1.class)))
+                .thenReturn(Mono.empty());
+
+        StepVerifier.create(tppService.updateTppIsPaymentEnabled(tppId, requestDto))
+                .verifyComplete();
+
+        verify(tppConnector, times(1)).updateTppIsPaymentEnabled(tppId, requestDto);
+        verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
+        verify(keycloakClientService, never()).createKeycloakClient(anyString(), any(), any());
+        verify(keycloakClientService, never()).deleteKeycloakClient(anyString());
+    }
+
+    /**
+     * Errore generico (es. 502 dal servizio TPP) durante l'update dell'abilitazione al pagamento.
+     */
+    @Test
+    void updateTppIsPaymentEnabled_ConnectorFails_PropagatesExternalServiceException() {
+        String tppId = "tpp-502";
+        TppUpdateIsPaymentEnabledDTOV1 requestDto = TppUpdateIsPaymentEnabledDTOV1.builder()
+                .isPaymentEnabled(false)
+                .build();
+
+        when(tppConnector.updateTppIsPaymentEnabled(eq(tppId), any(TppUpdateIsPaymentEnabledDTOV1.class)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "updatePayment", "error")));
+
+        StepVerifier.create(tppService.updateTppIsPaymentEnabled(tppId, requestDto))
+                .expectError(ExternalServiceException.class)
+                .verify();
+
+        verify(tppConnector, times(1)).updateTppIsPaymentEnabled(eq(tppId), any(TppUpdateIsPaymentEnabledDTOV1.class));
     }
 }

@@ -7,6 +7,8 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
@@ -637,5 +639,98 @@ class TppControllerV1Test {
                 .uri("/emd/backoffice/api/v1/tpp/search?businessName=ACME&fields=invalidField")
                 .exchange()
                 .expectStatus().is5xxServerError(); // senza global handler → 500
+    }
+    
+    // ── updateTppState ────────────────────────────────────────────────────────
+    /**
+     * PUT /emd/backoffice/api/v1/tpp/{tppId}/state — happy path → 200 OK con i dettagli della TPP.
+     */
+    @Test
+    void updateTppState_Success_Returns200WithBody() {
+        String tppId = "tpp-internal-id-123";
+        TppUpdateStateDTOV1 requestBody = TppUpdateStateDTOV1.builder()
+                .state(true)
+                .build();
+
+        TppDTOWithoutTokenSectionV1 expectedResponse = new TppDTOWithoutTokenSectionV1();
+        expectedResponse.setTppId(tppId);
+        expectedResponse.setState(true);
+
+        when(tppService.updateTppState(eq(tppId), any(TppUpdateStateDTOV1.class)))
+                .thenReturn(Mono.just(expectedResponse));
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/state")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo(tppId)
+                .jsonPath("$.state").isEqualTo(true);
+    }
+
+    /**
+     * PUT .../state — TPP non trovata → errore 404 propagato.
+     */
+    @Test
+    void updateTppState_NotFound_PropagatesError() {
+        String tppId = "non-existent-id";
+        TppUpdateStateDTOV1 requestBody = TppUpdateStateDTOV1.builder().state(false).build();
+
+        when(tppService.updateTppState(eq(tppId), any(TppUpdateStateDTOV1.class)))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", tppId)));
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/state")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchange()
+                //Without global handler, the default in the test is 500
+                .expectStatus().is5xxServerError();
+    }
+
+    // ── updateTppIsPaymentEnabled ─────────────────────────────────────────────
+    /**
+     * PUT /emd/backoffice/api/v1/tpp/{tppId}/payment-enabled — happy path → 204 No Content.
+     */
+    @Test
+    void updateTppIsPaymentEnabled_Success_Returns204() {
+        String tppId = "tpp-internal-id-123";
+        TppUpdateIsPaymentEnabledDTOV1 requestBody = TppUpdateIsPaymentEnabledDTOV1.builder()
+                .isPaymentEnabled(true)
+                .build();
+
+        when(tppService.updateTppIsPaymentEnabled(eq(tppId), any(TppUpdateIsPaymentEnabledDTOV1.class)))
+                .thenReturn(Mono.empty());
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/payment-enabled")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchange()
+                .expectStatus().isNoContent()
+                .expectBody().isEmpty();
+    }
+
+    /**
+     * PUT .../payment-enabled — Errore del servizio → si propaga.
+     */
+    @Test
+    void updateTppIsPaymentEnabled_ServiceError_PropagatesError() {
+        String tppId = "tpp-failing-id";
+        TppUpdateIsPaymentEnabledDTOV1 requestBody = TppUpdateIsPaymentEnabledDTOV1.builder()
+                .isPaymentEnabled(false)
+                .build();
+
+        when(tppService.updateTppIsPaymentEnabled(eq(tppId), any(TppUpdateIsPaymentEnabledDTOV1.class)))
+                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "updatePayment", "error")));
+
+        webTestClient.put()
+                .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/payment-enabled")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchange()
+                .expectStatus().is5xxServerError();
     }
 }

@@ -1,10 +1,13 @@
 package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
@@ -223,9 +226,32 @@ public class TppServiceImpl implements TppService {
                 .doOnSuccess(v -> log.info("[AR-BFF][TPP_CREATE] Compensating delete succeeded for tppId={}", tppId))
                 .onErrorResume(deleteEx -> {
                     log.error("[AR-BFF][TPP_CREATE] Compensating delete ALSO failed for tppId={}. " +
-                              "Manual reconciliation required. deleteError={}", tppId, deleteEx.getMessage());
+                                "Manual reconciliation required. deleteError={}", tppId, deleteEx.getMessage());
                     return Mono.empty();
                 })
                 .then(Mono.error(keycloakException));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<TppDTOWithoutTokenSectionV1> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO) {
+        log.info("[AR-BFF][TPP_UPDATE_STATE] Updating state for tppId={}", tppId);
+
+        tppUpdateStateDTO.setTppId(tppId);
+
+        return tppConnector.updateTppState(tppUpdateStateDTO)
+            .map(TppConnectorMapper::toTppDTOWithoutTokenSectionV1)
+            .doOnSuccess(r -> log.info("[AR-BFF][TPP_UPDATE_STATE] TPP updated successfully for tppId={}", tppId))
+            .doOnError(e -> log.error("[AR-BFF][TPP_UPDATE_STATE] Failed to update TPP state for tppId={}: {}", tppId, e.getMessage()));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<Void> updateTppIsPaymentEnabled(String tppId, TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO) {
+        log.info("[AR-BFF][TPP_IS_PAYMENT_ENABLED_UPDATE] Updating isPaymentEnabled for tppId={}", tppId);
+
+        return tppConnector.updateTppIsPaymentEnabled(tppId, tppUpdateIsPaymentEnabledDTO)
+            .doOnSuccess(r -> log.info("[AR-BFF][TPP_IS_PAYMENT_ENABLED_UPDATE] TPP updated successfully for tppId={}", tppId))
+            .doOnError(e -> log.error("[AR-BFF][TPP_IS_PAYMENT_ENABLED_UPDATE] Failed to update TPP isPaymentEnabled for tppId={}: {}", tppId, e.getMessage()));
     }
 }

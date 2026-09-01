@@ -1,10 +1,13 @@
 package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import lombok.extern.slf4j.Slf4j;
@@ -90,5 +93,20 @@ public class TppControllerImplV1 implements TppControllerV1 {
                 page, size, fields != null ? fields.size() : 0);
         return tppService.searchTpp(entityId, businessName, page, size, fields)
                 .map(ResponseEntity::ok);
+    }
+
+    /** {@inheritDoc} */
+    public Mono<ResponseEntity<TppDTOWithoutTokenSectionV1>> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO) {
+        log.info("[AR-BFF][TPP_STATE_UPDATE] Updating TPP state for tppId={}", tppId);
+        return tppService.updateTppState(tppId, tppUpdateStateDTO)
+                .map(ResponseEntity::ok);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<Void>> updateTppIsPaymentEnabled(String tppId, TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO) {
+        log.info("[AR-BFF][TPP_PAYMENT_ENABLED_UPDATE] Updating TPP payment enabled status for tppId={}", tppId);
+        return tppService.updateTppIsPaymentEnabled(tppId, tppUpdateIsPaymentEnabledDTO)
+                .thenReturn(ResponseEntity.noContent().build());
     }
 }

@@ -454,7 +454,7 @@ public class TppConnectorImpl implements TppConnector {
                     TppConnectionResponseDTOV1.TppConnectionResponseDTOV1Builder builder = TppConnectionResponseDTOV1.builder()
                             .status("FAILURE");
 
-                    // Gestione specifica per i TIMEOUT di Netty
+                    // Gestione specifica per i TIMEOUT
                     if (e instanceof ReadTimeoutException || e instanceof java.util.concurrent.TimeoutException ||e instanceof TimeoutException ||
                         (e instanceof WebClientRequestException && e.getCause() instanceof ReadTimeoutException)) {
                         

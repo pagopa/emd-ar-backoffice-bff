@@ -3,17 +3,21 @@ package it.gov.pagopa.emd.ar.backoffice.service;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnectorImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 
 import io.netty.handler.timeout.ReadTimeoutException;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
+import java.net.URI;
 
 /**
  * Unit tests per il metodo testAuthConnection di {@link TppConnectorImpl}.
@@ -128,4 +132,77 @@ class TppConnectorAuthTest {
                 })
                 .verifyComplete();
     }
+
+    /**
+     * Test TimeoutException.
+     */
+    @Test
+    void testAuthConnection_TimeoutException_ReturnsTimeoutDTO() {
+        TppConnectorImpl connector = connectorWith(request -> 
+            Mono.error(ReadTimeoutException.INSTANCE)); 
+
+        StepVerifier.create(connector.testAuthConnection(TPP_ID))
+                .assertNext(result -> {
+                    assertThat(result.getStatus()).isEqualTo("FAILURE");
+                    assertThat(result.getErrorType()).isEqualTo("TIMEOUT");
+                })
+                .verifyComplete();
+    }
+
+    /**
+     * Test WebClientRequestException con causa ReadTimeoutException
+     */
+    @Test
+    void testAuthConnection_WebClientRequestException_WithTimeoutCause() {
+        // Creiamo la struttura WebClientRequestException -> causa ReadTimeoutException
+        WebClientRequestException wrappedEx = new WebClientRequestException(
+                new ReadTimeoutException(), HttpMethod.GET, URI.create(BASE_URL), 
+                new HttpHeaders());
+
+        TppConnectorImpl connector = connectorWith(request -> Mono.error(wrappedEx));
+
+        StepVerifier.create(connector.testAuthConnection(TPP_ID))
+                .assertNext(result -> {
+                    assertThat(result.getStatus()).isEqualTo("FAILURE");
+                    assertThat(result.getErrorType()).isEqualTo("TIMEOUT");
+                })
+                .verifyComplete();
+    }
+
+    /**
+     * Test Errore di rete generico con messaggio.
+     */
+    @Test
+    void testAuthConnection_GenericNetworkError_WithMessage() {
+        TppConnectorImpl connector = connectorWith(request -> 
+            Mono.error(new RuntimeException("Connection refused")));
+
+        StepVerifier.create(connector.testAuthConnection(TPP_ID))
+                .assertNext(result -> {
+                    assertThat(result.getStatus()).isEqualTo("FAILURE");
+                    assertThat(result.getErrorType()).isEqualTo("NETWORK_ERROR");
+                    assertThat(result.getDescription()).contains("Connection refused");
+                })
+                .verifyComplete();
+    }
+
+    /**
+     * Test Errore di rete senza messaggio.
+     */
+    @Test
+    void testAuthConnection_GenericNetworkError_NoMessage() {
+        // RuntimeException senza messaggio
+        TppConnectorImpl connector = connectorWith(request -> 
+            Mono.error(new RuntimeException())); 
+
+        StepVerifier.create(connector.testAuthConnection(TPP_ID))
+                .assertNext(result -> {
+                    assertThat(result.getStatus()).isEqualTo("FAILURE");
+                    assertThat(result.getErrorType()).isEqualTo("NETWORK_ERROR");
+                    // Verifichiamo che venga usato il nome della classe (SimpleName)
+                    assertThat(result.getDescription()).contains("RuntimeException");
+                })
+                .verifyComplete();
+    }
+
 }

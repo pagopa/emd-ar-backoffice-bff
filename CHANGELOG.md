@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.9.3...v0.10.0) (2026-09-01)
+
+
+### Features
+
+* [MMC-984] add tpp state and payment enabled put endpoints ([#44](https://github.com/pagopa/emd-ar-backoffice-bff/issues/44)) ([83c775a](https://github.com/pagopa/emd-ar-backoffice-bff/commit/83c775a794ae490a0480256856ce93b048741fa1))
+* [MMC-988] add tpp whitelist management endpoints ([#48](https://github.com/pagopa/emd-ar-backoffice-bff/issues/48)) ([2507a32](https://github.com/pagopa/emd-ar-backoffice-bff/commit/2507a3252e647479697746ae2ca934fc350b6258))
+* [MMC-992] add psp test connection endpoint ([#50](https://github.com/pagopa/emd-ar-backoffice-bff/issues/50)) ([d337db5](https://github.com/pagopa/emd-ar-backoffice-bff/commit/d337db5f5ee3f00b7e2f9a79da7f6a319e8a5122))
+
 ## [0.9.3](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.9.2...v0.9.3) (2026-08-20)
 
 

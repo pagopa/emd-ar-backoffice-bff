@@ -226,8 +226,7 @@ public interface TppService {
      * Performs a connectivity and authentication test for the specified TPP.
      *
      * @param tppId the identifier of the TPP
-     * @return {@code Mono<TppConnectionResponseDTOV1>} structured result of the test
-     * @throws it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException if the upstream service is unreachable
+     * @return {@code Mono<TppConnectionResponseDTOV1>} structured result of the test (SUCCESS or FAILURE)
      */
     Mono<TppConnectionResponseDTOV1> testAuthConnection(String tppId);
 }

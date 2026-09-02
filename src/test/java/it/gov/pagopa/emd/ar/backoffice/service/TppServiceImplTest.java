@@ -1199,6 +1199,7 @@ public class TppServiceImplTest {
                 .expectError(ResourceNotFoundException.class)
                 .verify();
     }
+    
     // ── testAuthConnection ────────────────────────────────────────────────────
     /**
      * Verifica che il service chiami correttamente il connector con il tppId fornito
@@ -1228,15 +1229,42 @@ public class TppServiceImplTest {
     }
 
     /**
-     * Verifica che se il connector emette un errore reattivo (es. timeout o 500 del connector stesso),
+     * Verifica che se il connector restituisce un DTO con status FAILURE (es. gestendo un timeout),
+     * il service lo tratti come un risultato valido e lo restituisca al controller.
+     */
+    @Test
+    void testAuthConnection_LogicalFailure_ReturnsFailureDTO() {
+        String tppId = "tpp-123";
+        
+        TppConnectionResponseDTOV1 failureDto = TppConnectionResponseDTOV1.builder()
+                .status("FAILURE")
+                .errorType("TIMEOUT")
+                .description("Request timed out")
+                .build();
+
+        // Il connettore non lancia un errore, ma restituisce un DTO con status FAILURE
+        when(tppConnector.testAuthConnection(tppId)).thenReturn(Mono.just(failureDto));
+
+        StepVerifier.create(tppService.testAuthConnection(tppId))
+                .assertNext(result -> {
+                        assertThat(result.getStatus()).isEqualTo("FAILURE");
+                        assertThat(result.getErrorType()).isEqualTo("TIMEOUT");
+                })
+                .verifyComplete();
+
+        verify(tppConnector, times(1)).testAuthConnection(tppId);
+    }
+
+    /**
+     * Verifica che se il connector emette un errore NON gestito (es. NullPointerException),
      * il service propaghi correttamente il segnale di errore.
      */
     @Test
-    void testAuthConnection_ConnectorFails_PropagatesError() {
+    void testAuthConnection_UnexpectedError_PropagatesError() {
         String tppId = "tpp-123";
         
         when(tppConnector.testAuthConnection(tppId))
-                .thenReturn(Mono.error(new RuntimeException("Connection error")));
+                .thenReturn(Mono.error(new RuntimeException("Critical failure")));
 
         StepVerifier.create(tppService.testAuthConnection(tppId))
                 .expectError(RuntimeException.class)

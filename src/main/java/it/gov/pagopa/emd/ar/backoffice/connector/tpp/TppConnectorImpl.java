@@ -21,13 +21,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import reactor.core.publisher.Mono;
 
 import org.springframework.web.util.UriBuilder;
 
+import io.netty.handler.timeout.ReadTimeoutException;
+import io.netty.handler.timeout.TimeoutException;
+
 import java.net.URI;
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -431,29 +436,47 @@ public class TppConnectorImpl implements TppConnector {
                         "[TPP-CONNECTOR] PUT {} failed for tppId={}: {}", UPDATE_RECIPIENT_ID_ON_WHITELIST_PATH, tppId, ex.getMessage()));
     }
 
-        /**
+    /**
      * {@inheritDoc}
      *
      * <p>Sends a {@code GET /emd/tpp/{tppId}/network/connection/test} to the remote emd-tpp service.
-     * The response is deserialized into a structured DTO. If the upstream service itself
-     * returns an error (4xx/5xx), it is wrapped in an {@link ExternalServiceException}.</p>
+     * The response is deserialized into a structured DTO.</p>
      */
     @Override
     public Mono<TppConnectionResponseDTOV1> testAuthConnection(String tppId) {
+        log.info("[TPP-CONNECTOR] Initiating connection test request for tppId={}", tppId);
         return webClient.get()
-                .uri(TPP_CONNECTION_TEST_PATH, tppId) // Scenario A: Path Variable
+                .uri(TPP_CONNECTION_TEST_PATH, tppId)
                 .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, response ->
-                    response.bodyToMono(String.class)
-                            .flatMap(body -> Mono.error(
-                                    new ExternalServiceException("TPP_SERVICE", "testAuthConnection", body))))
-
                 .bodyToMono(TppConnectionResponseDTOV1.class)
-                .retryWhen(WebClientRetrySpecs.transientNetwork())
-                .onErrorMap(WebClientResponseException.class, ex -> 
-                    new ExternalServiceException("TPP_SERVICE", "testAuthConnection", ex.getResponseBodyAsString()))
-                .doOnError(ex -> log.error(
-                        "[TPP-CONNECTOR] GET {} failed for tppId={}: {}",
-                        TPP_CONNECTION_TEST_PATH, tppId, ex.getMessage()));
-    }
+                .timeout(Duration.ofSeconds(10))
+                .onErrorResume(e -> {
+                    TppConnectionResponseDTOV1.TppConnectionResponseDTOV1Builder builder = TppConnectionResponseDTOV1.builder()
+                            .status("FAILURE");
+
+                    // Gestione specifica per i TIMEOUT di Netty
+                    if (e instanceof ReadTimeoutException ||e instanceof TimeoutException ||
+                        (e instanceof WebClientRequestException && e.getCause() instanceof ReadTimeoutException)) {
+                        
+                        builder.errorType("TIMEOUT")
+                            .httpStatus(504)
+                            .description("Request timed out after the configured limit (ReadTimeout).");
+                    } 
+                    // Gestione errori HTTP (4xx, 5xx)
+                    else if (e instanceof WebClientResponseException we) {
+                        builder.errorType("HTTP_ERROR")
+                            .httpStatus(we.getStatusCode().value())
+                            .description("Upstream service returned an error: " + we.getStatusText());
+                    }
+                    // Altri errori (Connessione rifiutata, DNS)
+                    else {
+                        String errorMessage = (e.getMessage() != null) ? e.getMessage() : e.getClass().getSimpleName();
+                        builder.errorType("NETWORK_ERROR")
+                            .description("Network error: " + errorMessage);
+                    }
+                    return Mono.just(builder.build());
+                })
+                .doOnNext(r -> log.info("[TPP-CONNECTOR] Connection test completed for tppId={} with status: {}", 
+                        tppId, r.getStatus()));
+        }
 }

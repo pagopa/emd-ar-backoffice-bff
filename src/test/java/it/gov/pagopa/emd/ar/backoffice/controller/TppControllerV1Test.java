@@ -891,20 +891,34 @@ class TppControllerV1Test {
     }
 
     /**
-     * GET .../network/connection/test — Caso in cui il servizio upstream fallisce
-     * (es. timeout o errore 5xx del microservizio emd-tpp) -> Propagazione errore.
+     * GET .../network/connection/test — Caso di fallimento tecnico (es. timeout) 
+     * Ora deve restituire comunque 200 OK ma con status FAILURE nel corpo.
      */
     @Test
-    void testAuthConnection_ServiceError_PropagatesError() {
+    void testAuthConnection_ServiceError_Returns200WithFailureDTO() {
         String tppId = "tpp-test-fail";
         
-        // Mocking dell'errore (Mono.error gestisce automaticamente il tipo generico)
+        // Prepariamo il DTO che rappresenta il fallimento (quello che ora viene generato dal Connector/Service)
+        TppConnectionResponseDTOV1 failureResult = TppConnectionResponseDTOV1.builder()
+                .status("FAILURE")
+                .errorType("TIMEOUT")
+                .httpStatus(504)
+                .description("Request timed out")
+                .build();
+
+        // Mockiamo il service in modo che restituisca il DTO di fallimento
         when(tppService.testAuthConnection(eq(tppId)))
-                .thenReturn(Mono.error(new ExternalServiceException("TPP_SERVICE", "testAuthConnection", "Timeout")));
+                .thenReturn(Mono.just(failureResult));
 
         webTestClient.get()
                 .uri("/emd/backoffice/api/v1/tpp/" + tppId + "/network/connection/test")
                 .exchange()
-                .expectStatus().is5xxServerError();
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("FAILURE")
+                .jsonPath("$.errorType").isEqualTo("TIMEOUT")
+                .jsonPath("$.httpStatus").isEqualTo(504)
+                .jsonPath("$.description").isEqualTo("Request timed out");
     }
 }

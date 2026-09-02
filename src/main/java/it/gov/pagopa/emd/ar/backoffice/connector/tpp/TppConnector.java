@@ -175,7 +175,9 @@ public interface TppConnector {
      * Tests the authentication connection for the TPP identified by {@code tppId}.
      *
      * <p>Delegates to the upstream {@code GET /emd/tpp/{tppId}/network/connection/test}
-     * endpoint via the connector.</p>
+     * endpoint via the connector. If the upstream service is 
+     * unreachable or times out, the connector catches the exception and returns 
+     * a {@link TppConnectionResponseDTOV1} with a FAILURE status.</p>
      *
      * @param tppId the identifier of the TPP
      * @return {@code Mono<TppConnectionResponseDTOV1>} the response from the upstream service

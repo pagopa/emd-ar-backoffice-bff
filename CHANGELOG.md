@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.10.0...v0.10.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* [MMC-992] handle network timeouts on psp connection test ([#52](https://github.com/pagopa/emd-ar-backoffice-bff/issues/52)) ([086db4b](https://github.com/pagopa/emd-ar-backoffice-bff/commit/086db4b2b26dd359a4256eb7368b5d967140ae28))
+
 ## [0.10.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.9.3...v0.10.0) (2026-09-01)
 
 

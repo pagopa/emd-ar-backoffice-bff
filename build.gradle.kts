@@ -16,7 +16,7 @@ plugins {
 }
 
 group = "it.gov.pagopa.emd.ar"
-version = "0.10.0" // x-release-please-version
+version = "0.10.1" // x-release-please-version
 description = "emd-ar-backoffice-bff"
 
 java {

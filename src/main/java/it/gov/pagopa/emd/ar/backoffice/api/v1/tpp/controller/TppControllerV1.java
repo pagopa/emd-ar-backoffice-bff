@@ -271,8 +271,9 @@ public interface TppControllerV1 {
      * Tests the connectivity and authentication for a specific TPP.
      * 
      * <p>This endpoint orchestrates a real-time test toward the TPP's authorization server.
-      * It returns a structured response capturing successes, while upstream connectivity failures
-      * are mapped to HTTP 502 by {@link it.gov.pagopa.emd.ar.backoffice.api.handler.ControllerExceptionHandler}.</p>
+     *  It returns a structured response capturing both successes and failures. Connectivity 
+     *  issues, timeouts, or upstream errors are encapsulated within the response body 
+     *  with a FAILURE status, ensuring a consistent HTTP 200 response.</p>
      *
      * @param tppId the unique identifier of the TPP
      * @return {@code Mono<ResponseEntity<TppConnectionResponseDTOV1>>} the structured test result with HTTP 200

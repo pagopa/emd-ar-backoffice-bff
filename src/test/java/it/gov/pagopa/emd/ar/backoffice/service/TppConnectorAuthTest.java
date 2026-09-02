@@ -205,4 +205,19 @@ class TppConnectorAuthTest {
                 .verifyComplete();
     }
 
+    @Test
+    void testAuthConnection_ReactorTimeout_ReturnsTimeoutDTO() {
+        // Simula l'eccezione lanciata dall'operatore .timeout() di Reactor
+        TppConnectorImpl connector = connectorWith(request -> 
+            Mono.error(new java.util.concurrent.TimeoutException("Did not observe any item...")));
+
+        StepVerifier.create(connector.testAuthConnection(TPP_ID))
+                .assertNext(result -> {
+                    assertThat(result.getStatus()).isEqualTo("FAILURE");
+                    assertThat(result.getErrorType()).isEqualTo("TIMEOUT");
+                    assertThat(result.getHttpStatus()).isEqualTo(504);
+                })
+                .verifyComplete();
+    }
+
 }

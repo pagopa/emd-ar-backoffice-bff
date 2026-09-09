@@ -6,7 +6,7 @@ import java.util.List;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
 import reactor.core.publisher.Mono;
 
-public interface MessageConnector {
+public interface MessageCoreConnector {
     
     /**
      * Performs a paginated search for Messages by calling

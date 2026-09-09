@@ -1,10 +1,10 @@
 package it.gov.pagopa.emd.ar.backoffice.service;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageConnector;
+import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageCoreConnector;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
-import it.gov.pagopa.emd.ar.backoffice.service.message.MessageServiceImpl;
+import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreServiceImpl;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,9 +22,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit tests per il metodo {@code searchMessages} di {@link MessageServiceImpl}.
+ * Unit tests per il metodo {@code searchMessages} di {@link MessageCoreServiceImpl}.
  *
- * <p>Il {@link MessageConnector} viene mockato per isolare la logica del servizio.
+ * <p>Il {@link MessageCoreConnector} viene mockato per isolare la logica del servizio.
  * In questa implementazione, il servizio agisce principalmente come delegato verso il connector,
  * gestendo il logging e la propagazione delle risposte reattive.</p>
  *
@@ -40,16 +40,16 @@ import static org.mockito.Mockito.when;
  * </p>
  */
 @ExtendWith(MockitoExtension.class)
-class MessageSearchServiceImplTest {
+class MessageCoreSearchServiceImplTest {
 
     @Mock
-    private MessageConnector messageConnector;
+    private MessageCoreConnector messageConnector;
 
-    private MessageServiceImpl service;
+    private MessageCoreServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new MessageServiceImpl(messageConnector);
+        service = new MessageCoreServiceImpl(messageConnector);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

@@ -19,13 +19,13 @@ import reactor.core.publisher.Mono;
 
 @Slf4j 
 @Service 
-public class MessageConnectorImpl implements MessageConnector {
+public class MessageCoreConnectorImpl implements MessageCoreConnector {
     
     private static final String SEARCH_MESSAGE_PATH     = "/emd/message-core/search";
 
     private final WebClient webClient;
 
-    public MessageConnectorImpl(WebClient.Builder webClientBuilder,
+    public MessageCoreConnectorImpl(WebClient.Builder webClientBuilder,
             @Value ("${rest.client.message.base-url}") String baseUrl) {
         this.webClient = webClientBuilder.baseUrl(baseUrl).build();
     }

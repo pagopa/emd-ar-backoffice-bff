@@ -1,6 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.service;
 
-import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageConnectorImpl;
+import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageCoreConnectorImpl;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
 import org.junit.jupiter.api.Test;
@@ -19,7 +19,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests per il metodo {@code searchMessages} di {@link MessageConnectorImpl}.
+ * Unit tests per il metodo {@code searchMessages} di {@link MessageCoreConnectorImpl}.
  *
  * <p>Usa {@link ExchangeFunction} per intercettare le chiamate HTTP ed eseguire asserzioni
  * sull'URL costruito (query parameters) e sulla deserializzazione della risposta.</p>
@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ol>
  * </p>
  */
-class MessageConnectorSearchTest {
+class MessageCoreConnectorSearchTest {
 
     private static final String BASE_URL = "http://emd-message.test";
 
@@ -54,9 +54,9 @@ class MessageConnectorSearchTest {
                 .build();
     }
 
-    private MessageConnectorImpl connectorWith(ExchangeFunction ef) {
+    private MessageCoreConnectorImpl connectorWith(ExchangeFunction ef) {
         WebClient.Builder builder = WebClient.builder().exchangeFunction(ef);
-        return new MessageConnectorImpl(builder, BASE_URL);
+        return new MessageCoreConnectorImpl(builder, BASE_URL);
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ class MessageConnectorSearchTest {
                 }
                 """;
         String[] capturedUrl = new String[1];
-        MessageConnectorImpl connector = connectorWith(request -> {
+        MessageCoreConnectorImpl connector = connectorWith(request -> {
             capturedUrl[0] = request.url().toString();
             return Mono.just(okJson(json));
         });
@@ -102,7 +102,7 @@ class MessageConnectorSearchTest {
         LocalDateTime end = LocalDateTime.of(2026, 10, 31, 18, 0);
         
         String[] capturedUrl = new String[1];
-        MessageConnectorImpl connector = connectorWith(request -> {
+        MessageCoreConnectorImpl connector = connectorWith(request -> {
             capturedUrl[0] = request.url().toString();
             return Mono.just(okJson("{\"content\":[]}"));
         });
@@ -123,7 +123,7 @@ class MessageConnectorSearchTest {
     void searchMessages_WithFields_SendsMultiValueFields() {
         List<String> fields = List.of("id", "status");
         String[] capturedUrl = new String[1];
-        MessageConnectorImpl connector = connectorWith(request -> {
+        MessageCoreConnectorImpl connector = connectorWith(request -> {
             capturedUrl[0] = request.url().toString();
             return Mono.just(okJson("{\"content\":[]}"));
         });
@@ -142,7 +142,7 @@ class MessageConnectorSearchTest {
     @Test
     void searchMessages_NoFilters_SendsOnlyPagination() {
         String[] capturedUrl = new String[1];
-        MessageConnectorImpl connector = connectorWith(request -> {
+        MessageCoreConnectorImpl connector = connectorWith(request -> {
             capturedUrl[0] = request.url().toString();
             return Mono.just(okJson("{\"content\":[]}"));
         });
@@ -164,7 +164,7 @@ class MessageConnectorSearchTest {
     @Test
     void searchMessages_Upstream400_ThrowsInvalidSearchFieldException() {
         String errorBody = "{\"code\":\"INVALID_SEARCH_FIELD\",\"description\":\"Invalid field 'dummy'\"}";
-        MessageConnectorImpl connector = connectorWith(request ->
+        MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.BAD_REQUEST, errorBody)));
 
         StepVerifier.create(connector.searchMessages(null, null, null, null, null, 0, 10, List.of("dummy")))
@@ -178,7 +178,7 @@ class MessageConnectorSearchTest {
      */
     @Test
     void searchMessages_Upstream500_ThrowsExternalServiceException() {
-        MessageConnectorImpl connector = connectorWith(request ->
+        MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.INTERNAL_SERVER_ERROR, "Server Error")));
 
         StepVerifier.create(connector.searchMessages(null, null, null, null, null, 0, 10, null))
@@ -191,7 +191,7 @@ class MessageConnectorSearchTest {
      */
     @Test
     void searchMessages_Upstream429_ThrowsExternalServiceException() {
-        MessageConnectorImpl connector = connectorWith(request ->
+        MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests")));
 
         StepVerifier.create(connector.searchMessages(null, null, null, null, null, 0, 10, null))

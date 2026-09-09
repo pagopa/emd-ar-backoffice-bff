@@ -3,7 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.controller.MessageCoreControllerImplV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
-import it.gov.pagopa.emd.ar.backoffice.service.message.MessageService;
+import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -19,14 +19,14 @@ import static org.mockito.Mockito.when;
 /**
  * Unit tests for {@link MessageCoreControllerImplV1}.
  */
-public class MessageControllerV1Test {
+public class MessageCoreControllerV1Test {
 
-    private MessageService messageService;
+    private MessageCoreService messageService;
     private WebTestClient webTestClient;
 
     @BeforeEach
     void setUp() {
-        messageService = Mockito.mock(MessageService.class);
+        messageService = Mockito.mock(MessageCoreService.class);
         MessageCoreControllerImplV1 messageController = new MessageCoreControllerImplV1(messageService);
         webTestClient = WebTestClient.bindToController(messageController).build();
     }

@@ -6,17 +6,17 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageConnector;
+import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageCoreConnector;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
 @Slf4j 
 @Service 
-public class MessageServiceImpl implements MessageService {
+public class MessageCoreServiceImpl implements MessageCoreService {
     
-    private final MessageConnector messageConnector;
+    private final MessageCoreConnector messageConnector;
 
-    public MessageServiceImpl(MessageConnector messageConnector) {
+    public MessageCoreServiceImpl(MessageCoreConnector messageConnector) {
         this.messageConnector = messageConnector;
     }
 

@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.service.message.MessageService;
+import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreService;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
@@ -15,9 +15,9 @@ import reactor.core.publisher.Mono;
 @Slf4j 
 public class MessageCoreControllerImplV1 implements MessageCoreControllerV1 {
     
-    private final MessageService messageService;
+    private final MessageCoreService messageService;
 
-    public MessageCoreControllerImplV1(MessageService messageService) {
+    public MessageCoreControllerImplV1(MessageCoreService messageService) {
         this.messageService = messageService;
     }
    

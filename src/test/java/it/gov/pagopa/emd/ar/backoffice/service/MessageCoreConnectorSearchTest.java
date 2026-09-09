@@ -98,20 +98,29 @@ class MessageCoreConnectorSearchTest {
      */
     @Test
     void searchMessages_WithDates_SendsDatesInUrl() {
-        LocalDateTime start = LocalDateTime.of(2026, 10, 1, 10, 0);
-        LocalDateTime end = LocalDateTime.of(2026, 10, 31, 18, 0);
+        LocalDateTime start = LocalDateTime.of(2023, 10, 1, 10, 0);
+        LocalDateTime end = LocalDateTime.of(2023, 10, 31, 18, 0);
+        
+        String json = """
+                {
+                "content": [],
+                "page": 0,
+                "size": 10,
+                "totalElements": 0,
+                "totalPages": 0
+                }
+                """;
         
         String[] capturedUrl = new String[1];
         MessageCoreConnectorImpl connector = connectorWith(request -> {
             capturedUrl[0] = request.url().toString();
-            return Mono.just(okJson("{\"content\":[]}"));
+            return Mono.just(okJson(json));
         });
 
         StepVerifier.create(connector.searchMessages(null, null, null, start, end, 0, 10, null))
                 .expectNextCount(1)
                 .verifyComplete();
 
-        // Verifica che le date siano presenti nell'URL (formato ISO di default del toString di LocalDateTime)
         assertThat(capturedUrl[0]).contains("startDate=2026-10-01T10:00");
         assertThat(capturedUrl[0]).contains("endDate=2026-10-31T18:00");
     }
@@ -122,10 +131,21 @@ class MessageCoreConnectorSearchTest {
     @Test
     void searchMessages_WithFields_SendsMultiValueFields() {
         List<String> fields = List.of("id", "status");
+        
+        String json = """
+                {
+                "content": [],
+                "page": 0,
+                "size": 10,
+                "totalElements": 0,
+                "totalPages": 0
+                }
+                """;
+                
         String[] capturedUrl = new String[1];
         MessageCoreConnectorImpl connector = connectorWith(request -> {
             capturedUrl[0] = request.url().toString();
-            return Mono.just(okJson("{\"content\":[]}"));
+            return Mono.just(okJson(json));
         });
 
         StepVerifier.create(connector.searchMessages(null, null, null, null, null, 0, 10, fields))
@@ -141,10 +161,20 @@ class MessageCoreConnectorSearchTest {
      */
     @Test
     void searchMessages_NoFilters_SendsOnlyPagination() {
+        String json = """
+                {
+                "content": [],
+                "page": 5,
+                "size": 50,
+                "totalElements": 0,
+                "totalPages": 0
+                }
+                """;
+
         String[] capturedUrl = new String[1];
         MessageCoreConnectorImpl connector = connectorWith(request -> {
             capturedUrl[0] = request.url().toString();
-            return Mono.just(okJson("{\"content\":[]}"));
+            return Mono.just(okJson(json));
         });
 
         StepVerifier.create(connector.searchMessages("", "  ", null, null, null, 5, 50, null))

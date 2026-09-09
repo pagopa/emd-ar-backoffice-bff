@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.message.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,13 +47,13 @@ public interface MessageCoreControllerV1 {
      */
     @GetMapping(value = "message-core/search", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<MessageSearchResponseDTOV1>> searchMessages(
-            @RequestParam(required = false) String messageId,
-            @RequestParam(required = false) String recipientId,
-            @RequestParam(required = false) String originId,
-            @RequestParam(required = false) LocalDateTime startDate,
-            @RequestParam(required = false) LocalDateTime endDate,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) List<String> fields);
+        @RequestParam(name = "messageId", required = false) String messageId,
+        @RequestParam(name = "recipientId", required = false) String recipientId,
+        @RequestParam(name = "originId", required = false) String originId,
+        @RequestParam(name = "startDate", required = false) LocalDateTime startDate,
+        @RequestParam(name = "endDate", required = false) LocalDateTime endDate,
+        @RequestParam(name = "page", defaultValue = "0") int page,
+        @RequestParam(name = "size", defaultValue = "10") int size,
+        @RequestParam(name = "fields", required = false) List<String> fields);
 
 }

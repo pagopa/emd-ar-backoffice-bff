@@ -12,7 +12,6 @@ import org.springframework.web.util.UriBuilder;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
-import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
 import lombok.extern.slf4j.Slf4j;
@@ -51,7 +50,7 @@ public class MessageConnectorImpl implements MessageConnector {
         String joinedFields = fields != null ? String.join(",", fields) : "";
         int fieldCount     = fields != null ? fields.size() : 0;
         return webClient.get()
-                .uri(uriBuilder -> buildSearchUri(uriBuilder, messageId, recipientId, originId, page, size, fields))
+                .uri(uriBuilder -> buildSearchUri(uriBuilder, messageId, recipientId, originId, startDate, endDate, page, size, fields))
                 .retrieve()
                 .onStatus(status -> status.value() == 400, response ->
                         response.bodyToMono(String.class)
@@ -79,7 +78,7 @@ public class MessageConnectorImpl implements MessageConnector {
      * complexity of {@link #searchMessages} within the allowed threshold.
      */
     private URI buildSearchUri(UriBuilder uriBuilder, String messageId, String recipientId, String originId,
-                                int page, int size, List<String> fields) {
+                                LocalDateTime startDate, LocalDateTime endDate, int page, int size, List<String> fields) {
         uriBuilder.path(SEARCH_MESSAGE_PATH)
                     .queryParam("page", page)
                     .queryParam("size", size);
@@ -91,6 +90,12 @@ public class MessageConnectorImpl implements MessageConnector {
         }
         if (originId != null && !originId.isBlank()) {
             uriBuilder.queryParam("originId", originId);
+        }
+        if (startDate != null) {
+            uriBuilder.queryParam("startDate", startDate);
+        }
+        if (endDate != null) {
+            uriBuilder.queryParam("endDate", endDate);
         }
         if (fields != null && !fields.isEmpty()) {
             fields.forEach(f -> uriBuilder.queryParam("fields", f));

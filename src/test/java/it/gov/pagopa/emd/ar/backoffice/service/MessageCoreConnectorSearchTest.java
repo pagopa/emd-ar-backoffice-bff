@@ -98,8 +98,8 @@ class MessageCoreConnectorSearchTest {
      */
     @Test
     void searchMessages_WithDates_SendsDatesInUrl() {
-        LocalDateTime start = LocalDateTime.of(2023, 10, 1, 10, 0);
-        LocalDateTime end = LocalDateTime.of(2023, 10, 31, 18, 0);
+        LocalDateTime start = LocalDateTime.of(2026, 10, 1, 10, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 10, 31, 18, 0);
         
         String json = """
                 {

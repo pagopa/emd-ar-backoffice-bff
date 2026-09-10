@@ -28,7 +28,10 @@ public class MessageCoreServiceImpl implements MessageCoreService {
                 recipientId != null ? "***" : null,
                 originId != null ? "***" : null,
                 startDate, endDate, page, size, fields != null ? fields.size() : 0);
-        return messageConnector.searchMessages(messageId, recipientId, originId, startDate, endDate, page, size, fields);
+        return messageConnector.searchMessages(messageId, recipientId, originId, startDate, endDate, page, size, fields)
+            .doOnSuccess(r -> log.info("[AR-BFF][MESSAGE_SEARCH] Search completed: totalElements={}, totalPages={}",
+                    r.getTotalElements(), r.getTotalPages()))
+            .doOnError(e -> log.error("[AR-BFF][MESSAGE_SEARCH] Search failed: {}", e.getMessage()));
     }
     
 }

@@ -13,7 +13,7 @@ public interface MessageCoreService {
      *
      * <p>Delegates directly to the upstream {@code GET /emd/message-core/search} endpoint via the
      * connector. Filter parameters are optional — pass {@code null} or empty string to
-     * omit them. 
+     * omit them.
      * </p>
      *
      * <p>The optional {@code fields} list restricts which fields are populated in each
@@ -21,7 +21,7 @@ public interface MessageCoreService {
      *  An invalid field name causes HTTP 400
      * ({@link it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException}).</p>
      *
-     * @param messageId     optional exact-match filter on the entity fiscal/VAT code
+     * @param messageId    optional exact-match filter on the entity fiscal/VAT code
      * @param recipientId  optional partial (case-insensitive) match on the recipientId name
      * @param originId     optional exact-match filter on the origin ID
      * @param startDate    optional start date for message registration period

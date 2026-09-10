@@ -21,6 +21,8 @@ public class MessageCoreServiceImpl implements MessageCoreService {
     @Override
     public Mono<MessageDTOV1> getMessageByMessageId(String messageId) {
         log.info("[AR-BFF][MESSAGE_GET] Getting Message by messageId={}", messageId);
-        return messageConnector.getMessageByMessageId(messageId);
+        return messageConnector.getMessageByMessageId(messageId)
+        .doOnSuccess(r -> log.info("[AR-BFF][MESSAGE_GET] Found Message for messageId={}", messageId))
+        .doOnError(e -> log.warn("[AR-BFF][MESSAGE_GET] Message not found for messageId={}: {}", messageId, e.getMessage()));
     }
 }

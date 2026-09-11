@@ -5,9 +5,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriBuilder;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
@@ -54,14 +54,27 @@ public class MessageCoreConnectorImpl implements MessageCoreConnector {
                 .retrieve()
                 .onStatus(status -> status.value() == 400, response ->
                         response.bodyToMono(String.class)
-                                .flatMap(body -> Mono.error(
-                                        new InvalidSearchFieldException(joinedFields, body))))
-                .onStatus(HttpStatusCode::isError, response ->
-                        response.bodyToMono(String.class)
-                                .flatMap(body -> Mono.error(
-                                        new ExternalServiceException("MESSAGE_SERVICE", "searchMessages", body))))
+                                .defaultIfEmpty("400 Bad Request (No body)")
+                                .flatMap(body -> {
+                                    if (body.contains("INVALID_SEARCH_FIELD")) {
+                                        return Mono.error(new InvalidSearchFieldException(joinedFields, body));
+                                    }
+                                    return Mono.error(new ExternalServiceException("MESSAGE_SERVICE", "searchMessages", body));
+                                })
+                )
                 .bodyToMono(MessageSearchResponseDTOV1.class)
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
+                .onErrorMap(Throwable.class, ex -> {
+                    if (ex instanceof InvalidSearchFieldException || ex instanceof ExternalServiceException) {
+                        return ex;
+                    }
+                    if (ex instanceof WebClientResponseException wce) {
+                        String errorBody = wce.getResponseBodyAsString();
+                        return new ExternalServiceException("MESSAGE_SERVICE", "searchMessages",
+                                errorBody.isBlank() ? wce.getStatusCode().toString() : errorBody);
+                    }
+                    return new ExternalServiceException("MESSAGE_SERVICE", "searchMessages", ex.getMessage());
+                })
                 .doOnError(ex -> log.error(
                         "[MESSAGE-CONNECTOR] GET {} failed (messageId={}, recipientId={}, originId={}, fields={}): {}",
                         SEARCH_MESSAGE_PATH,

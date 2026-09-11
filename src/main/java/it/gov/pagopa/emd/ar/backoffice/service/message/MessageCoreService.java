@@ -21,8 +21,8 @@ public interface MessageCoreService {
      *  An invalid field name causes HTTP 400
      * ({@link it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException}).</p>
      *
-     * @param messageId    optional exact-match filter on the entity fiscal/VAT code
-     * @param recipientId  optional partial (case-insensitive) match on the recipientId name
+     * @param messageId    optional optional exact-match filter on the message ID
+     * @param recipientId  optional exact-match filter on the recipient ID
      * @param originId     optional exact-match filter on the origin ID
      * @param startDate    optional start date for message registration period
      * @param endDate      optional end date for message registration period

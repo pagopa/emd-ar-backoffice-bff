@@ -43,7 +43,7 @@ public interface MessageCoreControllerV1 {
      * @param fields       optional list of field names to project onto each result element
      * @return {@code Mono<ResponseEntity<MessageSearchResponseDTOV1>>} HTTP 200 with the
      *         paginated result, HTTP 400 for an invalid field name, or HTTP 502 if
-     *         the upstream emd-tpp service is unavailable
+     *         the upstream emd-message-core service is unavailable
      */
     @GetMapping(value = "message-core/search", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<MessageSearchResponseDTOV1>> searchMessages(

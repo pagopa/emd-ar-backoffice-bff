@@ -35,7 +35,7 @@ public class MessageCoreControllerV1Test {
         MessageCoreControllerImplV1 messageController = new MessageCoreControllerImplV1(messageService);
         
         webTestClient = WebTestClient.bindToController(messageController)
-                .controllerAdvice(new ControllerExceptionHandler(utilities)) // <-- LA CHIAVE È QUI
+                .controllerAdvice(new ControllerExceptionHandler(utilities))
                 .build();
     }
     

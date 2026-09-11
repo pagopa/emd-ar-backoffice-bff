@@ -107,6 +107,8 @@ rest:
   client:
     tpp:
       base-url: "\${EMD_TPP}"
+    message:
+      base-url: "\${EMD_MESSAGE_CORE}"
 
 keycloak:
   auth-server-url: "\${KEYCLOAK_AUTH_URL}"

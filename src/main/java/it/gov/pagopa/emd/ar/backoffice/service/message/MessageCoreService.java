@@ -10,7 +10,7 @@ public interface MessageCoreService {
      *
      * @param entityId the entity ID
      * @param messageId the message ID
-     * @return {@code Mono<MessageResponseDTOV1>} with the Message details if found,
+     * @return {@code Mono<MessageDTOV1>} with the Message details if found,
      *         or a {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException}
      *         (HTTP 404) if no Message exists for that messageId
      */

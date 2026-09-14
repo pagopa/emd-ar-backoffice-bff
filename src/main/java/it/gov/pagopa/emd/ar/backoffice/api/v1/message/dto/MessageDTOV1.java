@@ -18,6 +18,8 @@ public class MessageDTOV1 {
 
     private String recipientId;
 
+    private String entityId;
+
     private String triggerDateTime;
 
     private String senderDescription;

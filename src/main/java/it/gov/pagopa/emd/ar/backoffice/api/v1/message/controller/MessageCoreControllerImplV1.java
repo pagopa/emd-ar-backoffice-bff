@@ -20,9 +20,9 @@ public class MessageCoreControllerImplV1 implements MessageCoreControllerV1 {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<MessageDTOV1>> getMessageByMessageId(String messageId) {
-        log.info("[AR-BFF][MESSAGE_GET] Getting Message by messageId={}", messageId);
-        return messageService.getMessageByMessageId(messageId)
+    public Mono<ResponseEntity<MessageDTOV1>> getMessageByEntityIdAndMessageId(String entityId, String messageId) {
+        log.info("[AR-BFF][MESSAGE_GET] Getting Message by entityId={} and messageId={}", entityId, messageId);
+        return messageService.getMessageByEntityIdAndMessageId(entityId, messageId)
                 .map(ResponseEntity::ok);
     }
     

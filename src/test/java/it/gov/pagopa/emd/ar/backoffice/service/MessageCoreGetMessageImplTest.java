@@ -31,26 +31,27 @@ public class MessageCoreGetMessageImplTest {
         messageService = new MessageCoreServiceImpl(messageConnector, tppConnector);
     }
 
-    // ── getMessageByMessageId ─────────────────────────────────────────────────
+    // ── getMessageByEntityIdAndMessageId ─────────────────────────────────────────────────
 
     /**
      * Il messaggio non ha un entityId (o è vuoto). Il TPP Connector non deve essere chiamato.
      */
     @Test
-    void getMessageByMessageId_NoEntityId_ReturnsMessageAndSkipsTppCall() {
+    void getMessageByEntityIdAndMessageId_NoEntityId_ReturnsMessageAndSkipsTppCall() {
         String messageId = "msg-123";
+        String entityId = "entity-456";
         MessageDTOV1 expectedDto = new MessageDTOV1();
         expectedDto.setMessageId(messageId);
         expectedDto.setEntityId("   "); // Simuliamo una stringa blank
         
-        when(messageConnector.getMessageByMessageId(messageId))
+        when(messageConnector.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .thenReturn(Mono.just(expectedDto));
 
-        StepVerifier.create(messageService.getMessageByMessageId(messageId))
+        StepVerifier.create(messageService.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .expectNext(expectedDto)
                 .verifyComplete();
 
-        verify(messageConnector, times(1)).getMessageByMessageId(messageId);
+        verify(messageConnector, times(1)).getMessageByEntityIdAndMessageId(entityId, messageId);
         verify(tppConnector, never()).getTppByEntityId(anyString()); // Verifica che non venga chiamato
     }
 
@@ -58,7 +59,7 @@ public class MessageCoreGetMessageImplTest {
      * Il messaggio ha un entityId. Il TPP Connector viene chiamato e arricchisce il businessName.
      */
     @Test
-    void getMessageByMessageId_WithEntityId_EnrichesBusinessName() {
+    void getMessageByEntityIdAndMessageId_WithEntityId_EnrichesBusinessName() {
         String messageId = "msg-123";
         String entityId = "entity-456";
         String tppBusinessName = "TPP S.p.A.";
@@ -71,19 +72,19 @@ public class MessageCoreGetMessageImplTest {
         tppResponse.setEntityId(entityId);
         tppResponse.setBusinessName(tppBusinessName);
         
-        when(messageConnector.getMessageByMessageId(messageId))
+        when(messageConnector.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .thenReturn(Mono.just(messageDto));
         when(tppConnector.getTppByEntityId(entityId))
                 .thenReturn(Mono.just(tppResponse));
 
-        StepVerifier.create(messageService.getMessageByMessageId(messageId))
+        StepVerifier.create(messageService.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .assertNext(result -> {
                     assertEquals(messageId, result.getMessageId());
                     assertEquals(tppBusinessName, result.getBusinessName()); // Verifica arricchimento
                 })
                 .verifyComplete();
 
-        verify(messageConnector, times(1)).getMessageByMessageId(messageId);
+        verify(messageConnector, times(1)).getMessageByEntityIdAndMessageId(entityId, messageId);
         verify(tppConnector, times(1)).getTppByEntityId(entityId);
     }
 
@@ -92,7 +93,7 @@ public class MessageCoreGetMessageImplTest {
      * La funzione non si blocca e restituisce il messaggio originale senza arricchimento (businessName resta null).
      */
     @Test
-    void getMessageByMessageId_TppCallFails_ReturnsOriginalMessage() {
+    void getMessageByEntityIdAndMessageId_TppCallFails_ReturnsOriginalMessage() {
         String messageId = "msg-123";
         String entityId = "entity-456";
         
@@ -100,20 +101,20 @@ public class MessageCoreGetMessageImplTest {
         messageDto.setMessageId(messageId);
         messageDto.setEntityId(entityId);
         
-        when(messageConnector.getMessageByMessageId(messageId))
+        when(messageConnector.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .thenReturn(Mono.just(messageDto));
                 
         when(tppConnector.getTppByEntityId(entityId))
                 .thenReturn(Mono.error(new ResourceNotFoundException("TPP", entityId)));
                 
-        StepVerifier.create(messageService.getMessageByMessageId(messageId))
+        StepVerifier.create(messageService.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .assertNext(result -> {
                     assertEquals(messageId, result.getMessageId());
                     assertNull(result.getBusinessName()); // Verifica che sia rimasto null
                 })
                 .verifyComplete();
                 
-        verify(messageConnector, times(1)).getMessageByMessageId(messageId);
+        verify(messageConnector, times(1)).getMessageByEntityIdAndMessageId(entityId, messageId);
         verify(tppConnector, times(1)).getTppByEntityId(entityId);
     }
 
@@ -121,20 +122,21 @@ public class MessageCoreGetMessageImplTest {
      * getMessageByMessageId — message non trovato → propaga la ResourceNotFoundException emessa dal connector message.
      */
     @Test
-    void getMessageByMessageId_NotFound_PropagatesException() {
+    void getMessageByEntityIdAndMessageId_NotFound_PropagatesException() {
         String messageId = "msg-404";
+        String entityId = "entity-456";
         ResourceNotFoundException notFoundException = new ResourceNotFoundException("MESSAGE", messageId);
         
-        when(messageConnector.getMessageByMessageId(messageId))
+        when(messageConnector.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .thenReturn(Mono.error(notFoundException));
 
-        StepVerifier.create(messageService.getMessageByMessageId(messageId))
+        StepVerifier.create(messageService.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .expectErrorMatches(throwable -> 
                         throwable instanceof ResourceNotFoundException &&
                         throwable.getMessage().contains(messageId))
                 .verify();
 
-        verify(messageConnector, times(1)).getMessageByMessageId(messageId);
+        verify(messageConnector, times(1)).getMessageByEntityIdAndMessageId(entityId, messageId);
         verify(tppConnector, never()).getTppByEntityId(anyString()); // TPP non deve essere chiamato
     }
 }

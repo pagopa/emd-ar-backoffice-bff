@@ -23,10 +23,10 @@ public class MessageCoreServiceImpl implements MessageCoreService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<MessageDTOV1> getMessageByMessageId(String messageId) {
-        log.info("[AR-BFF][MESSAGE_GET] Getting Message by messageId={}", messageId);
+    public Mono<MessageDTOV1> getMessageByEntityIdAndMessageId(String entityId, String messageId) {
+        log.info("[AR-BFF][MESSAGE_GET] Getting Message by entityId={} and messageId={}", entityId, messageId);
         
-        return messageConnector.getMessageByMessageId(messageId)
+        return messageConnector.getMessageByEntityIdAndMessageId(entityId, messageId)
             .flatMap(message -> {
                 if (message.getEntityId() == null || message.getEntityId().isBlank()) {
                     return Mono.just(message);

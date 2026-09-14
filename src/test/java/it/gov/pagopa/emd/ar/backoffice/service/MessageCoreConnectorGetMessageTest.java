@@ -45,8 +45,9 @@ public class MessageCoreConnectorGetMessageTest {
      * Happy path: 200 OK restituisce il DTO. Verifica che la URL chiamata sia corretta.
      */
     @Test
-    void getMessageByMessageId_Success_ReturnsMessageDTO() {
+    void getMessageByEntityIdAndMessageId_Success_ReturnsMessageDTO() {
         String messageId = "msg-123";
+        String entityId = "entity-456";
         String json = "{\"messageId\":\"msg-123\", \"status\":\"SENT\"}";
         String[] capturedUrl = new String[1];
         String[] capturedMethod = new String[1];
@@ -57,26 +58,27 @@ public class MessageCoreConnectorGetMessageTest {
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.getMessageByMessageId(messageId))
+        StepVerifier.create(connector.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .expectNextMatches(dto -> dto != null)
                 .verifyComplete();
 
         assertThat(capturedMethod[0]).isEqualTo("GET");
-        assertThat(capturedUrl[0]).contains("/emd/message-core/" + messageId);
+        assertThat(capturedUrl[0]).contains("/emd/message-core/" + entityId + "/" + messageId);
     }
 
     /**
      * Upstream 404 -> Mappatura verso ResourceNotFoundException per il BFF.
      */
     @Test
-    void getMessageByMessageId_Upstream404_ThrowsResourceNotFoundException() {
+    void getMessageByEntityIdAndMessageId_Upstream404_ThrowsResourceNotFoundException() {
         String messageId = "msg-404";
+        String entityId = "entity-456";
         String errorBody = "Message not found in database";
 
         MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.NOT_FOUND, errorBody)));
 
-        StepVerifier.create(connector.getMessageByMessageId(messageId))
+        StepVerifier.create(connector.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .expectErrorMatches(ex -> ex instanceof ResourceNotFoundException &&
                                             ex.getMessage().contains(messageId))
                 .verify();
@@ -87,8 +89,9 @@ public class MessageCoreConnectorGetMessageTest {
      * (poiché l'errore custom bypassa le regole di transient network retry).
      */
     @Test
-    void getMessageByMessageId_Upstream500_ThrowsExternalServiceException() {
+    void getMessageByEntityIdAndMessageId_Upstream500_ThrowsExternalServiceException() {
         String messageId = "msg-500";
+        String entityId = "entity-456";
         String errorBody = "Internal Server Error";
         
         int[] requestCount = new int[1];
@@ -98,7 +101,7 @@ public class MessageCoreConnectorGetMessageTest {
             return Mono.just(errorJson(HttpStatus.INTERNAL_SERVER_ERROR, errorBody));
         });
 
-        StepVerifier.create(connector.getMessageByMessageId(messageId))
+        StepVerifier.create(connector.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .expectError(ExternalServiceException.class)
                 .verify();
         

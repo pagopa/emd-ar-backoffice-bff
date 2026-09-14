@@ -39,65 +39,68 @@ public class MessageCoreControllerV1Test {
                 .build();
     }
     
-    // ── getMessageByMessageId ─────────────────────────────────────────────────
+    // ── getMessageByEntityIdAndMessageId ─────────────────────────────────────────────────
 
     /**
-     * GET /emd/message-core/{messageId} — happy path → 200 OK con restituzione del MessageDTOV1.
+     * GET /emd/message-core/{entityId}/{messageId} — happy path → 200 OK con restituzione del MessageDTOV1.
      */
     @Test
-    void getMessageByMessageId_Success() {
+    void getMessageByEntityIdAndMessageId_Success() {
+        String entityId = "entity-123";
         String messageId = "msg-123";
         MessageDTOV1 mockDto = new MessageDTOV1();
         
-        when(messageService.getMessageByMessageId(messageId))
+        when(messageService.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .thenReturn(Mono.just(mockDto));
 
         webTestClient.get()
-                .uri("/emd/backoffice/api/v1/message-core"+"/{messageId}", messageId)
+                .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
                 .expectBody(MessageDTOV1.class);
 
-        verify(messageService, times(1)).getMessageByMessageId(messageId);
+        verify(messageService, times(1)).getMessageByEntityIdAndMessageId(entityId, messageId);
     }
 
     /**
-     * GET /emd/message-core/{messageId} — errore servizio esterno (es. 500) → lancia ExternalServiceException.
+     * GET /emd/message-core/{entityId}/{messageId} — errore servizio esterno (es. 500) → lancia ExternalServiceException.
      */
     @Test
-    void getMessageByMessageId_ExternalServiceError() {
+    void getMessageByEntityIdAndMessageId_ExternalServiceError() {
+        String entityId = "entity-500";
         String messageId = "msg-500";
-        when(messageService.getMessageByMessageId(messageId))
-                .thenReturn(Mono.error(new ExternalServiceException("MESSAGE_SERVICE", "getMessageByMessageId", "Error from downstream")));
+        when(messageService.getMessageByEntityIdAndMessageId(entityId, messageId))
+                .thenReturn(Mono.error(new ExternalServiceException("MESSAGE_SERVICE", "getMessageByEntityIdAndMessageId", "Error from downstream")));
 
         webTestClient.get()
-                .uri("/emd/backoffice/api/v1/message-core"+"/{messageId}", messageId)
+                .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().is5xxServerError();
 
-        verify(messageService, times(1)).getMessageByMessageId(messageId);
+        verify(messageService, times(1)).getMessageByEntityIdAndMessageId(entityId, messageId);
     }
 
     /**
-     * GET /emd/message-core/{messageId} — message non trovato (404) → lancia ResourceNotFoundException.
+     * GET /emd/message-core/{entityId}/{messageId} — message non trovato (404) → lancia ResourceNotFoundException.
      */
     @Test
-    void getMessageByMessageId_NotFound() {
+    void getMessageByEntityIdAndMessageId_NotFound() {
+        String entityId = "entity-404";
         String messageId = "msg-404";
         
-        when(messageService.getMessageByMessageId(messageId))
+        when(messageService.getMessageByEntityIdAndMessageId(entityId, messageId))
                 .thenReturn(Mono.error(new ResourceNotFoundException("MESSAGE", messageId)));
                 
         webTestClient.get()
-                .uri("/emd/backoffice/api/v1/message-core/{messageId}", messageId)
+                .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
-                .expectStatus().isNotFound(); // <-- Ora riceverà il 404 restituito dal ControllerExceptionHandler!
+                .expectStatus().isNotFound();
                 
-        verify(messageService, times(1)).getMessageByMessageId(messageId);
+        verify(messageService, times(1)).getMessageByEntityIdAndMessageId(entityId, messageId);
     }
 
 }

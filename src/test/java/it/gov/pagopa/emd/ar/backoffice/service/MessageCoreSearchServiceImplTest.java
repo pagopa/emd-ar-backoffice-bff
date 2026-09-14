@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.service;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageCoreConnector;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
 import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreServiceImpl;
@@ -45,11 +46,14 @@ class MessageCoreSearchServiceImplTest {
     @Mock
     private MessageCoreConnector messageConnector;
 
+    @Mock
+    private TppConnector tppConnector;
+
     private MessageCoreServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new MessageCoreServiceImpl(messageConnector);
+        service = new MessageCoreServiceImpl(messageConnector, tppConnector);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

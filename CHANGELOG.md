@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.10.1...v0.11.0) (2026-09-15)
+
+
+### Features
+
+* [MMC-1018] Add search message api ([#54](https://github.com/pagopa/emd-ar-backoffice-bff/issues/54)) ([550a528](https://github.com/pagopa/emd-ar-backoffice-bff/commit/550a528b36fa24eed59400f073a50f56467df134))
+* [MMC-1022] Add delete api ([#57](https://github.com/pagopa/emd-ar-backoffice-bff/issues/57)) ([cf25973](https://github.com/pagopa/emd-ar-backoffice-bff/commit/cf259736cbae61d4eebe239a451c84763a182eb0))
+* [MMC-1056] Add get message api ([#55](https://github.com/pagopa/emd-ar-backoffice-bff/issues/55)) ([4d79ebe](https://github.com/pagopa/emd-ar-backoffice-bff/commit/4d79ebef1fc165e4a992438c86a97dffd39d475d))
+
 ## [0.10.1](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.10.0...v0.10.1) (2026-09-02)
 
 

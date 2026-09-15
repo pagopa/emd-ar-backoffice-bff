@@ -16,6 +16,8 @@ import reactor.test.StepVerifier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * Unit tests per il metodo {@code deleteMessageByEntityIdAndMessageId} di {@link MessageCoreConnectorImpl}.
  *
@@ -126,5 +128,50 @@ class MessageCoreConnectorDeleteTest {
                 .expectErrorMatches(ex -> ex instanceof ExternalServiceException &&
                         ex.getMessage().contains("MESSAGE_SERVICE"))
                 .verify();
+    }
+
+    /**
+     * Testa il recupero da un errore transitorio.
+     * La prima chiamata fallisce con 503 (Service Unavailable), ma il retry
+     * scatta e la seconda chiamata ha successo (204 No Content).
+     */
+    @Test
+    void deleteMessage_TransientError_RetriesAndRecovers() {
+        AtomicInteger requestCount = new AtomicInteger(0);
+
+        MessageCoreConnectorImpl connector = connectorWith(request -> {
+            int attempt = requestCount.incrementAndGet();
+            if (attempt == 1) {
+                return Mono.just(errorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable"));
+            }
+            return Mono.just(noContent());
+        });
+
+        StepVerifier.create(connector.deleteMessageByEntityIdAndMessageId("ENT-123", "MSG-456"))
+                .verifyComplete();
+
+        assertThat(requestCount.get()).isEqualTo(2);
+    }
+
+    /**
+     * Testa l'esaurimento dei retry.
+     * Il servizio continua a restituire 502 Bad Gateway. Il sistema riprova,
+     * ma alla fine esaurisce i tentativi e lancia ExternalServiceException.
+     */
+    @Test
+    void deleteMessage_TransientError_RetriesAndEventuallyFails() {
+        AtomicInteger requestCount = new AtomicInteger(0);
+
+        MessageCoreConnectorImpl connector = connectorWith(request -> {
+            requestCount.incrementAndGet();
+            return Mono.just(errorResponse(HttpStatus.BAD_GATEWAY, "Bad Gateway"));
+        });
+
+        StepVerifier.create(connector.deleteMessageByEntityIdAndMessageId("ENT-123", "MSG-456"))
+                .expectErrorMatches(ex -> ex instanceof ExternalServiceException &&
+                        ex.getMessage().contains("MESSAGE_SERVICE"))
+                .verify();
+
+        assertThat(requestCount.get()).isGreaterThan(1);
     }
 }

@@ -7,10 +7,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @JsonInclude (JsonInclude.Include.NON_NULL)
-@Data 
-@Builder 
-@AllArgsConstructor 
-@NoArgsConstructor 
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class MessageDTOV1 {
     
 
@@ -19,6 +19,8 @@ public class MessageDTOV1 {
     private String recipientId;
 
     private String entityId;
+
+    private String businessName;
 
     private String triggerDateTime;
 

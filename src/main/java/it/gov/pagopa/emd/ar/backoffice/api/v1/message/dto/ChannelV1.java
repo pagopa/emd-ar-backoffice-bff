@@ -5,7 +5,7 @@ import lombok.Getter;
 /**
  * Enum representing the communication channels available for sending messages.
  */
-@Getter 
+@Getter
 public enum ChannelV1 {
 
         SEND("SEND");

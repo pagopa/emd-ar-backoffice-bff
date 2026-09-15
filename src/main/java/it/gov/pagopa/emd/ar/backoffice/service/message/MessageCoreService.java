@@ -37,4 +37,12 @@ public interface MessageCoreService {
      */
     Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate, int page, int size, List<String> fields);
     
+    /**
+     * Deletes a Message by entityId and messageId
+     * 
+     * @param entityId the identifier of the tpp
+     * @param messageId the identifier of the message
+     * @return a {@link Mono<Void>} that completes when the deletion is successful
+     */
+    Mono<Void> deleteMessage(String entityId, String messageId);
 }

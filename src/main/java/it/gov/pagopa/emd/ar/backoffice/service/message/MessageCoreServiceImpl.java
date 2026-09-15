@@ -33,5 +33,14 @@ public class MessageCoreServiceImpl implements MessageCoreService {
                     r.getTotalElements(), r.getTotalPages()))
             .doOnError(e -> log.error("[AR-BFF][MESSAGE_SEARCH] Search failed: {}", e.getMessage()));
     }
-    
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<Void> deleteMessage(String entityId, String messageId) {
+        log.info("[AR-BFF][MESSAGE_DELETE] Deleting message through connector - entityId={}, messageId={}", entityId, messageId);
+        
+        return messageConnector.deleteMessageByEntityIdAndMessageId(entityId, messageId)
+                .doOnSuccess(v -> log.info("[AR-BFF][MESSAGE_DELETE] Delete successful for messageId={}", messageId))
+                .doOnError(e -> log.error("[AR-BFF][MESSAGE_DELETE] Delete failed for messageId={}: {}", messageId, e.getMessage()));
+    }
 }

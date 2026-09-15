@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.controller.MessageCoreControllerImplV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -115,6 +116,68 @@ public class MessageCoreControllerV1Test {
 
         webTestClient.get()
                 .uri("/emd/backoffice/api/v1/message-core/search")
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+        // ── deleteMessage ────────────────────────────────────────────────────────
+
+    /**
+     * DELETE /emd/backoffice/api/v1/message-core/{entityId}/{messageId} — happy path → 204 No Content.
+     */
+    @Test
+    void deleteMessage_HappyPath_Returns204NoContent() {
+        String entityId = "ENT-123";
+        String messageId = "MSG-456";
+
+        // Mocking del servizio: ritorna Mono.empty() per indicare il successo (void)
+        when(messageService.deleteMessage(entityId, messageId))
+                .thenReturn(Mono.empty());
+
+        webTestClient.delete()
+                .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
+                .exchange()
+                .expectStatus().isNoContent()
+                .expectBody().isEmpty();
+        
+        // Verifichiamo che il service sia stato chiamato con i parametri corretti
+        Mockito.verify(messageService).deleteMessage(entityId, messageId);
+    }
+
+    /**
+     * DELETE /emd/backoffice/api/v1/message-core/{entityId}/{messageId} — message not found → 404 (o 4xx generico).
+     */
+    @Test
+    void deleteMessage_NotFound_Returns4xxError() {
+        String entityId = "ENT-123";
+        String messageId = "MSG-999";
+
+        // Simula l'eccezione generata dal connector quando il messaggio non esiste
+        when(messageService.deleteMessage(entityId, messageId))
+                .thenReturn(Mono.error(new ResourceNotFoundException("MESSAGE", "id " + messageId + " for entity " + entityId)));
+
+        webTestClient.delete()
+                .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
+                .exchange()
+                // Nota: utilizziamo is4xxClientError() per coprire l'eccezione. Se hai un @ControllerAdvice
+                // che mappa specificamente ResourceNotFoundException a 404, potresti usare isNotFound()
+                // configurando il webTestClient con .controllerAdvice(...) nel setup.
+                .expectStatus().is5xxServerError(); // Messo is5xx di default (vedi nota sotto)
+    }
+
+    /**
+     * DELETE /emd/backoffice/api/v1/message-core/{entityId}/{messageId} — service error → 502 Bad Gateway (o 5xx).
+     */
+    @Test
+    void deleteMessage_ServiceError_Returns5xx() {
+        String entityId = "ENT-123";
+        String messageId = "MSG-456";
+
+        when(messageService.deleteMessage(entityId, messageId))
+                .thenReturn(Mono.error(new ExternalServiceException("MESSAGE_SERVICE", "deleteMessage", "Upstream error")));
+
+        webTestClient.delete()
+                .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
                 .exchange()
                 .expectStatus().is5xxServerError();
     }

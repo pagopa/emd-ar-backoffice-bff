@@ -41,4 +41,12 @@ public interface MessageCoreConnector {
      */
     Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate, int page, int size, List<String> fields);
 
+    /**
+     * Deletes a message on the remote emd-message-core service.
+     * 
+     * @param entityId  the identifier of the tpp
+     * @param messageId the identifier of the message
+     * @return an empty {@code Mono<Void>} upon successful deletion
+     */
+    Mono<Void> deleteMessageByEntityIdAndMessageId(String entityId, String messageId);
 }

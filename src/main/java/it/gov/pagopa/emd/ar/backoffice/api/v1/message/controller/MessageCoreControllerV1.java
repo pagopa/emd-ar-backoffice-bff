@@ -6,7 +6,9 @@ import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -74,4 +76,15 @@ public interface MessageCoreControllerV1 {
             @PathVariable("entityId") String entityId,
             @PathVariable("messageId") String messageId);
 
+    /**
+     * Delete a Message from Database by entityId and messageId.
+     * 
+     * @param entityId the identifier of the tpp
+     * @param messageId the identifier of the message
+     * @return an empty {@link Mono} resulting in a 204 No Content response
+     */
+    @DeleteMapping(value = "message-core/{entityId}/{messageId}")
+    Mono<ResponseEntity<Void>> deleteMessage(
+            @PathVariable("entityId") String entityId,
+            @PathVariable("messageId") String messageId);
 }

@@ -193,4 +193,59 @@ public class MessageCoreControllerV1Test {
         verify(messageService, times(1)).getMessageByEntityIdAndMessageId(entityId, messageId);
     }
 
+    // ── deleteMessage ────────────────────────────────────────────────────────
+
+    /**
+     * DELETE /emd/backoffice/api/v1/message-core/{entityId}/{messageId} — happy path → 204 No Content.
+     */
+    @Test
+    void deleteMessage_HappyPath_Returns204NoContent() {
+        String entityId = "ENT-123";
+        String messageId = "MSG-456";
+
+        when(messageService.deleteMessage(entityId, messageId))
+                .thenReturn(Mono.empty());
+
+        webTestClient.delete()
+                .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
+                .exchange()
+                .expectStatus().isNoContent()
+                .expectBody().isEmpty();
+        
+        Mockito.verify(messageService).deleteMessage(entityId, messageId);
+    }
+
+    /**
+     * DELETE /emd/backoffice/api/v1/message-core/{entityId}/{messageId} — message not found → 404 (o 4xx generico).
+     */
+    @Test
+    void deleteMessage_NotFound_Returns4xxError() {
+        String entityId = "ENT-123";
+        String messageId = "MSG-999";
+
+        when(messageService.deleteMessage(entityId, messageId))
+                .thenReturn(Mono.error(new ResourceNotFoundException("MESSAGE", "id " + messageId + " for entity " + entityId)));
+
+        webTestClient.delete()
+                .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
+                .exchange()
+                .expectStatus().is4xxClientError();
+    }
+
+    /**
+     * DELETE /emd/backoffice/api/v1/message-core/{entityId}/{messageId} — service error → 502 Bad Gateway (o 5xx).
+     */
+    @Test
+    void deleteMessage_ServiceError_Returns5xx() {
+        String entityId = "ENT-123";
+        String messageId = "MSG-456";
+
+        when(messageService.deleteMessage(entityId, messageId))
+                .thenReturn(Mono.error(new ExternalServiceException("MESSAGE_SERVICE", "deleteMessage", "Upstream error")));
+
+        webTestClient.delete()
+                .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
 }

@@ -25,7 +25,7 @@ public class MessageCoreControllerImplV1 implements MessageCoreControllerV1 {
     /** {@inheritDoc} */
     @Override
     public Mono<ResponseEntity<MessageSearchResponseDTOV1>> searchMessages(
-        String messageId, String recipientId, String originId, 
+        String messageId, String recipientId, String originId,
         LocalDateTime startDate, LocalDateTime endDate,
         int page, int size, List<String> fields) {
         log.info("[AR-BFF][MESSAGE_SEARCH] Searching messages — messageId={}, recipientId={}, originId={}, startDate={}, endDate={}, page={}, size={}, fields={}",
@@ -46,4 +46,10 @@ public class MessageCoreControllerImplV1 implements MessageCoreControllerV1 {
                 .map(ResponseEntity::ok);
     }
     
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<Void>> deleteMessage(String entityId, String messageId){
+        return messageService.deleteMessage(entityId, messageId)
+                .thenReturn(ResponseEntity.noContent().build());
+    }
 }

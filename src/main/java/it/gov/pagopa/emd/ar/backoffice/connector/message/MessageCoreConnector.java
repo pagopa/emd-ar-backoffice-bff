@@ -52,4 +52,13 @@ public interface MessageCoreConnector {
      *         (HTTP 404) if no Message exists for that messageId
      */
     Mono<MessageDTOV1> getMessageByEntityIdAndMessageId(String entityId, String messageId);
+
+    /**
+     * Deletes a message on the remote emd-message-core service.
+     * 
+     * @param entityId  the identifier of the tpp
+     * @param messageId the identifier of the message
+     * @return an empty {@code Mono<Void>} upon successful deletion
+     */
+    Mono<Void> deleteMessageByEntityIdAndMessageId(String entityId, String messageId);
 }

@@ -48,4 +48,13 @@ public interface MessageCoreService {
      *         (HTTP 404) if no Message exists for that messageId
      */
     Mono<MessageDTOV1> getMessageByEntityIdAndMessageId(String entityId, String messageId);
+
+    /**
+     * Deletes a Message by entityId and messageId
+     * 
+     * @param entityId the identifier of the tpp
+     * @param messageId the identifier of the message
+     * @return a {@link Mono<Void>} that completes when the deletion is successful
+     */
+    Mono<Void> deleteMessage(String entityId, String messageId);
 }

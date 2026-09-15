@@ -1,6 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.service;
 
 import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageCoreConnector;
+import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreServiceImpl;
@@ -35,11 +36,14 @@ class MessageCoreDeleteServiceImplTest {
     @Mock
     private MessageCoreConnector messageConnector;
 
+    @Mock
+    private TppConnector tppConnector;
+
     private MessageCoreServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new MessageCoreServiceImpl(messageConnector);
+        service = new MessageCoreServiceImpl(messageConnector, tppConnector);
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────────

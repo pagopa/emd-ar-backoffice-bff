@@ -3,6 +3,9 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.controller.MessageCoreControllerImplV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.common.utils.Utilities;
+import it.gov.pagopa.emd.ar.backoffice.api.handler.ControllerExceptionHandler;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreService;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,10 +15,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
-
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
+import java.time.LocalDateTime;
 
 /**
  * Unit tests for {@link MessageCoreControllerImplV1}.
@@ -24,14 +26,21 @@ public class MessageCoreControllerV1Test {
 
     private MessageCoreService messageService;
     private WebTestClient webTestClient;
+    private Utilities utilities;
 
     @BeforeEach
     void setUp() {
         messageService = Mockito.mock(MessageCoreService.class);
         MessageCoreControllerImplV1 messageController = new MessageCoreControllerImplV1(messageService);
-        webTestClient = WebTestClient.bindToController(messageController).build();
-    }
 
+        utilities = Mockito.mock(Utilities.class);
+        
+        Mockito.lenient().when(utilities.getTraceId()).thenReturn("TEST-TRACE-ID");
+        
+        webTestClient = WebTestClient.bindToController(messageController)
+                .controllerAdvice(new ControllerExceptionHandler(utilities))
+                .build();
+    }
 
     // ── searchMessages ────────────────────────────────────────────────────────
 
@@ -119,8 +128,72 @@ public class MessageCoreControllerV1Test {
                 .exchange()
                 .expectStatus().is5xxServerError();
     }
+    
+    // ── getMessageByEntityIdAndMessageId ─────────────────────────────────────────────────
 
-        // ── deleteMessage ────────────────────────────────────────────────────────
+    /**
+     * GET /emd/message-core/{entityId}/{messageId} — happy path → 200 OK con restituzione del MessageDTOV1.
+     */
+    @Test
+    void getMessageByEntityIdAndMessageId_Success() {
+        String entityId = "entity-123";
+        String messageId = "msg-123";
+        MessageDTOV1 mockDto = new MessageDTOV1();
+        
+        when(messageService.getMessageByEntityIdAndMessageId(entityId, messageId))
+                .thenReturn(Mono.just(mockDto));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectBody(MessageDTOV1.class);
+
+        verify(messageService, times(1)).getMessageByEntityIdAndMessageId(entityId, messageId);
+    }
+
+    /**
+     * GET /emd/message-core/{entityId}/{messageId} — errore servizio esterno (es. 500) → lancia ExternalServiceException.
+     */
+    @Test
+    void getMessageByEntityIdAndMessageId_ExternalServiceError() {
+        String entityId = "entity-500";
+        String messageId = "msg-500";
+        when(messageService.getMessageByEntityIdAndMessageId(entityId, messageId))
+                .thenReturn(Mono.error(new ExternalServiceException("MESSAGE_SERVICE", "getMessageByEntityIdAndMessageId", "Error from downstream")));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().is5xxServerError();
+
+        verify(messageService, times(1)).getMessageByEntityIdAndMessageId(entityId, messageId);
+    }
+
+    /**
+     * GET /emd/message-core/{entityId}/{messageId} — message non trovato (404) → lancia ResourceNotFoundException.
+     */
+    @Test
+    void getMessageByEntityIdAndMessageId_NotFound() {
+        String entityId = "entity-404";
+        String messageId = "msg-404";
+        
+        when(messageService.getMessageByEntityIdAndMessageId(entityId, messageId))
+                .thenReturn(Mono.error(new ResourceNotFoundException("MESSAGE", messageId)));
+                
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isNotFound();
+                
+        verify(messageService, times(1)).getMessageByEntityIdAndMessageId(entityId, messageId);
+    }
+
+    // ── deleteMessage ────────────────────────────────────────────────────────
 
     /**
      * DELETE /emd/backoffice/api/v1/message-core/{entityId}/{messageId} — happy path → 204 No Content.
@@ -130,7 +203,6 @@ public class MessageCoreControllerV1Test {
         String entityId = "ENT-123";
         String messageId = "MSG-456";
 
-        // Mocking del servizio: ritorna Mono.empty() per indicare il successo (void)
         when(messageService.deleteMessage(entityId, messageId))
                 .thenReturn(Mono.empty());
 
@@ -140,7 +212,6 @@ public class MessageCoreControllerV1Test {
                 .expectStatus().isNoContent()
                 .expectBody().isEmpty();
         
-        // Verifichiamo che il service sia stato chiamato con i parametri corretti
         Mockito.verify(messageService).deleteMessage(entityId, messageId);
     }
 
@@ -152,17 +223,13 @@ public class MessageCoreControllerV1Test {
         String entityId = "ENT-123";
         String messageId = "MSG-999";
 
-        // Simula l'eccezione generata dal connector quando il messaggio non esiste
         when(messageService.deleteMessage(entityId, messageId))
                 .thenReturn(Mono.error(new ResourceNotFoundException("MESSAGE", "id " + messageId + " for entity " + entityId)));
 
         webTestClient.delete()
                 .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
                 .exchange()
-                // Nota: utilizziamo is4xxClientError() per coprire l'eccezione. Se hai un @ControllerAdvice
-                // che mappa specificamente ResourceNotFoundException a 404, potresti usare isNotFound()
-                // configurando il webTestClient con .controllerAdvice(...) nel setup.
-                .expectStatus().is5xxServerError(); // Messo is5xx di default (vedi nota sotto)
+                .expectStatus().is4xxClientError();
     }
 
     /**

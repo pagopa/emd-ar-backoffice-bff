@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreService;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -36,6 +37,15 @@ public class MessageCoreControllerImplV1 implements MessageCoreControllerV1 {
                 .map(ResponseEntity::ok);
     }
 
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<MessageDTOV1>> getMessageByEntityIdAndMessageId(String entityId, String messageId) {
+        log.info("[AR-BFF][MESSAGE_GET] Getting Message by entityId={} and messageId={}", entityId, messageId);
+        return messageService.getMessageByEntityIdAndMessageId(entityId, messageId)
+                .map(ResponseEntity::ok);
+    }
+    
     /** {@inheritDoc} */
     @Override
     public Mono<ResponseEntity<Void>> deleteMessage(String entityId, String messageId){

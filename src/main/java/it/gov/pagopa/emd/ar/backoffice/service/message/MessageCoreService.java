@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import reactor.core.publisher.Mono;
 
 public interface MessageCoreService {
@@ -37,6 +38,17 @@ public interface MessageCoreService {
      */
     Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate, int page, int size, List<String> fields);
     
+    /**
+     * Looks up an existing Message by its {@code entityId} and {@code messageId}.
+     *
+     * @param entityId the entity ID
+     * @param messageId the message ID
+     * @return {@code Mono<MessageDTOV1>} with the Message details if found,
+     *         or a {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException}
+     *         (HTTP 404) if no Message exists for that messageId
+     */
+    Mono<MessageDTOV1> getMessageByEntityIdAndMessageId(String entityId, String messageId);
+
     /**
      * Deletes a Message by entityId and messageId
      * 

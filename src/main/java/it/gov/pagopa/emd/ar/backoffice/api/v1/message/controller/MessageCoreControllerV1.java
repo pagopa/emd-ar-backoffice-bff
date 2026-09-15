@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
+import org.springframework.web.bind.annotation.PathVariable;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import reactor.core.publisher.Mono;
 
 @RequestMapping ("/emd/backoffice/api/v1")
@@ -57,6 +59,22 @@ public interface MessageCoreControllerV1 {
         @RequestParam(name = "page", defaultValue = "0") int page,
         @RequestParam(name = "size", defaultValue = "10") int size,
         @RequestParam(name = "fields", required = false) List<String> fields);
+
+    /**
+     * Checks whether a Message with the given {@code entityId} and {@code messageId} already exists
+     * and returns its details.
+     *
+     * <p>Returns HTTP 200 with a {@code MessageDTOV1} payload if found, or HTTP 404 if no Message
+     * exists for those ids.</p>
+     *
+     * @param entityId the ID of the tpp
+     * @param messageId the ID of the message to retrieve
+     * @return {@code Mono<ResponseEntity<MessageDTOV1>>} with message details, or 404
+     */
+    @GetMapping(value = "message-core/{entityId}/{messageId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<MessageDTOV1>> getMessageByEntityIdAndMessageId(
+            @PathVariable("entityId") String entityId,
+            @PathVariable("messageId") String messageId);
 
     /**
      * Delete a Message from Database by entityId and messageId.

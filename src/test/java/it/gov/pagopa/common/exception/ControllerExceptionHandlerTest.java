@@ -316,4 +316,22 @@ class ControllerExceptionHandlerTest {
                 .jsonPath("$.code").isEqualTo("UNAUTHORIZED")
                 .jsonPath("$.message").isEqualTo("Authentication failed");
     }
+
+    @Test
+    void handleTooManyRequestsException_Returns429() {
+        String upstreamDetail = "{\"code\":\"TOO_MANY_REQUESTS\",\"message\":\"CosmosDB limit exceeded\"}";
+        when(testControllerMock.testEndpoint(any(), any()))
+                .thenReturn(Mono.error(new it.gov.pagopa.emd.ar.backoffice.domain.exception.TooManyRequestsException(upstreamDetail)));
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new TestRequestBody("val", null, "abc", LocalDateTime.now()))
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.TOO_MANY_REQUESTS) // Verifica che sia 429
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("TOO_MANY_REQUESTS")
+                .jsonPath("$.message").isEqualTo("The system is temporarily busy due to high load. Please try again later.")
+                .jsonPath("$.traceId").isEqualTo(traceId);
+    }
 }

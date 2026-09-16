@@ -15,6 +15,11 @@ import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.TooManyRequestsException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatusCode;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import reactor.core.Exceptions;
@@ -66,10 +71,13 @@ public class MessageCoreConnectorImpl implements MessageCoreConnector {
                                     return Mono.error(new ExternalServiceException("MESSAGE_SERVICE", "searchMessages", body));
                                 })
                 )
+                .onStatus(status -> status.value() == 429, response ->
+                    response.bodyToMono(String.class)
+                            .flatMap(body -> Mono.error(new TooManyRequestsException(body))))
                 .bodyToMono(MessageSearchResponseDTOV1.class)
                 .retryWhen(WebClientRetrySpecs.transientNetwork())
                 .onErrorMap(Throwable.class, ex -> {
-                    if (ex instanceof InvalidSearchFieldException || ex instanceof ExternalServiceException) {
+                    if (ex instanceof InvalidSearchFieldException || ex instanceof ExternalServiceException|| ex instanceof TooManyRequestsException) {
                         return ex;
                     }
                     if (ex instanceof WebClientResponseException wce) {

@@ -7,6 +7,7 @@ import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientAlreadyPresentException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.TooManyRequestsException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
 import it.gov.pagopa.emd.ar.backoffice.dto.generated.ErrorDTO;
 import jakarta.validation.ConstraintViolationException;
@@ -260,5 +261,23 @@ public class ControllerExceptionHandler {
                 .status(HttpStatus.NOT_FOUND)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new ErrorDTO(ErrorDTO.CodeEnum.NOT_FOUND, "Recipient not found in whitelist.", utilities.getTraceId()));
+    }
+
+    /**
+     * Maps {@link TooManyRequestsException} → HTTP 429 Too Many Requests.
+     * Propagates the throttling status from upstream services to the frontend.
+     */
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ErrorDTO> handleTooManyRequestsException(TooManyRequestsException ex, ServerHttpRequest request) {
+        logException(ex, request, HttpStatus.TOO_MANY_REQUESTS);
+        
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ErrorDTO(
+                        ErrorDTO.CodeEnum.TOO_MANY_REQUESTS,
+                        "The system is temporarily busy due to high load. Please try again later.",
+                        utilities.getTraceId()
+                ));
     }
 }

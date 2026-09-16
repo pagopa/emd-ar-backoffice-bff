@@ -42,6 +42,7 @@ components:
           enum:
             - NOT_FOUND
             - BAD_REQUEST
+            - TOO_MANY_REQUESTS
             - UNAUTHORIZED
             - GENERIC_ERROR
         message:

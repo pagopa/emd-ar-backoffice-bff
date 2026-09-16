@@ -3,6 +3,8 @@ package it.gov.pagopa.emd.ar.backoffice.service;
 import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageCoreConnectorImpl;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.TooManyRequestsException;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -217,16 +219,16 @@ class MessageCoreConnectorSearchTest {
     }
 
     /**
-     * Upstream 429 -> Mappatura verso ExternalServiceException.
+     * Upstream 429 -> Mappatura verso TooManyRequestsException.
      */
     @Test
-    void searchMessages_Upstream429_ThrowsExternalServiceException() {
+    void searchMessages_Upstream429_ThrowsTooManyRequestsException() {
         MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests")));
 
         StepVerifier.create(connector.searchMessages(null, null, null, null, null, 0, 10, null))
-                .expectErrorMatches(ex -> ex instanceof ExternalServiceException &&
-                                    ex.getMessage().contains("MESSAGE_SERVICE"))
+                .expectErrorMatches(ex -> ex instanceof TooManyRequestsException &&
+                                    ex.getMessage().contains("Too Many Requests"))
                 .verify();
     }
 }

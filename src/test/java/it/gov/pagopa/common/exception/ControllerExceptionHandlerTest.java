@@ -6,6 +6,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.handler.ControllerExceptionHandler;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.TooManyRequestsException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TppAlreadyOnboardedException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -321,7 +322,7 @@ class ControllerExceptionHandlerTest {
     void handleTooManyRequestsException_Returns429() {
         String upstreamDetail = "{\"code\":\"TOO_MANY_REQUESTS\",\"message\":\"CosmosDB limit exceeded\"}";
         when(testControllerMock.testEndpoint(any(), any()))
-                .thenReturn(Mono.error(new it.gov.pagopa.emd.ar.backoffice.domain.exception.TooManyRequestsException(upstreamDetail)));
+                .thenReturn(Mono.error(new TooManyRequestsException(upstreamDetail)));
 
         webTestClient.post()
                 .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.11.0...v0.11.1) (2026-09-16)
+
+
+### Bug Fixes
+
+* [MMC-1069] Add too many req exception on connector ([#58](https://github.com/pagopa/emd-ar-backoffice-bff/issues/58)) ([6bd4012](https://github.com/pagopa/emd-ar-backoffice-bff/commit/6bd4012899d231929effb6f2a585497caa5e4e7a))
+
 ## [0.11.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.10.1...v0.11.0) (2026-09-15)
 
 

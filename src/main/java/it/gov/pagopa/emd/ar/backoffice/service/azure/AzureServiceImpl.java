@@ -66,7 +66,13 @@ public class AzureServiceImpl implements AzureService {
      */
     @Override
     public Mono<LogsResponseDTO> fetchLogsFromAzure(String entityId, String messageId, int page, int size) {
-        
+        if (page < 0) {
+            page = 0;
+        }
+
+        if (size <= 0 || size > 500) {
+            return Mono.error(new IllegalArgumentException("size must be between 1 and 500"));
+        }
         String safeMessageId = messageId != null ? messageId.replace("'", "") : "";
         String safeEntityId = entityId != null ? entityId.replace("'", "") : "";
         
@@ -84,10 +90,6 @@ public class AzureServiceImpl implements AzureService {
         kqlBuilder.append("); ");
 
         kqlBuilder.append("AppTraces ");
-        
-        kqlBuilder.append("| where Message contains '[MESSAGE-CORE]' ");
-        kqlBuilder.append("     or Message contains '[MESSAGE-SERVICE]' ");
-        kqlBuilder.append("     or Message contains '[NOTIFY-SERVICE]' ");
 
         kqlBuilder.append("| where OperationId == targetOpId ");
         kqlBuilder.append(String.format(" or (Message contains '[MESSAGE-CORE-CONSUMER-SERVICE]' and Message contains '%s') ", safeMessageId));
@@ -133,7 +135,9 @@ public class AzureServiceImpl implements AzureService {
                             .totalElements(totalElements)
                             .totalPages(totalPages)
                             .build();
-                });
+                })
+                .doOnError(error -> log.error( "Error querying Azure Monitor logs. entityId={}, messageId={}", entityId, messageId, error)
+            );
     }
 
     /**
@@ -199,4 +203,6 @@ public class AzureServiceImpl implements AzureService {
         }
         return 0L;
     }
+
+    
 }

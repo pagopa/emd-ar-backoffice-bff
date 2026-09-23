@@ -7,21 +7,27 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.LogsResponseDTO;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.service.azure.AzureService;
 import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreService;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
-@RestController 
-@Slf4j 
+@RestController
+@Slf4j
 public class MessageCoreControllerImplV1 implements MessageCoreControllerV1 {
     
     private final MessageCoreService messageService;
 
-    public MessageCoreControllerImplV1(MessageCoreService messageService) {
+    private final AzureService azureService;
+
+
+    public MessageCoreControllerImplV1(MessageCoreService messageService, AzureService azureService) {
         this.messageService = messageService;
+        this.azureService = azureService;
     }
-   
+
     /** {@inheritDoc} */
     @Override
     public Mono<ResponseEntity<MessageSearchResponseDTOV1>> searchMessages(
@@ -51,5 +57,13 @@ public class MessageCoreControllerImplV1 implements MessageCoreControllerV1 {
     public Mono<ResponseEntity<Void>> deleteMessage(String entityId, String messageId){
         return messageService.deleteMessage(entityId, messageId)
                 .thenReturn(ResponseEntity.noContent().build());
+    }
+
+    @Override
+    public Mono<ResponseEntity<LogsResponseDTO>> getAzureLogs(String entityId, String messageId, int page, int size) {
+        log.info("[AR-BFF][MESSAGE_LOGS] Fetching Azure Logs for entityId={} and messageId={} (page={}, size={})", 
+                entityId, messageId, page, size);
+        return azureService.fetchLogsFromAzure(entityId, messageId, page, size)
+            .map(ResponseEntity::ok);
     }
 }

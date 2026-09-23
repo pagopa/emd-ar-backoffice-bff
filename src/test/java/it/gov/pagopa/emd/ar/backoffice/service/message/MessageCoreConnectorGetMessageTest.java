@@ -1,4 +1,4 @@
-package it.gov.pagopa.emd.ar.backoffice.service;
+package it.gov.pagopa.emd.ar.backoffice.service.message;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;

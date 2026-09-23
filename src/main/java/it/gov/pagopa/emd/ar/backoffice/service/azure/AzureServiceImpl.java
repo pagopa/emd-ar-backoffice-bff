@@ -106,16 +106,13 @@ public class AzureServiceImpl implements AzureService {
         int takeUntil = skip + size;
 
         String dataQuery = baseQuery +
-                " | project TimeGenerated, Message, SeverityLevel, OperationId " +
+                " | project TimeGenerated, Message, SeverityLevel, OperationId, AppRoleName " +
                 " | order by TimeGenerated asc " +
                 " | extend rn = row_number() " +
                 String.format(" | where rn > %d and rn <= %d ", skip, takeUntil) +
                 " | project-away rn";
 
         String countQuery = baseQuery + " | count";
-
-        log.debug("Eseguendo DATA query KQL: {}", dataQuery);
-        log.debug("Eseguendo COUNT query KQL: {}", countQuery);
 
         Mono<LogsQueryResult> dataMono = logsQueryClient.queryWorkspace(workspaceId, dataQuery, null);
         Mono<LogsQueryResult> countMono = logsQueryClient.queryWorkspace(workspaceId, countQuery, null);

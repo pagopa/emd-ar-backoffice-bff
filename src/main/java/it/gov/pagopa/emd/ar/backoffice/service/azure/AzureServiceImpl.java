@@ -32,6 +32,10 @@ public class AzureServiceImpl implements AzureService {
     private final LogsQueryAsyncClient logsQueryClient;
     private final String workspaceId;
 
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 10;
+    private static final int MAX_SIZE = 100;
+
     /**
      * Constructs a new {@code AzureServiceImpl}.
      * <p>
@@ -66,15 +70,14 @@ public class AzureServiceImpl implements AzureService {
      */
     @Override
     public Mono<LogsResponseDTO> fetchLogsFromAzure(String entityId, String messageId, int page, int size) {
-        if (page < 0) {
-            page = 0;
-        }
-
-        if (size <= 0 || size > 500) {
-            return Mono.error(new IllegalArgumentException("size must be between 1 and 500"));
-        }
-        String safeMessageId = messageId != null ? messageId.replace("'", "") : "";
-        String safeEntityId = entityId != null ? entityId.replace("'", "") : "";
+        
+        int normalizedPage = page < 0 ? DEFAULT_PAGE : page;
+        int normalizedSize = size <= 0 ? DEFAULT_SIZE : Math.min(size, MAX_SIZE);
+        long skip = (long) normalizedPage * normalizedSize;
+        long takeUntil = skip + normalizedSize;
+        
+        String safeMessageId = messageId != null ? escapeKqlString(messageId) : "";
+        String safeEntityId = entityId != null ? escapeKqlString(entityId) : "";
         
         if (safeMessageId.isBlank() || safeEntityId.isBlank()) {
             return Mono.just(LogsResponseDTO.builder().content(List.of()).build());
@@ -100,12 +103,7 @@ public class AzureServiceImpl implements AzureService {
         kqlBuilder.append(String.format(" or (Message contains '[MESSAGE-SERVICE]' and Message contains '%s' and Message contains '%s') ", safeMessageId, safeEntityId));
         kqlBuilder.append(String.format(" or (Message contains '[NOTIFY-SERVICE]' and Message contains '%s' and Message contains '%s') ", safeMessageId, safeEntityId));
 
-        
-        
         String baseQuery = kqlBuilder.toString();
-
-        int skip = page * size;
-        int takeUntil = skip + size;
 
         String dataQuery = baseQuery +
                 " | project TimeGenerated, Message, SeverityLevel, OperationId, AppRoleName " +
@@ -126,7 +124,8 @@ public class AzureServiceImpl implements AzureService {
 
                     List<LogsDTO> mappedLogs = extractLogs(dataResult);
                     long totalElements = extractCount(countResult);
-                    int totalPages = (int) Math.ceil((double) totalElements / size);
+                    int totalPages = (int) Math.ceil((double) totalElements / normalizedSize
+);
 
                     return LogsResponseDTO.builder()
                             .content(mappedLogs)
@@ -202,6 +201,12 @@ public class AzureServiceImpl implements AzureService {
                     }).orElse(0L);
         }
         return 0L;
+    }
+
+    private String escapeKqlString(String value) {
+        return value
+                .replace("\\", "\\\\")
+                .replace("'", "\\'");
     }
 
     

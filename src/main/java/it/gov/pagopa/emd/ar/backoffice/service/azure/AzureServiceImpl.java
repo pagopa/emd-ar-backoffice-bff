@@ -62,24 +62,11 @@ public class AzureServiceImpl implements AzureService {
                 .buildAsyncClient();
     }
 
-    /**
-     * Fetches a paginated list of logs from Azure Log Analytics based on the provided entity and message identifiers.
-     * <p>
-     * The method constructs and executes a complex KQL query that cross-references log entries
-     * by their {@code OperationId} or by explicitly containing the {@code messageId} and {@code entityId}.
-     * It performs two parallel asynchronous queries: one to retrieve the paginated data and another
-     * to get the total count of matching records.
-     * </p>
-     *
-     * @param entityId  the identifier of the entity (e.g., TPP ID)
-     * @param messageId the identifier of the message to trace
-     * @param page      the zero-based page index to retrieve
-     * @param size      the maximum number of log entries per page
-     * @return a {@link Mono} emitting a {@link LogsResponseDTO} containing the requested logs and pagination metadata
-     */
+    /** {@inheritDoc} */
     @Override
     public Mono<LogsResponseDTO> fetchLogsFromAzure(String entityId, String messageId, int page, int size) {
-        
+        log.info("[AR-BFF][AZURE_SEARCH] Searching messages — entityId {}, messageId={}", entityId, messageId);
+
         int normalizedPage = page < 0 ? DEFAULT_PAGE : page;
         int normalizedSize = size <= 0 ? DEFAULT_SIZE : Math.min(size, MAX_SIZE);
         long skip = (long) normalizedPage * normalizedSize;
@@ -105,9 +92,7 @@ public class AzureServiceImpl implements AzureService {
                 + " | order by TimeGenerated asc, OperationId asc "
                 + " | serialize "
                 + " | extend rn = row_number() "
-
                 + String.format( " | where rn > %d and rn <= %d ", skip, takeUntil)
-                
                 + " | project-away rn";
 
         String countQuery = baseQuery + " | count";
@@ -115,7 +100,6 @@ public class AzureServiceImpl implements AzureService {
         LogsBatchQuery batchQuery = new LogsBatchQuery();
 
         String dataQueryId = batchQuery.addWorkspaceQuery(workspaceId, dataQuery, QUERY_INTERVAL);
-
         String countQueryId = batchQuery.addWorkspaceQuery(workspaceId, countQuery, QUERY_INTERVAL);
 
         return logsQueryClient.queryBatch(batchQuery)
@@ -135,8 +119,8 @@ public class AzureServiceImpl implements AzureService {
                             .totalPages(totalPages)
                             .build();
                 })
-                .doOnError(error ->
-                        log.error("Error querying Azure Monitor logs. entityId={}, messageId={}", entityId, messageId, error));
+                .doOnSuccess(r -> log.info("[AR-BFF][MESSAGE_LOGS] Fetch completed: totalElements={}, totalPages={}", r.getTotalElements(), r.getTotalPages()))
+                .doOnError(error -> log.error("Error querying Azure Monitor logs. entityId={}, messageId={}", entityId, messageId, error));
 
     }
 
@@ -152,18 +136,18 @@ public class AzureServiceImpl implements AzureService {
         return """
                 let targetOpId = toscalar(
                     AppTraces
-                    | where Message contains '[MESSAGE-CORE][SEND] Received message: %s'
+                    | where Message contains_cs '[MESSAGE-CORE][SEND] Received message: %s'
                     | where isnotempty(OperationId)
                     | top 1 by TimeGenerated asc
                     | project OperationId
                 );
                 AppTraces
                 | where OperationId == targetOpId
-                    or ( Message contains '[MESSAGE-CORE-CONSUMER-SERVICE]' and Message contains '%s')
-                    or ( Message contains '[MESSAGE-CORE-PRODUCER]'and Message contains '%s')
-                    or ( Message contains '[MESSAGE-CORE-PRODUCER-SERVICE]'and Message contains '%s')
-                    or ( Message contains '[MESSAGE-SERVICE]'and Message contains '%s'and Message contains '%s')
-                    or ( Message contains '[NOTIFY-SERVICE]'and Message contains '%s'and Message contains '%s')
+                    or ( Message contains_cs '[MESSAGE-CORE-CONSUMER-SERVICE]' and Message contains_cs '%s')
+                    or ( Message contains_cs '[MESSAGE-CORE-PRODUCER]' and Message contains_cs '%s')
+                    or ( Message contains_cs '[MESSAGE-CORE-PRODUCER-SERVICE]' and Message contains_cs '%s')
+                    or ( Message contains_cs '[MESSAGE-SERVICE]' and Message contains_cs '%s' and Message contains_cs '%s')
+                    or ( Message contains_cs '[NOTIFY-SERVICE]' and Message contains_cs '%s' and Message contains_cs '%s')
                 """
                     .formatted(safeMessageId, safeMessageId, safeMessageId, safeMessageId, safeMessageId, safeEntityId,safeMessageId, safeEntityId);
     }
@@ -171,7 +155,7 @@ public class AzureServiceImpl implements AzureService {
     /**
      * Extracts and maps the raw tabular data from an Azure query result into a list of {@link LogsDTO}.
      * <p>
-     * This method parses the {@code TimeGenerated}, {@code Message}, {@code OperationId} (mapped to traceId),
+     * This method parses the {@code TimeGenerated}, {@code Message}, {@code AppRoleName},
      * and {@code SeverityLevel} columns. The severity level is safely converted into the corresponding
      * {@link AzureSeverity} string representation.
      * </p>
@@ -232,7 +216,12 @@ public class AzureServiceImpl implements AzureService {
         return 0L;
     }
 
-    
+    /**
+     * Escapes single quotes and backslashes in user input to prevent KQL injection.
+     *
+     * @param value the raw string parameter
+     * @return the sanitized string safe for KQL injection
+     */
     private String escapeKqlString(String value) {
         return value
                 .replace("\\", "\\\\")

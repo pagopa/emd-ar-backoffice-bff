@@ -258,7 +258,7 @@ public class MessageCoreControllerV1Test {
     // ── getAzureLogs ────────────────────────────────────────────────────────
 
     /**
-     * GET /emd/backoffice/api/v1/message-core/logs/{entityId}/{messageId} 
+     * GET /emd/backoffice/api/v1/message-core/logs/{entityId}/{messageId}
      * Happy path con parametri di paginazione custom → 200 OK con i log.
      */
     @Test
@@ -272,7 +272,7 @@ public class MessageCoreControllerV1Test {
                 .timestamp("2026-10-01T10:00:00Z")
                 .message("Test log message")
                 .level("INFO")
-                .traceId("trace-123")
+                .appName("emd-message-core")
                 .build();
 
         LogsResponseDTO response = LogsResponseDTO.builder()
@@ -342,7 +342,7 @@ public class MessageCoreControllerV1Test {
 
     /**
      * GET /emd/backoffice/api/v1/message-core/logs/{entityId}/{messageId}
-     * Errore dal servizio Azure → 502 Bad Gateway (o 500 a seconda dell'ExceptionHandler).
+     * Errore dal servizio Azure → 502 Bad Gateway.
      */
     @Test
     void getAzureLogs_ServiceError_Returns5xx() {

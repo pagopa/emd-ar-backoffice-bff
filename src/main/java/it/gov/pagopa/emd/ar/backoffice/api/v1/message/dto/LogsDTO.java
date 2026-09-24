@@ -13,5 +13,5 @@ public class LogsDTO {
     private String timestamp;
     private String message;
     private String level;
-    private String traceId;
+    private String appName;
 }

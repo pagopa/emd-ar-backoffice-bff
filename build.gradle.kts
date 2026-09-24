@@ -90,7 +90,7 @@ dependencies {
   // Azure
   implementation(platform("com.azure:azure-sdk-bom:1.3.8"))
   implementation("com.azure:azure-identity")
-  implementation("com.azure:azure-monitor-query:1.5.9")
+  implementation("com.azure:azure-monitor-query-logs")
 
 
   // CVE fix

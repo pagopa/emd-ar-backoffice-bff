@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.service.azure;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -8,9 +9,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.azure.identity.DefaultAzureCredentialBuilder;
-import com.azure.monitor.query.LogsQueryAsyncClient;
-import com.azure.monitor.query.LogsQueryClientBuilder;
-import com.azure.monitor.query.models.LogsQueryResult;
+import com.azure.monitor.query.logs.LogsQueryAsyncClient;
+import com.azure.monitor.query.logs.LogsQueryClientBuilder;
+import com.azure.monitor.query.logs.models.LogsBatchQuery;
+import com.azure.monitor.query.logs.models.LogsBatchQueryResult;
+import com.azure.monitor.query.logs.models.LogsQueryResult;
+import com.azure.monitor.query.logs.models.LogsQueryTimeInterval;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.LogsDTO;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.LogsResponseDTO;
@@ -37,6 +41,11 @@ public class AzureServiceImpl implements AzureService {
     private static final int MAX_SIZE = 100;
 
     /**
+     * Maximum time interval in which logs are searched.
+     */
+    private static final LogsQueryTimeInterval QUERY_INTERVAL = new LogsQueryTimeInterval(Duration.ofDays(90));
+
+    /**
      * Constructs a new {@code AzureServiceImpl}.
      * <p>
      * Initializes the asynchronous Azure logs client using default Azure credentials.
@@ -44,7 +53,7 @@ public class AzureServiceImpl implements AzureService {
      *
      * @param workspaceId the Azure Log Analytics workspace identifier, injected via application properties
      */
-    public AzureServiceImpl(@Value("${azure.monitor.workspace-id:3aa19e25-43a5-4694-97be-c5908d5385f1}") String workspaceId) {
+    public AzureServiceImpl(@Value("${azure.monitor.workspace-id}") String workspaceId) {
         
         this.workspaceId = workspaceId;
         
@@ -76,67 +85,87 @@ public class AzureServiceImpl implements AzureService {
         long skip = (long) normalizedPage * normalizedSize;
         long takeUntil = skip + normalizedSize;
         
-        String safeMessageId = messageId != null ? escapeKqlString(messageId) : "";
-        String safeEntityId = entityId != null ? escapeKqlString(entityId) : "";
-        
-        if (safeMessageId.isBlank() || safeEntityId.isBlank()) {
-            return Mono.just(LogsResponseDTO.builder().content(List.of()).build());
+        if (messageId == null || messageId.isBlank() || entityId == null || entityId.isBlank()) {
+            return Mono.just(LogsResponseDTO.builder()
+                                            .content(List.of())
+                                            .page(normalizedPage)
+                                            .size(normalizedSize)
+                                            .totalElements(0)
+                                            .totalPages(0)
+                                            .build());
         }
 
-        StringBuilder kqlBuilder = new StringBuilder();
+        String safeMessageId = escapeKqlString(messageId);
+        String safeEntityId =  escapeKqlString(entityId);
 
-        kqlBuilder.append("let targetOpId = toscalar( ");
-        kqlBuilder.append("  AppTraces ");
-        kqlBuilder.append(String.format("  | where Message contains '[MESSAGE-CORE][SEND] Received message: %s' ", safeMessageId));
-        kqlBuilder.append("  | project OperationId ");
-        kqlBuilder.append("  | take 1 ");
-        kqlBuilder.append("); ");
+        String baseQuery = buildBaseQuery(safeMessageId, safeEntityId);
 
-        kqlBuilder.append("AppTraces ");
+        String dataQuery = baseQuery
+                + " | project TimeGenerated, Message, SeverityLevel, OperationId, AppRoleName "
+                + " | order by TimeGenerated asc, OperationId asc "
+                + " | serialize "
+                + " | extend rn = row_number() "
 
-        kqlBuilder.append("| where OperationId == targetOpId ");
-        kqlBuilder.append(String.format(" or (Message contains '[MESSAGE-CORE-CONSUMER-SERVICE]' and Message contains '%s') ", safeMessageId));
-        kqlBuilder.append(String.format(" or (Message contains '[MESSAGE-CORE-PRODUCER]' and Message contains '%s') ", safeMessageId));
-        kqlBuilder.append(String.format(" or (Message contains '[MESSAGE-CORE-PRODUCER-SERVICE]' and Message contains '%s') ", safeMessageId));
-
-        
-        kqlBuilder.append(String.format(" or (Message contains '[MESSAGE-SERVICE]' and Message contains '%s' and Message contains '%s') ", safeMessageId, safeEntityId));
-        kqlBuilder.append(String.format(" or (Message contains '[NOTIFY-SERVICE]' and Message contains '%s' and Message contains '%s') ", safeMessageId, safeEntityId));
-
-        String baseQuery = kqlBuilder.toString();
-
-        String dataQuery = baseQuery +
-                " | project TimeGenerated, Message, SeverityLevel, OperationId, AppRoleName " +
-                " | order by TimeGenerated asc " +
-                " | extend rn = row_number() " +
-                String.format(" | where rn > %d and rn <= %d ", skip, takeUntil) +
-                " | project-away rn";
+                + String.format( " | where rn > %d and rn <= %d ", skip, takeUntil)
+                
+                + " | project-away rn";
 
         String countQuery = baseQuery + " | count";
 
-        Mono<LogsQueryResult> dataMono = logsQueryClient.queryWorkspace(workspaceId, dataQuery, null);
-        Mono<LogsQueryResult> countMono = logsQueryClient.queryWorkspace(workspaceId, countQuery, null);
+        LogsBatchQuery batchQuery = new LogsBatchQuery();
 
-        return Mono.zip(dataMono, countMono)
-                .map(tuple -> {
-                    LogsQueryResult dataResult = tuple.getT1();
-                    LogsQueryResult countResult = tuple.getT2();
+        String dataQueryId = batchQuery.addWorkspaceQuery(workspaceId, dataQuery, QUERY_INTERVAL);
+
+        String countQueryId = batchQuery.addWorkspaceQuery(workspaceId, countQuery, QUERY_INTERVAL);
+
+        return logsQueryClient.queryBatch(batchQuery)
+                .map(batchResult -> {
+                    LogsBatchQueryResult dataResult = batchResult.getResult(dataQueryId);
+                    LogsBatchQueryResult countResult = batchResult.getResult(countQueryId);
 
                     List<LogsDTO> mappedLogs = extractLogs(dataResult);
                     long totalElements = extractCount(countResult);
-                    int totalPages = (int) Math.ceil((double) totalElements / normalizedSize
-);
+                    int totalPages = (int) Math.ceil((double)totalElements / normalizedSize);
 
                     return LogsResponseDTO.builder()
                             .content(mappedLogs)
-                            .page(page)
-                            .size(size)
+                            .page(normalizedPage)
+                            .size(normalizedSize)
                             .totalElements(totalElements)
                             .totalPages(totalPages)
                             .build();
                 })
-                .doOnError(error -> log.error( "Error querying Azure Monitor logs. entityId={}, messageId={}", entityId, messageId, error)
-            );
+                .doOnError(error ->
+                        log.error("Error querying Azure Monitor logs. entityId={}, messageId={}", entityId, messageId, error));
+
+    }
+
+    /**
+     * Builds the common KQL query used by both the data and count queries.
+     *
+     * @param safeMessageId escaped message identifier
+     * @param safeEntityId escaped entity identifier
+     * @return base KQL query
+     */
+    private String buildBaseQuery(String safeMessageId, String safeEntityId) {
+
+        return """
+                let targetOpId = toscalar(
+                    AppTraces
+                    | where Message contains '[MESSAGE-CORE][SEND] Received message: %s'
+                    | where isnotempty(OperationId)
+                    | top 1 by TimeGenerated asc
+                    | project OperationId
+                );
+                AppTraces
+                | where OperationId == targetOpId
+                    or ( Message contains '[MESSAGE-CORE-CONSUMER-SERVICE]' and Message contains '%s')
+                    or ( Message contains '[MESSAGE-CORE-PRODUCER]'and Message contains '%s')
+                    or ( Message contains '[MESSAGE-CORE-PRODUCER-SERVICE]'and Message contains '%s')
+                    or ( Message contains '[MESSAGE-SERVICE]'and Message contains '%s'and Message contains '%s')
+                    or ( Message contains '[NOTIFY-SERVICE]'and Message contains '%s'and Message contains '%s')
+                """
+                    .formatted(safeMessageId, safeMessageId, safeMessageId, safeMessageId, safeMessageId, safeEntityId,safeMessageId, safeEntityId);
     }
 
     /**
@@ -161,7 +190,7 @@ public class AzureServiceImpl implements AzureService {
                     
                     row.getColumnValue("TimeGenerated").ifPresent(cell -> itemBuilder.timestamp(cell.getValueAsString()));
                     row.getColumnValue("Message").ifPresent(cell -> itemBuilder.message(cell.getValueAsString()));
-                    row.getColumnValue("OperationId").ifPresent(cell -> itemBuilder.traceId(cell.getValueAsString()));
+                    row.getColumnValue("AppRoleName").ifPresent(cell -> itemBuilder.appName(cell.getValueAsString()));
                         
                     row.getColumnValue("SeverityLevel").ifPresent(cell -> {
                         String severityStr = cell.getValueAsString();
@@ -203,6 +232,7 @@ public class AzureServiceImpl implements AzureService {
         return 0L;
     }
 
+    
     private String escapeKqlString(String value) {
         return value
                 .replace("\\", "\\\\")

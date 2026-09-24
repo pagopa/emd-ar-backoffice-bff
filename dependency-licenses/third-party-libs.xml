@@ -51,8 +51,8 @@
 <td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
 </tr>
 <tr>
-<td>com.azure:azure-monitor-query</td>
-<td>1.5.9</td>
+<td><a href='https://github.com/Azure/azure-sdk-for-java'>com.azure:azure-monitor-query-logs</a></td>
+<td>1.0.6</td>
 <td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
 </tr>
 <tr>

@@ -133,4 +133,4 @@ auth:
 
 azure:
   monitor:
-    workspace-id: ${AZURE_MONITOR_WORKSPACE_ID}    workspace-id: "\${AZURE_MONITOR_WORKSPACE_ID}"
+    workspace-id: "\${AZURE_MONITOR_WORKSPACE_ID}"

@@ -54,6 +54,7 @@ val openApiToolsVersion = "0.2.10"
 val micrometerVersion = "1.7.0"
 val httpClientVersion = "5.6"
 val httpCoreVersion = "5.4.1"
+val azureSdkVersion = "1.3.8"
 
 // fix cve
 val jackson2CoreVersion = "2.22.0"
@@ -86,6 +87,10 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-validation")
   implementation("org.codehaus.janino:janino:$janinoVersion")
 
+  // Azure
+  implementation(platform("com.azure:azure-sdk-bom:1.3.8"))
+  implementation("com.azure:azure-identity")
+  implementation("com.azure:azure-monitor-query-logs")
 
 
   // CVE fix

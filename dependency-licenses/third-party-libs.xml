@@ -31,6 +31,41 @@
 <td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
 </tr>
 <tr>
+<td><a href='https://github.com/Azure/azure-sdk-for-java'>com.azure:azure-core</a></td>
+<td>1.58.1</td>
+<td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/Azure/azure-sdk-for-java'>com.azure:azure-core-http-netty</a></td>
+<td>1.16.5</td>
+<td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/Azure/azure-sdk-for-java'>com.azure:azure-identity</a></td>
+<td>1.18.4</td>
+<td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/Azure/azure-sdk-for-java'>com.azure:azure-json</a></td>
+<td>1.5.1</td>
+<td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/Azure/azure-sdk-for-java'>com.azure:azure-monitor-query-logs</a></td>
+<td>1.0.6</td>
+<td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/azure/azure-sdk-for-java'>com.azure:azure-sdk-bom</a></td>
+<td>1.3.8</td>
+<td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/Azure/azure-sdk-for-java'>com.azure:azure-xml</a></td>
+<td>1.2.1</td>
+<td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
+</tr>
+<tr>
 <td><a href='https://github.com/FasterXML/java-classmate'>com.fasterxml:classmate</a></td>
 <td>1.7.3</td>
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
@@ -94,6 +129,16 @@
 <td><a href='https://developers.google.com/protocol-buffers/'>com.google.protobuf:protobuf-java</a></td>
 <td>4.34.2</td>
 <td><a href='https://opensource.org/licenses/BSD-3-Clause'>BSD-3-Clause</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/AzureAD/microsoft-authentication-library-for-java'>com.microsoft.azure:msal4j</a></td>
+<td>1.23.1</td>
+<td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/AzureAD/microsoft-authentication-library-for-java'>com.microsoft.azure:msal4j-persistence-extension</a></td>
+<td>1.3.0</td>
+<td><a href='https://opensource.org/licenses/mit'>MIT</a></td>
 </tr>
 <tr>
 <td><a href='https://square.github.io/okhttp/'>com.squareup.okhttp3:okhttp</a></td>
@@ -171,6 +216,11 @@
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
 <tr>
+<td><a href='https://netty.io/'>io.netty:netty-codec</a></td>
+<td>4.2.15.Final</td>
+<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
+</tr>
+<tr>
 <td><a href='https://netty.io/'>io.netty:netty-codec-base</a></td>
 <td>4.2.15.Final</td>
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
@@ -206,7 +256,17 @@
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
 <tr>
+<td><a href='https://netty.io/'>io.netty:netty-codec-marshalling</a></td>
+<td>4.2.15.Final</td>
+<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
+</tr>
+<tr>
 <td><a href='https://netty.io/'>io.netty:netty-codec-native-quic</a></td>
+<td>4.2.15.Final</td>
+<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
+</tr>
+<tr>
+<td><a href='https://netty.io/'>io.netty:netty-codec-protobuf</a></td>
 <td>4.2.15.Final</td>
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
@@ -251,6 +311,16 @@
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
 <tr>
+<td><a href='https://netty.io/'>io.netty:netty-tcnative-boringssl-static</a></td>
+<td>2.0.77.Final</td>
+<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
+</tr>
+<tr>
+<td><a href='https://netty.io/'>io.netty:netty-tcnative-classes</a></td>
+<td>2.0.77.Final</td>
+<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
+</tr>
+<tr>
 <td><a href='https://netty.io/'>io.netty:netty-transport</a></td>
 <td>4.2.15.Final</td>
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
@@ -261,7 +331,17 @@
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
 <tr>
+<td><a href='https://netty.io/'>io.netty:netty-transport-classes-kqueue</a></td>
+<td>4.2.15.Final</td>
+<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
+</tr>
+<tr>
 <td><a href='https://netty.io/'>io.netty:netty-transport-native-epoll</a></td>
+<td>4.2.15.Final</td>
+<td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
+</tr>
+<tr>
+<td><a href='https://netty.io/'>io.netty:netty-transport-native-kqueue</a></td>
 <td>4.2.15.Final</td>
 <td><a href='https://www.apache.org/licenses/LICENSE-2.0'>Apache-2.0</a></td>
 </tr>
@@ -429,6 +509,16 @@
 <td><a href='https://www.eclipse.org'>jakarta.xml.bind:jakarta.xml.bind-api</a></td>
 <td>4.0.5</td>
 <td><a href='https://openjdk.java.net/legal/gplv2+ce.html'>GPL-2.0-only WITH Classpath-exception-2.0</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/java-native-access/jna'>net.java.dev.jna:jna</a></td>
+<td>5.17.0</td>
+<td><a href='https://www.gnu.org/licenses/lgpl-2.1'>LGPL-2.1-only</a></td>
+</tr>
+<tr>
+<td><a href='https://github.com/java-native-access/jna'>net.java.dev.jna:jna-platform</a></td>
+<td>5.17.0</td>
+<td><a href='https://www.gnu.org/licenses/lgpl-2.1'>LGPL-2.1-only</a></td>
 </tr>
 <tr>
 <td><a href='https://commons.apache.org/proper/commons-lang/'>org.apache.commons:commons-lang3</a></td>

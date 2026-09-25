@@ -283,7 +283,7 @@ public class MessageCoreControllerV1Test {
                 .totalPages(1)
                 .build();
 
-        when(azureService.fetchLogsFromAzure(entityId, messageId, page, size))
+        when(azureService.fetchAllLogsFromAzure(entityId, messageId, page, size))
                 .thenReturn(Mono.just(response));
 
         webTestClient.get()
@@ -302,7 +302,7 @@ public class MessageCoreControllerV1Test {
                 .jsonPath("$.content[0].message").isEqualTo("Test log message")
                 .jsonPath("$.content[0].level").isEqualTo("INFO");
 
-        verify(azureService, times(1)).fetchLogsFromAzure(entityId, messageId, page, size);
+        verify(azureService, times(1)).fetchAllLogsFromAzure(entityId, messageId, page, size);
     }
 
     /**
@@ -323,7 +323,7 @@ public class MessageCoreControllerV1Test {
                 .build();
 
         // Ci aspettiamo che il controller chiami il service con i default 0 e 10
-        when(azureService.fetchLogsFromAzure(entityId, messageId, 0, 10))
+        when(azureService.fetchAllLogsFromAzure(entityId, messageId, 0, 10))
                 .thenReturn(Mono.just(response));
 
         webTestClient.get()
@@ -337,7 +337,7 @@ public class MessageCoreControllerV1Test {
                 .jsonPath("$.totalElements").isEqualTo(0)
                 .jsonPath("$.content").isEmpty();
 
-        verify(azureService, times(1)).fetchLogsFromAzure(entityId, messageId, 0, 10);
+        verify(azureService, times(1)).fetchAllLogsFromAzure(entityId, messageId, 0, 10);
     }
 
     /**
@@ -349,7 +349,7 @@ public class MessageCoreControllerV1Test {
         String entityId = "ENT-123";
         String messageId = "MSG-456";
 
-        when(azureService.fetchLogsFromAzure(entityId, messageId, 0, 10))
+        when(azureService.fetchAllLogsFromAzure(entityId, messageId, 0, 10))
                 .thenReturn(Mono.error(new ExternalServiceException("AZURE_SERVICE", "fetchLogsFromAzure", "Timeout contacting Azure Monitor")));
 
         webTestClient.get()
@@ -357,6 +357,6 @@ public class MessageCoreControllerV1Test {
                 .exchange()
                 .expectStatus().is5xxServerError();
 
-        verify(azureService, times(1)).fetchLogsFromAzure(entityId, messageId, 0, 10);
+        verify(azureService, times(1)).fetchAllLogsFromAzure(entityId, messageId, 0, 10);
     }
 }

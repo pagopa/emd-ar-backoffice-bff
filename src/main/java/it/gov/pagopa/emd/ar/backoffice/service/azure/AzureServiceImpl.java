@@ -64,7 +64,7 @@ public class AzureServiceImpl implements AzureService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<LogsResponseDTO> fetchLogsFromAzure(String entityId, String messageId, int page, int size) {
+    public Mono<LogsResponseDTO> fetchAllLogsFromAzure(String entityId, String messageId, int page, int size) {
         log.info("[AR-BFF][AZURE_SEARCH] Searching messages — entityId {}, messageId={}", entityId, messageId);
 
         int normalizedPage = page < 0 ? DEFAULT_PAGE : page;
@@ -85,7 +85,7 @@ public class AzureServiceImpl implements AzureService {
         String safeMessageId = escapeKqlString(messageId);
         String safeEntityId =  escapeKqlString(entityId);
 
-        String baseQuery = buildBaseQuery(safeMessageId, safeEntityId);
+        String baseQuery = buildFetchAllBaseQuery(safeMessageId, safeEntityId);
 
         String dataQuery = baseQuery
                 + " | project TimeGenerated, Message, SeverityLevel, OperationId, AppRoleName "
@@ -131,25 +131,30 @@ public class AzureServiceImpl implements AzureService {
      * @param safeEntityId escaped entity identifier
      * @return base KQL query
      */
-    private String buildBaseQuery(String safeMessageId, String safeEntityId) {
+    private String buildFetchAllBaseQuery(String safeMessageId, String safeEntityId) {
 
         return """
+                let targetMessageId = '%s';
+                let targetEntityId = '%s';
                 let targetOpId = toscalar(
                     AppTraces
-                    | where Message contains_cs '[MESSAGE-CORE][SEND] Received message: %s'
-                    | where isnotempty(OperationId)
-                    | top 1 by TimeGenerated asc
+                    | where Message has '[MESSAGE-CORE][SEND] Received message:' and Message has targetMessageId
                     | project OperationId
+                    | take 1
                 );
                 AppTraces
                 | where OperationId == targetOpId
-                    or ( Message contains_cs '[MESSAGE-CORE-CONSUMER-SERVICE]' and Message contains_cs '%s')
-                    or ( Message contains_cs '[MESSAGE-CORE-PRODUCER]' and Message contains_cs '%s')
-                    or ( Message contains_cs '[MESSAGE-CORE-PRODUCER-SERVICE]' and Message contains_cs '%s')
-                    or ( Message contains_cs '[MESSAGE-SERVICE]' and Message contains_cs '%s' and Message contains_cs '%s')
-                    or ( Message contains_cs '[NOTIFY-SERVICE]' and Message contains_cs '%s' and Message contains_cs '%s')
+                    or (Message has '[MESSAGE-CORE-CONSUMER-SERVICE]' and Message has targetMessageId)
+                    or (Message has '[MESSAGE-SERVICE][SEND-NOTIFICATIONS]' and Message has targetMessageId)
+                    or (Message has '[MESSAGE-SERVICE][HANDLE-ERROR]' and Message has targetMessageId)
+                    or (Message has '[MESSAGE-SERVICE][ENQUEUE-WITH-RETRY]' and Message has targetMessageId)
+                    or (Message has '[MESSAGE-SERVICE]' and Message has targetMessageId and Message has targetEntityId)
+                    or (Message has '[MESSAGE-CORE-PRODUCER]' and Message has targetMessageId)
+                    or (Message has '[MESSAGE-CORE-PRODUCER-SERVICE]' and Message has targetMessageId)
+                    or (Message has '[NOTIFY-SERVICE]' and Message has targetMessageId and Message has targetEntityId)
+                    or (Message has '[NOTIFY-ERROR-PRODUCER-SERVICE][ENQUEUE-NOTIFY]' and Message has targetMessageId and Message has targetEntityId)
                 """
-                    .formatted(safeMessageId, safeMessageId, safeMessageId, safeMessageId, safeMessageId, safeEntityId,safeMessageId, safeEntityId);
+                    .formatted(safeMessageId, safeEntityId);
     }
 
     /**

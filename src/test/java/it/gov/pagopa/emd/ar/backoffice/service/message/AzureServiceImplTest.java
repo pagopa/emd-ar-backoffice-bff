@@ -45,20 +45,20 @@ public class AzureServiceImplTest {
         ReflectionTestUtils.setField(azureService, "logsQueryClient", logsQueryClientMock);
     }
 
-    // ── fetchLogsFromAzure ────────────────────────────────────────────────────────
+    // ── fetchAllLogsFromAzure ────────────────────────────────────────────────────────
 
     /**
      * Test controllo difensivo: Input vuoti o null.
      * Il metodo deve ritornare un DTO vuoto senza chiamare Azure.
      */
     @Test
-    void fetchLogsFromAzure_InvalidInputs_ReturnsEmptyDtoAndSkipsAzureCall() {
+    void fetchAllLogsFromAzure_InvalidInputs_ReturnsEmptyDtoAndSkipsAzureCall() {
         String entityId = "   ";
         String messageId = null;
         int page = 0;
         int size = 10;
 
-        StepVerifier.create(azureService.fetchLogsFromAzure(entityId, messageId, page, size))
+        StepVerifier.create(azureService.fetchAllLogsFromAzure(entityId, messageId, page, size))
                 .assertNext(result -> {
                     assertTrue(result.getContent().isEmpty());
                     assertEquals(0, result.getTotalElements());
@@ -73,7 +73,7 @@ public class AzureServiceImplTest {
      * Nessun log trovato su Azure (tabelle vuote all'interno del batch).
      */
     @Test
-    void fetchLogsFromAzure_NoDataFound_ReturnsEmptyDto() {
+    void fetchAllLogsFromAzure_NoDataFound_ReturnsEmptyDto() {
         String entityId = "ENT-123";
         String messageId = "MSG-456";
 
@@ -85,7 +85,7 @@ public class AzureServiceImplTest {
         when(logsQueryClientMock.queryBatch(any(LogsBatchQuery.class)))
                 .thenReturn(Mono.just(batchCollectionMock));
 
-        StepVerifier.create(azureService.fetchLogsFromAzure(entityId, messageId, 0, 10))
+        StepVerifier.create(azureService.fetchAllLogsFromAzure(entityId, messageId, 0, 10))
                 .assertNext(result -> {
                     assertTrue(result.getContent().isEmpty());
                     assertEquals(0, result.getTotalElements());
@@ -101,7 +101,7 @@ public class AzureServiceImplTest {
      * appName e conversione Severity.
      */
     @Test
-    void fetchLogsFromAzure_DataFound_MapsLogsSuccessfully() {
+    void fetchAllLogsFromAzure_DataFound_MapsLogsSuccessfully() {
         String entityId = "ENT-123";
         String messageId = "MSG-456";
         int page = 0;
@@ -126,7 +126,7 @@ public class AzureServiceImplTest {
         when(logsQueryClientMock.queryBatch(any(LogsBatchQuery.class)))
                 .thenReturn(Mono.just(batchCollectionMock));
                 
-        StepVerifier.create(azureService.fetchLogsFromAzure(entityId, messageId, page, size))
+        StepVerifier.create(azureService.fetchAllLogsFromAzure(entityId, messageId, page, size))
                 .assertNext(result -> {
                     // Verifica Paginazione
                     assertEquals(0, result.getPage());
@@ -148,7 +148,7 @@ public class AzureServiceImplTest {
      * Errore di rete / Timeout dal client Azure.
      */
     @Test
-    void fetchLogsFromAzure_AzureClientError_PropagatesError() {
+    void fetchAllLogsFromAzure_AzureClientError_PropagatesError() {
         String entityId = "ENT-123";
         String messageId = "MSG-456";
 
@@ -157,7 +157,7 @@ public class AzureServiceImplTest {
                 .thenReturn(Mono.error(new RuntimeException("Azure Monitor timeout")));
                 
         // Verifichiamo che la catena reattiva termini con un Errore e non con un risultato
-        StepVerifier.create(azureService.fetchLogsFromAzure(entityId, messageId, 0, 10))
+        StepVerifier.create(azureService.fetchAllLogsFromAzure(entityId, messageId, 0, 10))
                 .expectErrorMatches(throwable ->
                         throwable instanceof RuntimeException &&
                         throwable.getMessage().equals("Azure Monitor timeout")

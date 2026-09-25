@@ -20,5 +20,5 @@ public interface AzureService {
      * @param size      the maximum number of log entries per page
      * @return a {@link Mono} emitting a {@link LogsResponseDTO} containing the requested logs and pagination metadata
      */
-    public Mono<LogsResponseDTO> fetchLogsFromAzure(String entityId, String messageId, int page, int size);
+    public Mono<LogsResponseDTO> fetchAllLogsFromAzure(String entityId, String messageId, int page, int size);
 }

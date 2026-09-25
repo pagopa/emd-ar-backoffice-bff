@@ -63,7 +63,7 @@ public class MessageCoreControllerImplV1 implements MessageCoreControllerV1 {
     public Mono<ResponseEntity<LogsResponseDTO>> getAzureLogs(String entityId, String messageId, int page, int size) {
         log.info("[AR-BFF][MESSAGE_LOGS] Fetching Azure Logs for entityId={} and messageId={} (page={}, size={})", 
                 entityId, messageId, page, size);
-        return azureService.fetchLogsFromAzure(entityId, messageId, page, size)
+        return azureService.fetchAllLogsFromAzure(entityId, messageId, page, size)
             .map(ResponseEntity::ok);
     }
 }

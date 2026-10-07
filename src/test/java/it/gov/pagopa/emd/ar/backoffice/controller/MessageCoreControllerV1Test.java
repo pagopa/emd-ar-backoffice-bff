@@ -50,11 +50,11 @@ public class MessageCoreControllerV1Test {
     @Test
     void searchMessages_WithFilters_Returns200WithPagedResult() {
         MessageSearchResponseDTOV1 response = MessageSearchResponseDTOV1.builder()
-                .content(java.util.List.of()) 
-                .page(0)
+                .content(java.util.List.of())
                 .size(10)
-                .totalElements(0)
+                .totalElements(0L)
                 .totalPages(0)
+                .nextCursor("next-page-cursor")
                 .build();
 
         // Mocking del servizio
@@ -65,7 +65,7 @@ public class MessageCoreControllerV1Test {
                 eq("ORG-789"),
                 any(LocalDateTime.class),
                 any(LocalDateTime.class),
-                eq(0),
+                eq("cursor"),
                 eq(10),
                 anyList()))
             .thenReturn(Mono.just(response));
@@ -78,7 +78,7 @@ public class MessageCoreControllerV1Test {
                         .queryParam("originId", "ORG-789")
                         .queryParam("startDate", "2026-10-01T10:00:00")
                         .queryParam("endDate", "2026-10-31T10:00:00")
-                        .queryParam("page", 0)
+                        .queryParam("cursor", "cursor")
                         .queryParam("size", 10)
                         .queryParam("fields", "id", "status")
                         .build())
@@ -86,11 +86,11 @@ public class MessageCoreControllerV1Test {
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
                 .expectBody()
-                .jsonPath("$.page").isEqualTo(0)
                 .jsonPath("$.size").isEqualTo(10)
-                .jsonPath("$.totalElements").isEqualTo(0);
+                .jsonPath("$.totalElements").isEqualTo(0)
+                .jsonPath("$.nextCursor").isEqualTo("next-page-cursor");
         
-        Mockito.verify(messageService).searchMessages(any(), any(), any(), any(), any(), anyInt(), anyInt(), any());
+        Mockito.verify(messageService).searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), any());
     }
 
     /**
@@ -99,11 +99,10 @@ public class MessageCoreControllerV1Test {
     @Test
     void searchMessages_NoFilters_Returns200WithDefaults() {
         MessageSearchResponseDTOV1 response = MessageSearchResponseDTOV1.builder()
-                .page(0)
                 .size(10)
                 .build();
 
-        when(messageService.searchMessages(isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(10), isNull()))
+        when(messageService.searchMessages(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(10), isNull()))
                 .thenReturn(Mono.just(response));
 
         webTestClient.get()
@@ -111,8 +110,8 @@ public class MessageCoreControllerV1Test {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.page").isEqualTo(0)
-                .jsonPath("$.size").isEqualTo(10);
+                .jsonPath("$.size").isEqualTo(10)
+                .jsonPath("$.cursor").doesNotExist();
     }
 
     /**
@@ -120,7 +119,7 @@ public class MessageCoreControllerV1Test {
      */
     @Test
     void searchMessages_ServiceError_Returns502() {
-        when(messageService.searchMessages(any(), any(), any(), any(), any(), anyInt(), anyInt(), any()))
+        when(messageService.searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), any()))
                 .thenReturn(Mono.error(new ExternalServiceException("MESSAGE_SERVICE", "searchMessages", "Upstream error")));
 
         webTestClient.get()

@@ -30,7 +30,7 @@ public interface MessageCoreConnector {
      * @param originId     optional exact-match filter on the origin ID
      * @param startDate    optional start date for message registration period
      * @param endDate      optional end date for message registration period
-     * @param page         zero-based page index (negative values are normalised to 0 upstream)
+     * @param cursor       cursor identifying the last element of the previous page (default {@code 0})
      * @param size         page size (values &lt;= 0 default to 10 upstream; values &gt; 100 are capped at 100)
      * @param fields       optional list of field names to include in each {@code content} element;
      *                     {@code null} or empty means use upstream defaults
@@ -40,7 +40,7 @@ public interface MessageCoreConnector {
      *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException}
      *         on any other upstream error (401/429/500)
      */
-    Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate, int page, int size, List<String> fields);
+    Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields);
 
     /**
      * Retrieves a Message by its {@code entityId} ands {@code messageId}.

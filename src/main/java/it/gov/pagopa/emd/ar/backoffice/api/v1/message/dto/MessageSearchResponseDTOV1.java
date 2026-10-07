@@ -14,17 +14,18 @@ import lombok.NoArgsConstructor;
  * standard pagination metadata (page index, page size, total elements and total
  * pages) reflecting the values normalised/capped by the upstream emd-message-core service.</p>
  */
-@Data 
-@Builder 
-@AllArgsConstructor 
-@NoArgsConstructor 
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class MessageSearchResponseDTOV1 {
 
     /** Current page of Messages. */
     private List<MessageDTOV1> content;
 
-    /** Zero-based page index (normalised by the upstream service). */
-    private int page;
+    /** Identify the last element of the previous page */
+    private String nextCursor;
+    private boolean hasNext;
 
     /** Effective page size (after default / cap applied upstream). */
     private int size;

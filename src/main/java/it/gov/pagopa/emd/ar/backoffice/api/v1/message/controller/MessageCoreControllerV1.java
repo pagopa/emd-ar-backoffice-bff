@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
-import org.springframework.web.bind.annotation.PathVariable;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import reactor.core.publisher.Mono;
 

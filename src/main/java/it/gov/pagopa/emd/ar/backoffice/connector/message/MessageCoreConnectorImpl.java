@@ -100,9 +100,12 @@ public class MessageCoreConnectorImpl implements MessageCoreConnector {
      */
     private URI buildSearchUri(UriBuilder uriBuilder, String messageId, String recipientId, String originId,
                                 LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields) {
-        uriBuilder.path(SEARCH_MESSAGE_PATH)
-                    .queryParam("cursor", cursor)
-                    .queryParam("size", size);
+
+        
+        uriBuilder.path(SEARCH_MESSAGE_PATH).queryParam("size", size);
+        if (cursor != null && !cursor.isBlank()) {
+            uriBuilder.queryParam("cursor", cursor);
+        }
         if (messageId != null && !messageId.isBlank()) {
             uriBuilder.queryParam("messageId", messageId);
         }

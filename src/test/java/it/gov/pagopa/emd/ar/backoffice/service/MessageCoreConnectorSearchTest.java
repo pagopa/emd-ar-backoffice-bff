@@ -72,6 +72,7 @@ class MessageCoreConnectorSearchTest {
                 {
                     "content": [],
                     "nextCursor": "cursor-0",
+                    "hasNext": false,
                     "size": 10,
                     "totalElements": 0,
                     "totalPages": 0
@@ -106,6 +107,7 @@ class MessageCoreConnectorSearchTest {
         String json = """
                 {
                 "content": [],
+                "hasNext": false,
                 "size": 10,
                 "totalElements": 0,
                 "totalPages": 0
@@ -136,6 +138,7 @@ class MessageCoreConnectorSearchTest {
         String json = """
                 {
                 "content": [],
+                "hasNext": false,
                 "size": 10,
                 "totalElements": 0,
                 "totalPages": 0
@@ -165,6 +168,7 @@ class MessageCoreConnectorSearchTest {
                 {
                 "content": [],
                 "nextCursor": "cursor-5",
+                "hasNext": true,
                 "size": 50,
                 "totalElements": 0,
                 "totalPages": 0

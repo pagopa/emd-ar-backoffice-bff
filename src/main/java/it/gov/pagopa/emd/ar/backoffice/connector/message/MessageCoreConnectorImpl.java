@@ -17,16 +17,12 @@ import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldExcept
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TooManyRequestsException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatusCode;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
-import lombok.extern.slf4j.Slf4j;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 
-@Slf4j 
-@Service 
+@Slf4j
+@Service
 public class MessageCoreConnectorImpl implements MessageCoreConnector {
     
     private static final String SEARCH_MESSAGE_PATH     = "/emd/message-core/search";

@@ -25,14 +25,14 @@ public class MessageSearchResponseDTOV1 {
 
     /** Identify the last element of the previous page */
     private String nextCursor;
-    private boolean hasNext;
+    private Boolean hasNext;
 
     /** Effective page size (after default / cap applied upstream). */
-    private int size;
+    private Integer size;
 
     /** Total number of Messages satisfying the search criteria. */
-    private long totalElements;
+    private Long totalElements;
 
     /** Total number of pages. */
-    private int totalPages;
+    private Integer totalPages;
 }

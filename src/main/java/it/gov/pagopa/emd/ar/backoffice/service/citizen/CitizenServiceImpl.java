@@ -2,7 +2,9 @@ package it.gov.pagopa.emd.ar.backoffice.service.citizen;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenSearchItemDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.citizen.CitizenConnector;
+import it.gov.pagopa.emd.ar.backoffice.connector.citizen.dto.CitizenConsentSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.citizen.dto.CitizenSearchResponse;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +12,9 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /** Validates search inputs and delegates the request to the Citizen connector. */
@@ -46,6 +50,17 @@ public class CitizenServiceImpl implements CitizenService {
                 .doOnSuccess(response -> log.info("[AR-BFF][CITIZEN_SEARCH] Search completed (totalElements={}, hasNext={})",
                         response.getTotalElements(), response.isHasNext()))
                 .doOnError(error -> log.error("[AR-BFF][CITIZEN_SEARCH] Search failed: {}",
+                        error.getClass().getSimpleName()));
+    }
+
+    @Override
+    public Mono<CitizenConsentSearchResponseDTOV1> searchCitizenConsents(String fiscalCode) {
+        String normalizedFiscalCode = fiscalCode.toUpperCase(Locale.ROOT);
+        log.info("[AR-BFF][CITIZEN_CONSENT_SEARCH] Search started");
+        return citizenConnector.searchCitizenConsents(normalizedFiscalCode)
+                .map(CitizenServiceImpl::toConsentApiResponse)
+                .doOnSuccess(response -> log.info("[AR-BFF][CITIZEN_CONSENT_SEARCH] Search completed"))
+                .doOnError(error -> log.error("[AR-BFF][CITIZEN_CONSENT_SEARCH] Search failed: {}",
                         error.getClass().getSimpleName()));
     }
 
@@ -95,6 +110,24 @@ public class CitizenServiceImpl implements CitizenService {
                 .totalPages(response.getTotalPages())
                 .nextCursor(response.getNextCursor())
                 .hasNext(response.isHasNext())
+                .build();
+    }
+
+    private static CitizenConsentSearchResponseDTOV1 toConsentApiResponse(CitizenConsentSearchResponse response) {
+        Map<String, CitizenConsentSearchResponseDTOV1.ConsentDTOV1> consents = response.getConsents() == null
+                ? null : new LinkedHashMap<>();
+        if (response.getConsents() != null) {
+            response.getConsents().forEach((tppId, consent) -> consents.put(tppId, consent == null ? null
+                    : CitizenConsentSearchResponseDTOV1.ConsentDTOV1.builder()
+                            .tppState(consent.getTppState())
+                            .tcDate(consent.getTcDate())
+                            .entityId(consent.getEntityId())
+                            .businessName(consent.getBusinessName())
+                            .build()));
+        }
+        return CitizenConsentSearchResponseDTOV1.builder()
+                .fiscalCode(response.getFiscalCode())
+                .consents(consents)
                 .build();
     }
 

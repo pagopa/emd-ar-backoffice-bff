@@ -5,8 +5,11 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseD
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.api.handler.ControllerExceptionHandler;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.LogsDTO;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.LogsResponseDTO;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
+import it.gov.pagopa.emd.ar.backoffice.service.azure.AzureServiceImpl;
 import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +21,7 @@ import reactor.core.publisher.Mono;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Unit tests for {@link MessageCoreControllerImplV1}.
@@ -25,13 +29,15 @@ import java.time.LocalDateTime;
 public class MessageCoreControllerV1Test {
 
     private MessageCoreService messageService;
+    private AzureServiceImpl azureService;
     private WebTestClient webTestClient;
     private Utilities utilities;
 
     @BeforeEach
     void setUp() {
         messageService = Mockito.mock(MessageCoreService.class);
-        MessageCoreControllerImplV1 messageController = new MessageCoreControllerImplV1(messageService);
+        azureService = Mockito.mock(AzureServiceImpl.class);
+        MessageCoreControllerImplV1 messageController = new MessageCoreControllerImplV1(messageService, azureService);
 
         utilities = Mockito.mock(Utilities.class);
         
@@ -247,5 +253,110 @@ public class MessageCoreControllerV1Test {
                 .uri("/emd/backoffice/api/v1/message-core/{entityId}/{messageId}", entityId, messageId)
                 .exchange()
                 .expectStatus().is5xxServerError();
+    }
+
+    // ── getAzureLogs ────────────────────────────────────────────────────────
+
+    /**
+     * GET /emd/backoffice/api/v1/message-core/logs/{entityId}/{messageId}
+     * Happy path con parametri di paginazione custom → 200 OK con i log.
+     */
+    @Test
+    void getAzureLogs_WithPaginationParams_Returns200WithLogs() {
+        String entityId = "ENT-123";
+        String messageId = "MSG-456";
+        int page = 1;
+        int size = 5;
+
+        LogsDTO logEntry = LogsDTO.builder()
+                .timestamp("2026-10-01T10:00:00Z")
+                .message("Test log message")
+                .level("INFO")
+                .appName("emd-message-core")
+                .build();
+
+        LogsResponseDTO response = LogsResponseDTO.builder()
+                .content(List.of(logEntry))
+                .page(page)
+                .size(size)
+                .totalElements(1)
+                .totalPages(1)
+                .build();
+
+        when(azureService.fetchAllLogsFromAzure(entityId, messageId, page, size))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/emd/backoffice/api/v1/message-core/logs/{entityId}/{messageId}")
+                        .queryParam("page", page)
+                        .queryParam("size", size)
+                        .build(entityId, messageId))
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.page").isEqualTo(1)
+                .jsonPath("$.size").isEqualTo(5)
+                .jsonPath("$.totalElements").isEqualTo(1)
+                .jsonPath("$.content[0].message").isEqualTo("Test log message")
+                .jsonPath("$.content[0].level").isEqualTo("INFO");
+
+        verify(azureService, times(1)).fetchAllLogsFromAzure(entityId, messageId, page, size);
+    }
+
+    /**
+     * GET /emd/backoffice/api/v1/message-core/logs/{entityId}/{messageId}
+     * Happy path senza parametri di paginazione → 200 OK con i default (page=0, size=10).
+     */
+    @Test
+    void getAzureLogs_NoPaginationParams_Returns200WithDefaults() {
+        String entityId = "ENT-123";
+        String messageId = "MSG-456";
+
+        LogsResponseDTO response = LogsResponseDTO.builder()
+                .content(List.of()) // Nessun log trovato, ma la chiamata ha successo
+                .page(0)
+                .size(10)
+                .totalElements(0)
+                .totalPages(0)
+                .build();
+
+        // Ci aspettiamo che il controller chiami il service con i default 0 e 10
+        when(azureService.fetchAllLogsFromAzure(entityId, messageId, 0, 10))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/message-core/logs/{entityId}/{messageId}", entityId, messageId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.page").isEqualTo(0)
+                .jsonPath("$.size").isEqualTo(10)
+                .jsonPath("$.totalElements").isEqualTo(0)
+                .jsonPath("$.content").isEmpty();
+
+        verify(azureService, times(1)).fetchAllLogsFromAzure(entityId, messageId, 0, 10);
+    }
+
+    /**
+     * GET /emd/backoffice/api/v1/message-core/logs/{entityId}/{messageId}
+     * Errore dal servizio Azure → 502 Bad Gateway.
+     */
+    @Test
+    void getAzureLogs_ServiceError_Returns5xx() {
+        String entityId = "ENT-123";
+        String messageId = "MSG-456";
+
+        when(azureService.fetchAllLogsFromAzure(entityId, messageId, 0, 10))
+                .thenReturn(Mono.error(new ExternalServiceException("AZURE_SERVICE", "fetchLogsFromAzure", "Timeout contacting Azure Monitor")));
+
+        webTestClient.get()
+                .uri("/emd/backoffice/api/v1/message-core/logs/{entityId}/{messageId}", entityId, messageId)
+                .exchange()
+                .expectStatus().is5xxServerError();
+
+        verify(azureService, times(1)).fetchAllLogsFromAzure(entityId, messageId, 0, 10);
     }
 }

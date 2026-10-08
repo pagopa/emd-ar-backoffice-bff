@@ -1,11 +1,10 @@
-package it.gov.pagopa.emd.ar.backoffice.service;
+package it.gov.pagopa.emd.ar.backoffice.service.message;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageCoreConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
-import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreServiceImpl;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

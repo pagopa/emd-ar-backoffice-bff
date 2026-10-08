@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
-import org.springframework.web.bind.annotation.PathVariable;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.LogsResponseDTO;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import reactor.core.publisher.Mono;
 
@@ -87,4 +87,22 @@ public interface MessageCoreControllerV1 {
     Mono<ResponseEntity<Void>> deleteMessage(
             @PathVariable("entityId") String entityId,
             @PathVariable("messageId") String messageId);
+
+    /**
+     * Retrieves Azure Monitor logs related to a specific Message and Entity.
+     *
+     * <p>Returns HTTP 200 with a paginated {@code LogsResponseDTO} containing the log entries.</p>
+     *
+     * @param entityId the ID of the tpp
+     * @param messageId the ID of the message to retrieve logs for
+     * @param page zero-based page index (default 0)
+     * @param size page size (default 10)
+     * @return {@code Mono<ResponseEntity<LogsResponseDTO>>} with paginated logs
+     */
+    @GetMapping(value = "message-core/logs/{entityId}/{messageId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<LogsResponseDTO>> getAzureLogs(
+            @PathVariable("entityId") String entityId,
+            @PathVariable("messageId") String messageId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size);
 }

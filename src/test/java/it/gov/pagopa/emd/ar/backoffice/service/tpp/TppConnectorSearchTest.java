@@ -1,4 +1,4 @@
-package it.gov.pagopa.emd.ar.backoffice.service;
+package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
 import java.util.List;

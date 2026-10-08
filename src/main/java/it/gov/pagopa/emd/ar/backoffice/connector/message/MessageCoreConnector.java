@@ -30,7 +30,7 @@ public interface MessageCoreConnector {
      * @param originId     optional exact-match filter on the origin ID
      * @param startDate    optional start date for message registration period
      * @param endDate      optional end date for message registration period
-     * @param cursor       cursor identifying the last element of the previous page (default {@code 0})
+     * @param cursor       optional cursor identifying the last element of the previous page
      * @param size         page size (values &lt;= 0 default to 10 upstream; values &gt; 100 are capped at 100)
      * @param fields       optional list of field names to include in each {@code content} element;
      *                     {@code null} or empty means use upstream defaults

@@ -30,7 +30,7 @@ public interface MessageCoreControllerV1 {
      *   <li>{@code messageId} — exact match on the message ID.</li>
      *   <li>{@code recipientId} — exact match on the recipient ID.</li>
      *   <li>{@code originId} — exact match on the origin ID.</li>
-     *   <li>{@code cursor} — cursor identifying the last element of the previous page (default {@code 0}).</li>
+     *   <li>{@code cursor} — optional cursor identifying the last element of the previous page.</li>
      *   <li>{@code size} — page size (default {@code 10}, upstream cap {@code 100}).</li>
      *   <li>{@code fields} — optional multi-value list of field names to include in each
      *       result element. When absent, upstream defaults are used.</li>
@@ -41,7 +41,7 @@ public interface MessageCoreControllerV1 {
      * @param originId     optional exact-match filter on the origin ID
      * @param startDate    optional start date for message registration period
      * @param endDate      optional end date for message registration period
-     * @param cursor       cursor identifying the last element of the previous page
+     * @param cursor       optional cursor identifying the last element of the previous page
      * @param size         page size (default 10)
      * @param fields       optional list of field names to project onto each result element
      * @return {@code Mono<ResponseEntity<MessageSearchResponseDTOV1>>} HTTP 200 with the

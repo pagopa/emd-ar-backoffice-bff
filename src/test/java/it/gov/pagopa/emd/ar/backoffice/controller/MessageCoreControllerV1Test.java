@@ -111,7 +111,7 @@ public class MessageCoreControllerV1Test {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.size").isEqualTo(10)
-                .jsonPath("$.cursor").doesNotExist();
+                .jsonPath("$.nextCursor").doesNotExist();
     }
 
     /**

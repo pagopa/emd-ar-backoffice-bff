@@ -23,8 +23,10 @@ public class MessageSearchResponseDTOV1 {
     /** Current page of Messages. */
     private List<MessageDTOV1> content;
 
-    /** Identify the last element of the previous page */
+    /** Cursor to pass in the next request when another page is available. */
     private String nextCursor;
+
+    /** Whether another page is available. */
     private Boolean hasNext;
 
     /** Effective page size (after default / cap applied upstream). */

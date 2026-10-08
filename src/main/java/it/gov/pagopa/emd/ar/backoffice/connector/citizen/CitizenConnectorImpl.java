@@ -1,8 +1,11 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.citizen;
 
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
+import it.gov.pagopa.emd.ar.backoffice.connector.citizen.dto.CitizenConsentSearchRequest;
+import it.gov.pagopa.emd.ar.backoffice.connector.citizen.dto.CitizenConsentSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.citizen.dto.CitizenSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +26,7 @@ import java.util.Map;
 public class CitizenConnectorImpl implements CitizenConnector {
 
     private static final String SEARCH_PATH = "/emd/citizen/search";
+    private static final String CONSENT_SEARCH_PATH = "/emd/citizen/consent/search";
     private final WebClient webClient;
     private final String baseUrl;
 
@@ -51,6 +55,33 @@ public class CitizenConnectorImpl implements CitizenConnector {
                         error -> new ExternalServiceException(
                                 "CITIZEN_SERVICE", "searchByFiscalCode", "Upstream request failed"))
                 .doOnError(error -> log.warn("[AR-BFF][CITIZEN_SEARCH] Citizen request failed: {}",
+                        error.getClass().getSimpleName()));
+    }
+
+    @Override
+    public Mono<CitizenConsentSearchResponse> searchCitizenConsents(String fiscalCode) {
+        return webClient.post()
+                .uri(CONSENT_SEARCH_PATH)
+                .bodyValue(new CitizenConsentSearchRequest(fiscalCode))
+                .retrieve()
+                .onStatus(status -> status.value() == 400, response ->
+                        response.bodyToMono(String.class)
+                                .then(Mono.error(new ValidationException("Citizen rejected the consent search request."))))
+                .onStatus(status -> status.value() == 404, response ->
+                        response.bodyToMono(String.class)
+                                .then(Mono.error(new ResourceNotFoundException("Citizen", "consent"))))
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .then(Mono.error(new ExternalServiceException(
+                                        "CITIZEN_SERVICE", "searchCitizenConsents", "Upstream request failed"))))
+                .bodyToMono(CitizenConsentSearchResponse.class)
+                .retryWhen(WebClientRetrySpecs.connectFailureOnly())
+                .onErrorMap(error -> !(error instanceof ValidationException)
+                                && !(error instanceof ResourceNotFoundException)
+                                && !(error instanceof ExternalServiceException),
+                        error -> new ExternalServiceException(
+                                "CITIZEN_SERVICE", "searchCitizenConsents", "Upstream request failed"))
+                .doOnError(error -> log.warn("[AR-BFF][CITIZEN_CONSENT_SEARCH] Citizen request failed: {}",
                         error.getClass().getSimpleName()));
     }
 

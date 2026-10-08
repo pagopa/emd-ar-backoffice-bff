@@ -3,10 +3,12 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.controller;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSearchRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSnapshotDTOV1;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -35,6 +37,11 @@ public interface CitizenControllerV1 {
     Mono<ResponseEntity<CitizenConsentSearchResponseDTOV1>> searchCitizenConsents(
             @Valid @RequestBody CitizenConsentSearchRequestDTOV1 request);
 
+    /** Deletes a citizen's consent aggregate and returns the deleted snapshot. */
+    @DeleteMapping(value = "citizen/{fiscalCode}", produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<CitizenConsentSnapshotDTOV1>> deleteCitizenConsents(
+            @PathVariable("fiscalCode") String fiscalCode);
+
     /**
      * Toggles the consent for the specified citizen and TPP; the caller does not provide a desired state.
      *
@@ -46,4 +53,3 @@ public interface CitizenControllerV1 {
             @PathVariable("fiscalCode") String fiscalCode,
             @PathVariable("tppId") String tppId);
 }
-

@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.controller;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSearchRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSnapshotDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.citizen.CitizenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +39,13 @@ public class CitizenControllerImplV1 implements CitizenControllerV1 {
     }
 
     @Override
+    public Mono<ResponseEntity<CitizenConsentSnapshotDTOV1>> deleteCitizenConsents(String fiscalCode) {
+        log.info("[AR-BFF][CITIZEN_CONSENT_DELETE] Request received");
+        return citizenService.deleteCitizenConsents(fiscalCode)
+                .map(ResponseEntity::ok);
+    }
+
+    @Override
     public Mono<ResponseEntity<CitizenConsentSearchResponseDTOV1>> toggleCitizenConsent(
             String fiscalCode, String tppId) {
         log.info("[AR-BFF][CITIZEN_CONSENT_TOGGLE] Request received");
@@ -45,4 +53,3 @@ public class CitizenControllerImplV1 implements CitizenControllerV1 {
                 .map(ResponseEntity::ok);
     }
 }
-

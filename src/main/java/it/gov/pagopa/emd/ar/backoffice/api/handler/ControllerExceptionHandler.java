@@ -234,7 +234,20 @@ public class ControllerExceptionHandler {
     }
 
     static String getRequestDetails(ServerHttpRequest request) {
-        return "%s %s".formatted(request.getMethod(), request.getPath().value());
+        return "%s %s".formatted(request.getMethod(), sanitizeRequestPath(request.getPath().value()));
+    }
+
+    private static String sanitizeRequestPath(String path) {
+        String deleteRoutePrefix = "/emd/backoffice/api/v1/citizen/";
+        int fiscalCodeStart = path.indexOf(deleteRoutePrefix);
+        if (fiscalCodeStart < 0) {
+            return path;
+        }
+        fiscalCodeStart += deleteRoutePrefix.length();
+        if (fiscalCodeStart < path.length() && path.indexOf('/', fiscalCodeStart) < 0) {
+            return path.substring(0, fiscalCodeStart) + "[REDACTED]";
+        }
+        return path;
     }
 
     /**
@@ -251,7 +264,7 @@ public class ControllerExceptionHandler {
 
     /**
      * Maps {@link RecipientNotFoundException} → HTTP 404 Not Found.
-     * Note: This is specific to the whitelist recipient not found, 
+     * Note: This is specific to the whitelist recipient not found,
      * distinct from the TPP resource not found.
      */
     @ExceptionHandler(RecipientNotFoundException.class)
@@ -270,7 +283,7 @@ public class ControllerExceptionHandler {
     @ExceptionHandler(TooManyRequestsException.class)
     public ResponseEntity<ErrorDTO> handleTooManyRequestsException(TooManyRequestsException ex, ServerHttpRequest request) {
         logException(ex, request, HttpStatus.TOO_MANY_REQUESTS);
-        
+
         return ResponseEntity
                 .status(HttpStatus.TOO_MANY_REQUESTS)
                 .contentType(MediaType.APPLICATION_JSON)

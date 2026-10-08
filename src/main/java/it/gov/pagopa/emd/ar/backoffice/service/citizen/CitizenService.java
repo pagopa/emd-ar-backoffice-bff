@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.citizen;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSnapshotDTOV1;
 import reactor.core.publisher.Mono;
 
 /** Application service for Citizen-related operations. */
@@ -15,5 +16,7 @@ public interface CitizenService {
 
     /** Toggles the consent of a citizen for the specified TPP. */
     Mono<CitizenConsentSearchResponseDTOV1> toggleCitizenConsent(String fiscalCode, String tppId);
-}
 
+    /** Deletes the consent aggregate for one complete fiscal code and returns its snapshot. */
+    Mono<CitizenConsentSnapshotDTOV1> deleteCitizenConsents(String fiscalCode);
+}

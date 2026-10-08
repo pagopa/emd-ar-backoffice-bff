@@ -28,13 +28,14 @@ public class CitizenConnectorImpl implements CitizenConnector {
     private static final String SEARCH_PATH = "/emd/citizen/search";
     private static final String CONSENT_SEARCH_PATH = "/emd/citizen/consent/search";
     private static final String TOGGLE_CONSENT_PATH = "/emd/citizen/{fiscalCode}/{tppId}";
+    private static final String CONSENT_DELETE_PATH = "/emd/citizen/{fiscalCode}";
     private final WebClient webClient;
     private final String baseUrl;
 
     public CitizenConnectorImpl(WebClient.Builder webClientBuilder,
                                 @Value("${rest.client.citizen.base-url}") String baseUrl) {
-        this.baseUrl = baseUrl;
-        this.webClient = webClientBuilder.baseUrl(baseUrl).build();
+        this.baseUrl = normalizeBaseUrl(baseUrl);
+        this.webClient = webClientBuilder.baseUrl(this.baseUrl).build();
     }
 
     @Override
@@ -116,6 +117,36 @@ public class CitizenConnectorImpl implements CitizenConnector {
                 .toUri();
     }
 
+    @Override
+    public Mono<CitizenConsentSearchResponse> deleteCitizenConsents(String fiscalCode) {
+        return webClient.delete()
+                .uri(buildConsentDeleteUri(fiscalCode))
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        response.bodyToMono(String.class)
+                                .then(Mono.error(new ResourceNotFoundException("Citizen", "consent"))))
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .then(Mono.error(new ExternalServiceException(
+                                        "CITIZEN_SERVICE", "deleteCitizenConsents", "Upstream request failed"))))
+                .bodyToMono(CitizenConsentSearchResponse.class)
+                .retryWhen(WebClientRetrySpecs.connectFailureOnly())
+                .onErrorMap(error -> !(error instanceof ResourceNotFoundException)
+                                && !(error instanceof ExternalServiceException),
+                        error -> new ExternalServiceException(
+                                "CITIZEN_SERVICE", "deleteCitizenConsents", "Upstream request failed"))
+                .doOnError(error -> log.warn("[AR-BFF][CITIZEN_CONSENT_DELETE] Citizen request failed: {}",
+                        error.getClass().getSimpleName()));
+    }
+
+    private URI buildConsentDeleteUri(String fiscalCode) {
+        return UriComponentsBuilder.fromUriString(baseUrl)
+                .path(CONSENT_DELETE_PATH)
+                .encode(StandardCharsets.UTF_8)
+                .buildAndExpand(Map.of("fiscalCode", fiscalCode))
+                .toUri();
+    }
+
     private URI buildSearchUri(String fiscalCode, String cursor, int size) {
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl)
                 .path(SEARCH_PATH)
@@ -129,6 +160,13 @@ public class CitizenConnectorImpl implements CitizenConnector {
         }
         return builder.encode(StandardCharsets.UTF_8).buildAndExpand(queryValues).toUri();
     }
+
+    private static String normalizeBaseUrl(String baseUrl) {
+        String normalized = baseUrl.replaceAll("/+$", "");
+        String citizenPrefix = "/emd/citizen";
+        if (normalized.endsWith(citizenPrefix)) {
+            normalized = normalized.substring(0, normalized.length() - citizenPrefix.length());
+        }
+        return normalized;
+    }
 }
-
-

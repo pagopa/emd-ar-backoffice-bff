@@ -36,5 +36,13 @@ public class CitizenControllerImplV1 implements CitizenControllerV1 {
         return citizenService.searchCitizenConsents(request.getFiscalCode())
                 .map(ResponseEntity::ok);
     }
+
+    @Override
+    public Mono<ResponseEntity<CitizenConsentSearchResponseDTOV1>> toggleCitizenConsent(
+            String fiscalCode, String tppId) {
+        log.info("[AR-BFF][CITIZEN_CONSENT_TOGGLE] Request received");
+        return citizenService.toggleCitizenConsent(fiscalCode, tppId)
+                .map(ResponseEntity::ok);
+    }
 }
 

@@ -26,6 +26,8 @@ class CitizenConsentConnectorTest {
 
     private static final String BASE_URL = "http://emd-citizen.test";
     private static final String SEARCH_PATH = "/emd/citizen/consent/search";
+    private static final String FISCAL_CODE_PATH_VALUE = "FC /?#";
+    private static final String TPP_ID_PATH_VALUE = "TPP /? value";
     private static final String FISCAL_CODE = "RSSMRA85T10A562S";
 
     @Test
@@ -103,6 +105,76 @@ class CitizenConsentConnectorTest {
                 .expectErrorMatches(error -> error instanceof ResourceNotFoundException
                         && !error.getMessage().contains("private detail"))
                 .verify();
+    }
+
+    @Test
+    void putToggleEncodesBothPathSegmentsAndSendsNoBody() {
+        AtomicReference<String> capturedUrl = new AtomicReference<>();
+        AtomicReference<HttpMethod> capturedMethod = new AtomicReference<>();
+        AtomicReference<String> capturedBody = new AtomicReference<>();
+        CitizenConnectorImpl connector = connectorWith(request -> {
+            capturedUrl.set(request.url().toString());
+            capturedMethod.set(request.method());
+            MockClientHttpRequest mockRequest = new MockClientHttpRequest(request.method(), request.url());
+            return request.writeTo(mockRequest, ExchangeStrategies.withDefaults())
+                    .doOnSuccess(ignored -> capturedBody.set(mockRequest.getBodyAsString().block()))
+                    .thenReturn(jsonResponse(HttpStatus.OK,
+                            "{\"fiscalCode\":\"FC /?#\",\"consents\":{\"TPP /? value\":{"
+                                    + "\"tppState\":false,\"tcDate\":\"2025-10-17T13:18:37.313\"}}}"));
+        });
+
+        StepVerifier.create(connector.toggleCitizenConsent(FISCAL_CODE_PATH_VALUE, TPP_ID_PATH_VALUE))
+                .assertNext(response -> {
+                    assertThat(response.getFiscalCode()).isEqualTo(FISCAL_CODE_PATH_VALUE);
+                    assertThat(response.getConsents()).containsOnlyKeys(TPP_ID_PATH_VALUE);
+                    assertThat(response.getConsents().get(TPP_ID_PATH_VALUE).getTppState()).isFalse();
+                    assertThat(response.getConsents().get(TPP_ID_PATH_VALUE).getTcDate())
+                            .isEqualTo(LocalDateTime.parse("2025-10-17T13:18:37.313"));
+                })
+                .verifyComplete();
+
+        assertThat(capturedMethod.get()).isEqualTo(HttpMethod.PUT);
+        assertThat(capturedUrl.get()).isEqualTo(BASE_URL + "/emd/citizen/FC%20%2F%3F%23/TPP%20%2F%3F%20value");
+        assertThat(capturedBody.get()).isNullOrEmpty();
+    }
+
+    @Test
+    void toggleResponseDeserializesEnabledConsent() {
+        CitizenConnectorImpl connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.OK,
+                "{\"fiscalCode\":\"" + FISCAL_CODE + "\",\"consents\":{\"TPP_XYZ_123\":{"
+                        + "\"tppState\":true,\"tcDate\":\"2025-10-17T13:18:37.313\"}}}")));
+
+        StepVerifier.create(connector.toggleCitizenConsent(FISCAL_CODE, "TPP_XYZ_123"))
+                .assertNext(response -> assertThat(response.getConsents().get("TPP_XYZ_123").getTppState()).isTrue())
+                .verifyComplete();
+    }
+
+    @Test
+    void toggleNotFoundMapsToBffResourceNotFound() {
+        CitizenConnectorImpl connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.NOT_FOUND,
+                "{\"code\":\"NOT_FOUND\",\"message\":\"private detail\"}")));
+
+        StepVerifier.create(connector.toggleCitizenConsent(FISCAL_CODE, "TPP_XYZ_123"))
+                .expectErrorMatches(error -> error instanceof ResourceNotFoundException
+                        && !error.getMessage().contains("private detail"))
+                .verify();
+    }
+
+    @Test
+    void toggleUpstreamServerErrorMapsToSanitizedExternalServiceExceptionWithoutRetry() {
+        AtomicReference<Integer> requestCount = new AtomicReference<>(0);
+        CitizenConnectorImpl connector = connectorWith(request -> {
+            requestCount.updateAndGet(count -> count + 1);
+            return Mono.just(jsonResponse(HttpStatus.SERVICE_UNAVAILABLE,
+                    "{\"code\":\"GENERIC_ERROR\",\"message\":\"private detail\"}"));
+        });
+
+        StepVerifier.create(connector.toggleCitizenConsent(FISCAL_CODE, "TPP_XYZ_123"))
+                .expectErrorMatches(error -> error instanceof ExternalServiceException
+                        && !error.getMessage().contains("private detail"))
+                .verify();
+
+        assertThat(requestCount.get()).isEqualTo(1);
     }
 
     @Test

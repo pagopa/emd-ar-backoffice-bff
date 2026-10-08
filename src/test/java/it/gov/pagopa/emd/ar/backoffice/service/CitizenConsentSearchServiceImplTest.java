@@ -73,6 +73,30 @@ class CitizenConsentSearchServiceImplTest {
     }
 
     @Test
+    void toggleNormalizesFiscalCodeAndReturnsOnlyRequestedTppConsent() {
+        LocalDateTime tcDate = LocalDateTime.parse("2025-10-17T13:18:37.313");
+        when(citizenConnector.toggleCitizenConsent("RSSMRA85T10A562S", "TPP_TARGET"))
+                .thenReturn(Mono.just(CitizenConsentSearchResponse.builder()
+                        .fiscalCode("RSSMRA85T10A562S")
+                        .consents(Map.of(
+                                "TPP_TARGET", CitizenConsentSearchResponse.EnrichedConsent.builder()
+                                        .tppState(false).tcDate(tcDate).build(),
+                                "TPP_OTHER", CitizenConsentSearchResponse.EnrichedConsent.builder()
+                                        .tppState(true).tcDate(tcDate).build()))
+                        .build()));
+
+        StepVerifier.create(service.toggleCitizenConsent("rssmra85t10a562s", "TPP_TARGET"))
+                .assertNext(response -> {
+                    assertThat(response.getFiscalCode()).isEqualTo("RSSMRA85T10A562S");
+                    assertThat(response.getConsents()).containsOnlyKeys("TPP_TARGET");
+                    assertThat(response.getConsents().get("TPP_TARGET").getTppState()).isFalse();
+                    assertThat(response.getConsents().get("TPP_TARGET").getTcDate()).isEqualTo(tcDate);
+                })
+                .verifyComplete();
+        verify(citizenConnector).toggleCitizenConsent("RSSMRA85T10A562S", "TPP_TARGET");
+    }
+
+    @Test
     void propagatesConnectorFailure() {
         ExternalServiceException failure = new ExternalServiceException("CITIZEN_SERVICE", "search", "failed");
         when(citizenConnector.searchCitizenConsents("RSSMRA85T10A562S")).thenReturn(Mono.error(failure));

@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
-import org.springframework.web.bind.annotation.PathVariable;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import reactor.core.publisher.Mono;
 
@@ -31,7 +30,7 @@ public interface MessageCoreControllerV1 {
      *   <li>{@code messageId} — exact match on the message ID.</li>
      *   <li>{@code recipientId} — exact match on the recipient ID.</li>
      *   <li>{@code originId} — exact match on the origin ID.</li>
-     *   <li>{@code page} — zero-based page index (default {@code 0}).</li>
+     *   <li>{@code cursor} — optional cursor identifying the last element of the previous page.</li>
      *   <li>{@code size} — page size (default {@code 10}, upstream cap {@code 100}).</li>
      *   <li>{@code fields} — optional multi-value list of field names to include in each
      *       result element. When absent, upstream defaults are used.</li>
@@ -42,7 +41,7 @@ public interface MessageCoreControllerV1 {
      * @param originId     optional exact-match filter on the origin ID
      * @param startDate    optional start date for message registration period
      * @param endDate      optional end date for message registration period
-     * @param page         zero-based page index (default 0)
+     * @param cursor       optional cursor identifying the last element of the previous page
      * @param size         page size (default 10)
      * @param fields       optional list of field names to project onto each result element
      * @return {@code Mono<ResponseEntity<MessageSearchResponseDTOV1>>} HTTP 200 with the
@@ -56,7 +55,7 @@ public interface MessageCoreControllerV1 {
         @RequestParam(name = "originId", required = false) String originId,
         @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)  LocalDateTime startDate,
         @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)  LocalDateTime endDate,
-        @RequestParam(name = "page", defaultValue = "0") int page,
+        @RequestParam(name = "cursor", required = false) String cursor,
         @RequestParam(name = "size", defaultValue = "10") int size,
         @RequestParam(name = "fields", required = false) List<String> fields);
 

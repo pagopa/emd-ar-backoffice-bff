@@ -27,7 +27,7 @@ public interface MessageCoreService {
      * @param originId     optional exact-match filter on the origin ID
      * @param startDate    optional start date for message registration period
      * @param endDate      optional end date for message registration period
-     * @param page         zero-based page index (default 0)
+     * @param cursor       cursor identifying the last element of the previous page
      * @param size         page size (default 10, max 100)
      * @param fields       optional list of field names to include in each result element
      * @return {@code Mono<MessageSearchResponseDTOV1>} with the paginated result, or an
@@ -36,8 +36,8 @@ public interface MessageCoreService {
      *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException}
      *         (HTTP 502) on any other upstream error
      */
-    Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate, int page, int size, List<String> fields);
-    
+    Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields);
+
     /**
      * Looks up an existing Message by its {@code entityId} and {@code messageId}.
      *

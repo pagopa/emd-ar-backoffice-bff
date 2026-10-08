@@ -71,7 +71,8 @@ class MessageCoreConnectorSearchTest {
         String json = """
                 {
                     "content": [],
-                    "page": 0,
+                    "nextCursor": "cursor-0",
+                    "hasNext": false,
                     "size": 10,
                     "totalElements": 0,
                     "totalPages": 0
@@ -83,7 +84,7 @@ class MessageCoreConnectorSearchTest {
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.searchMessages("MSG-1", "REC-1", "ORG-1", null, null, 0, 10, null))
+        StepVerifier.create(connector.searchMessages("MSG-1", "REC-1", "ORG-1", null, null, "cursor-0", 10, null))
                 .expectNextCount(1)
                 .verifyComplete();
 
@@ -91,7 +92,7 @@ class MessageCoreConnectorSearchTest {
         assertThat(capturedUrl[0]).contains("messageId=MSG-1");
         assertThat(capturedUrl[0]).contains("recipientId=REC-1");
         assertThat(capturedUrl[0]).contains("originId=ORG-1");
-        assertThat(capturedUrl[0]).contains("page=0");
+        assertThat(capturedUrl[0]).contains("cursor=cursor-0");
         assertThat(capturedUrl[0]).contains("size=10");
     }
 
@@ -106,7 +107,7 @@ class MessageCoreConnectorSearchTest {
         String json = """
                 {
                 "content": [],
-                "page": 0,
+                "hasNext": false,
                 "size": 10,
                 "totalElements": 0,
                 "totalPages": 0
@@ -119,7 +120,7 @@ class MessageCoreConnectorSearchTest {
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.searchMessages(null, null, null, start, end, 0, 10, null))
+        StepVerifier.create(connector.searchMessages(null, null, null, start, end, null, 10, null))
                 .expectNextCount(1)
                 .verifyComplete();
 
@@ -137,7 +138,7 @@ class MessageCoreConnectorSearchTest {
         String json = """
                 {
                 "content": [],
-                "page": 0,
+                "hasNext": false,
                 "size": 10,
                 "totalElements": 0,
                 "totalPages": 0
@@ -150,7 +151,7 @@ class MessageCoreConnectorSearchTest {
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, null, 0, 10, fields))
+        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, 10, fields))
                 .expectNextCount(1)
                 .verifyComplete();
 
@@ -166,7 +167,8 @@ class MessageCoreConnectorSearchTest {
         String json = """
                 {
                 "content": [],
-                "page": 5,
+                "nextCursor": "cursor-5",
+                "hasNext": true,
                 "size": 50,
                 "totalElements": 0,
                 "totalPages": 0
@@ -179,14 +181,14 @@ class MessageCoreConnectorSearchTest {
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.searchMessages("", "  ", null, null, null, 5, 50, null))
+        StepVerifier.create(connector.searchMessages("", "  ", null, null, null, "cursor-5", 50, null))
                 .expectNextCount(1)
                 .verifyComplete();
 
         assertThat(capturedUrl[0]).doesNotContain("messageId");
         assertThat(capturedUrl[0]).doesNotContain("recipientId");
         assertThat(capturedUrl[0]).doesNotContain("originId");
-        assertThat(capturedUrl[0]).contains("page=5");
+        assertThat(capturedUrl[0]).contains("cursor=cursor-5");
         assertThat(capturedUrl[0]).contains("size=50");
     }
 
@@ -199,7 +201,7 @@ class MessageCoreConnectorSearchTest {
         MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.BAD_REQUEST, errorBody)));
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, null, 0, 10, List.of("dummy")))
+        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, 10, List.of("dummy")))
                 .expectErrorMatches(ex -> ex instanceof InvalidSearchFieldException &&
                                     ex.getMessage().contains("dummy"))
                 .verify();
@@ -213,7 +215,7 @@ class MessageCoreConnectorSearchTest {
         MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.INTERNAL_SERVER_ERROR, "Server Error")));
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, null, 0, 10, null))
+        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, 10, null))
                 .expectError(ExternalServiceException.class)
                 .verify();
     }
@@ -226,7 +228,7 @@ class MessageCoreConnectorSearchTest {
         MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests")));
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, null, 0, 10, null))
+        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, 10, null))
                 .expectErrorMatches(ex -> ex instanceof TooManyRequestsException &&
                                     ex.getMessage().contains("Too Many Requests"))
                 .verify();

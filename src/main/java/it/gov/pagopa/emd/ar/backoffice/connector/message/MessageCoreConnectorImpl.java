@@ -17,16 +17,12 @@ import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldExcept
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TooManyRequestsException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatusCode;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
-import lombok.extern.slf4j.Slf4j;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 
-@Slf4j 
-@Service 
+@Slf4j
+@Service
 public class MessageCoreConnectorImpl implements MessageCoreConnector {
     
     private static final String SEARCH_MESSAGE_PATH     = "/emd/message-core/search";
@@ -55,11 +51,11 @@ public class MessageCoreConnectorImpl implements MessageCoreConnector {
      * {@link WebClientRetrySpecs#transientNetwork()}.</p>
      */
     @Override
-    public Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate, int page, int size, List<String> fields) {
+    public Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields) {
         String joinedFields = fields != null ? String.join(",", fields) : "";
         int fieldCount     = fields != null ? fields.size() : 0;
         return webClient.get()
-                .uri(uriBuilder -> buildSearchUri(uriBuilder, messageId, recipientId, originId, startDate, endDate, page, size, fields))
+                .uri(uriBuilder -> buildSearchUri(uriBuilder, messageId, recipientId, originId, startDate, endDate, cursor, size, fields))
                 .retrieve()
                 .onStatus(status -> status.value() == 400, response ->
                         response.bodyToMono(String.class)
@@ -103,10 +99,13 @@ public class MessageCoreConnectorImpl implements MessageCoreConnector {
      * complexity of {@link #searchMessages} within the allowed threshold.
      */
     private URI buildSearchUri(UriBuilder uriBuilder, String messageId, String recipientId, String originId,
-                                LocalDateTime startDate, LocalDateTime endDate, int page, int size, List<String> fields) {
-        uriBuilder.path(SEARCH_MESSAGE_PATH)
-                    .queryParam("page", page)
-                    .queryParam("size", size);
+                                LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields) {
+
+        
+        uriBuilder.path(SEARCH_MESSAGE_PATH).queryParam("size", size);
+        if (cursor != null && !cursor.isBlank()) {
+            uriBuilder.queryParam("cursor", cursor);
+        }
         if (messageId != null && !messageId.isBlank()) {
             uriBuilder.queryParam("messageId", messageId);
         }

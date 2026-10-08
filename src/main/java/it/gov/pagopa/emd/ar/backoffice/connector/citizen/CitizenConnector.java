@@ -12,5 +12,8 @@ public interface CitizenConnector {
 
     /** Searches all consents and enriched TPP details for one complete fiscal code. */
     Mono<CitizenConsentSearchResponse> searchCitizenConsents(String fiscalCode);
+
+    /** Toggles the consent for one TPP and returns the updated citizen consent. */
+    Mono<CitizenConsentSearchResponse> toggleCitizenConsent(String fiscalCode, String tppId);
 }
 

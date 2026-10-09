@@ -76,6 +76,86 @@ class CitizenConsentConnectorTest {
     }
 
     @Test
+    void deletesAggregateUsingEncodedFiscalCodePathWithoutBodyAndReturnsSnapshot() {
+        AtomicReference<String> capturedUrl = new AtomicReference<>();
+        AtomicReference<HttpMethod> capturedMethod = new AtomicReference<>();
+        AtomicReference<String> capturedBody = new AtomicReference<>();
+        CitizenConnectorImpl connector = connectorWith(BASE_URL + "/emd/citizen", request -> {
+            capturedUrl.set(request.url().toString());
+            capturedMethod.set(request.method());
+            MockClientHttpRequest mockRequest = new MockClientHttpRequest(request.method(), request.url());
+            return request.writeTo(mockRequest, ExchangeStrategies.withDefaults())
+                    .doOnSuccess(ignored -> capturedBody.set(mockRequest.getBodyAsString().block()))
+                    .thenReturn(jsonResponse(HttpStatus.OK, """
+                            {
+                              "fiscalCode": "RSSMRA85T10A562S",
+                              "consents": {
+                                "TPP_XYZ_123": {
+                                  "tppState": true,
+                                  "tcDate": "2026-10-08T12:30:00"
+                                }
+                              }
+                            }
+                            """));
+        });
+
+        StepVerifier.create(connector.deleteCitizenConsents(FISCAL_CODE))
+                .assertNext(response -> {
+                    assertThat(response.getFiscalCode()).isEqualTo(FISCAL_CODE);
+                    assertThat(response.getConsents()).containsOnlyKeys("TPP_XYZ_123");
+                    var consent = response.getConsents().get("TPP_XYZ_123");
+                    assertThat(consent.getTppState()).isTrue();
+                    assertThat(consent.getTcDate()).isEqualTo(LocalDateTime.parse("2026-10-08T12:30:00"));
+                })
+                .verifyComplete();
+
+        assertThat(capturedMethod.get()).isEqualTo(HttpMethod.DELETE);
+        assertThat(capturedUrl.get()).isEqualTo(BASE_URL + "/emd/citizen/" + FISCAL_CODE);
+        assertThat(capturedBody.get()).isEmpty();
+    }
+
+    @Test
+    void encodesFiscalCodeAsASinglePathSegment() {
+        AtomicReference<String> capturedUrl = new AtomicReference<>();
+        CitizenConnectorImpl connector = connectorWith(request -> {
+            capturedUrl.set(request.url().toASCIIString());
+            return Mono.just(jsonResponse(HttpStatus.OK, "{\"fiscalCode\":\"FC/with space\",\"consents\":{}}"));
+        });
+
+        StepVerifier.create(connector.deleteCitizenConsents("FC/with space"))
+                .expectNextCount(1)
+                .verifyComplete();
+
+        assertThat(capturedUrl.get()).isEqualTo(BASE_URL + "/emd/citizen/FC%2Fwith%20space");
+    }
+
+    @Test
+    void deleteMaps404ByStatusWithoutUsingUpstreamMessage() {
+        CitizenConnectorImpl connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.NOT_FOUND,
+                "{\"code\":\"CITIZEN_NOT_ONBOARDED\",\"message\":\"private upstream detail\"}")));
+
+        StepVerifier.create(connector.deleteCitizenConsents(FISCAL_CODE))
+                .expectErrorMatches(error -> error instanceof ResourceNotFoundException
+                        && !error.getMessage().contains("private upstream detail"))
+                .verify();
+    }
+
+    @Test
+    void deleteMapsOtherUpstreamAndNetworkErrorsToExternalServiceException() {
+        CitizenConnectorImpl upstreamFailure = connectorWith(request -> Mono.just(jsonResponse(
+                HttpStatus.BAD_GATEWAY, "{\"message\":\"private upstream detail\"}")));
+        StepVerifier.create(upstreamFailure.deleteCitizenConsents(FISCAL_CODE))
+                .expectErrorMatches(error -> error instanceof ExternalServiceException
+                        && !error.getMessage().contains("private upstream detail"))
+                .verify();
+
+        CitizenConnectorImpl networkFailure = connectorWith(request -> Mono.error(new IllegalStateException("private network detail")));
+        StepVerifier.create(networkFailure.deleteCitizenConsents(FISCAL_CODE))
+                .expectError(ExternalServiceException.class)
+                .verify();
+    }
+
+    @Test
     void emptyConsentsDeserializeAsAnEmptyMap() {
         CitizenConnectorImpl connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.OK,
                 "{\"fiscalCode\":\"RSSMRA85T10A562S\",\"consents\":{}}")));
@@ -209,6 +289,10 @@ class CitizenConsentConnectorTest {
     }
 
     private static CitizenConnectorImpl connectorWith(ExchangeFunction exchangeFunction) {
-        return new CitizenConnectorImpl(WebClient.builder().exchangeFunction(exchangeFunction), BASE_URL);
+        return connectorWith(BASE_URL, exchangeFunction);
+    }
+
+    private static CitizenConnectorImpl connectorWith(String baseUrl, ExchangeFunction exchangeFunction) {
+        return new CitizenConnectorImpl(WebClient.builder().exchangeFunction(exchangeFunction), baseUrl);
     }
 }

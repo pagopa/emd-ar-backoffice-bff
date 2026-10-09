@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.citizen;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenSearchItemDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSnapshotDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.citizen.CitizenConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.citizen.dto.CitizenConsentSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.citizen.dto.CitizenSearchResponse;
@@ -72,6 +73,20 @@ public class CitizenServiceImpl implements CitizenService {
                 .map(response -> toConsentApiResponse(response, tppId))
                 .doOnSuccess(response -> log.info("[AR-BFF][CITIZEN_CONSENT_TOGGLE] Update completed"))
                 .doOnError(error -> log.error("[AR-BFF][CITIZEN_CONSENT_TOGGLE] Update failed: {}",
+                        error.getClass().getSimpleName()));
+    }
+
+    @Override
+    public Mono<CitizenConsentSnapshotDTOV1> deleteCitizenConsents(String fiscalCode) {
+        if (fiscalCode == null || !COMPLETE_FISCAL_CODE.matcher(fiscalCode).matches()) {
+            return Mono.error(new ValidationException("A complete fiscalCode is required."));
+        }
+        String normalizedFiscalCode = fiscalCode.toUpperCase(Locale.ROOT);
+        log.info("[AR-BFF][CITIZEN_CONSENT_DELETE] Delete started");
+        return citizenConnector.deleteCitizenConsents(normalizedFiscalCode)
+                .map(CitizenServiceImpl::toConsentSnapshot)
+                .doOnSuccess(response -> log.info("[AR-BFF][CITIZEN_CONSENT_DELETE] Delete completed"))
+                .doOnError(error -> log.error("[AR-BFF][CITIZEN_CONSENT_DELETE] Delete failed: {}",
                         error.getClass().getSimpleName()));
     }
 
@@ -151,6 +166,21 @@ public class CitizenServiceImpl implements CitizenService {
                 .build();
     }
 
+    private static CitizenConsentSnapshotDTOV1 toConsentSnapshot(CitizenConsentSearchResponse response) {
+        Map<String, CitizenConsentSnapshotDTOV1.ConsentSnapshotDTOV1> consents = response.getConsents() == null
+                ? null : new LinkedHashMap<>();
+        if (response.getConsents() != null) {
+            response.getConsents().forEach((tppId, consent) -> consents.put(tppId, consent == null ? null
+                    : CitizenConsentSnapshotDTOV1.ConsentSnapshotDTOV1.builder()
+                            .tppState(consent.getTppState())
+                            .tcDate(consent.getTcDate())
+                            .build()));
+        }
+        return CitizenConsentSnapshotDTOV1.builder()
+                .fiscalCode(response.getFiscalCode())
+                .consents(consents)
+                .build();
+    }
+
     private record SearchParameters(String fiscalCode, String cursor, int size) { }
 }
-

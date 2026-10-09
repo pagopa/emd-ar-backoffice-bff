@@ -15,5 +15,7 @@ public interface CitizenConnector {
 
     /** Toggles the consent for one TPP and returns the updated citizen consent. */
     Mono<CitizenConsentSearchResponse> toggleCitizenConsent(String fiscalCode, String tppId);
-}
 
+    /** Deletes the consent aggregate and returns the snapshot supplied by Citizen. */
+    Mono<CitizenConsentSearchResponse> deleteCitizenConsents(String fiscalCode);
+}

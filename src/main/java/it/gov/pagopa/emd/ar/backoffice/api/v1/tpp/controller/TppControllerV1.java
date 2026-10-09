@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOWithoutTokenSectionV1;
@@ -44,7 +45,8 @@ public interface TppControllerV1 {
     @PostMapping(value = "tpp/{entityId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TppResponseDTOV1>> saveTpp(
             @PathVariable("entityId") String entityId,
-            @Valid @RequestBody TppDTOV1 tppDTO);
+            @Valid @RequestBody TppDTOV1 tppDTO,
+            @RequestHeader(name = "Authorization", required = false) String authHeader);
 
     /**
      * Checks whether a TPP with the given {@code entityId} (CF or P.IVA) already exists
@@ -78,7 +80,8 @@ public interface TppControllerV1 {
      * @return {@code Mono<ResponseEntity<Void>>} with HTTP 204 No Content on success
      */
     @DeleteMapping(value = "tpp/{entityId}")
-    Mono<ResponseEntity<Void>> deleteTpp(@PathVariable("entityId") String entityId);
+    Mono<ResponseEntity<Void>> deleteTpp(@PathVariable("entityId") String entityId,
+            @RequestHeader(name = "Authorization", required = false) String authHeader);
 
     /**
      * Retrieves the PagoPA credentials (Keycloak OIDC client ID and secret) for the TPP
@@ -134,7 +137,8 @@ public interface TppControllerV1 {
             produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TokenSectionDTOV1>> updateTppCredentials(
             @PathVariable("entityId") String entityId,
-            @Valid @RequestBody TokenSectionDTOV1 tokenSectionDTO);
+            @Valid @RequestBody TokenSectionDTOV1 tokenSectionDTO,
+            @RequestHeader(name = "Authorization", required = false) String authHeader);
 
     /**
      * Partially updates the TPP identified by {@code entityId} (CF o P.IVA).
@@ -157,7 +161,8 @@ public interface TppControllerV1 {
             produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TppResponseDTOV1>> patchTpp(
             @PathVariable("entityId") String entityId,
-            @Valid @RequestBody TppPatchDTOV1 patchDTO);
+            @Valid @RequestBody TppPatchDTOV1 patchDTO,
+            @RequestHeader(name = "Authorization", required = false) String authHeader);
 
     /**
      * Performs a paginated search for TPPs.
@@ -210,7 +215,8 @@ public interface TppControllerV1 {
             produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TppDTOWithoutTokenSectionV1>> updateTppState(
             @PathVariable("tppId") String tppId,
-            @Valid @RequestBody TppUpdateStateDTOV1 tppUpdateStateDTO);
+            @Valid @RequestBody TppUpdateStateDTOV1 tppUpdateStateDTO,
+            @RequestHeader(name = "Authorization", required = false) String authHeader);
 
     /**
      * Updates the TPP's ability to execute the payment. The TPP is identified by {@code tppId}.
@@ -228,8 +234,9 @@ public interface TppControllerV1 {
             consumes = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<Void>> updateTppIsPaymentEnabled(
             @PathVariable("tppId") String tppId,
-            @Valid @RequestBody TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO);
-            
+            @Valid @RequestBody TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO,
+            @RequestHeader(name = "Authorization", required = false) String authHeader);
+
     /**
      * Adds a recipient ID to the whitelist for a specific TPP identified by {@code tppId}.
      *
@@ -242,7 +249,8 @@ public interface TppControllerV1 {
      * @return {@code Mono<ResponseEntity<Void>>} HTTP 201 Created on success, 404 if TPP not found, 409 if already exists
      */
     @PostMapping(value = "tpp/{tppId}/whitelist", consumes = MediaType.APPLICATION_JSON_VALUE)
-    Mono<ResponseEntity<Void>> insertRecipientIdOnWhitelist(@PathVariable("tppId") String tppId, @Valid @RequestBody RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO);
+    Mono<ResponseEntity<Void>> insertRecipientIdOnWhitelist(@PathVariable("tppId") String tppId, @Valid @RequestBody RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO,
+                                                            @RequestHeader(name = "Authorization", required = false) String authHeader);
 
     /**
      * Removes a recipient ID from the whitelist of a specific TPP identified by {@code tppId}.
@@ -252,7 +260,8 @@ public interface TppControllerV1 {
      * @return {@code Mono<ResponseEntity<Void>>} HTTP 204 No Content on success, 404 if TPP or recipient not found
      */
     @DeleteMapping("tpp/{tppId}/whitelist/{recipientId}")
-    Mono<ResponseEntity<Void>> removeRecipientIdOnWhitelist(@PathVariable("tppId") String tppId, @PathVariable("recipientId") String recipientId);
+    Mono<ResponseEntity<Void>> removeRecipientIdOnWhitelist(@PathVariable("tppId") String tppId, @PathVariable("recipientId") String recipientId,
+                                                            @RequestHeader(name = "Authorization", required = false) String authHeader);
 
     /**
      * Replace the entire whitelist of a specific tpp with the provided list.
@@ -265,7 +274,8 @@ public interface TppControllerV1 {
      * @return {@code Mono<ResponseEntity<Void>>} HTTP 204 No Content on success, 404 if TPP not found
      */
     @PutMapping(value = "tpp/{tppId}/whitelist", consumes = MediaType.APPLICATION_JSON_VALUE)
-    Mono<ResponseEntity<Void>> updateRecipientIdOnWhitelist(@PathVariable("tppId") String tppId, @RequestBody List<String> recipientIds);
+    Mono<ResponseEntity<Void>> updateRecipientIdOnWhitelist(@PathVariable("tppId") String tppId, @RequestBody List<String> recipientIds,
+                                                            @RequestHeader(name = "Authorization", required = false) String authHeader);
     
     /**
      * Tests the connectivity and authentication for a specific TPP.

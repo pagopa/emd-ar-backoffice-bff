@@ -7,7 +7,9 @@ import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -32,5 +34,16 @@ public interface CitizenControllerV1 {
             produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<CitizenConsentSearchResponseDTOV1>> searchCitizenConsents(
             @Valid @RequestBody CitizenConsentSearchRequestDTOV1 request);
+
+    /**
+     * Toggles the consent for the specified citizen and TPP; the caller does not provide a desired state.
+     *
+     * @return HTTP 200 with the updated consent for that TPP, 404 if the citizen or consent is missing,
+     *         or 502 if the Citizen service returns an unexpected error
+     */
+    @PutMapping(value = "citizen/{fiscalCode}/consents/{tppId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<CitizenConsentSearchResponseDTOV1>> toggleCitizenConsent(
+            @PathVariable("fiscalCode") String fiscalCode,
+            @PathVariable("tppId") String tppId);
 }
 

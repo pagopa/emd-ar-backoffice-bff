@@ -64,6 +64,17 @@ public class CitizenServiceImpl implements CitizenService {
                         error.getClass().getSimpleName()));
     }
 
+    @Override
+    public Mono<CitizenConsentSearchResponseDTOV1> toggleCitizenConsent(String fiscalCode, String tppId) {
+        String normalizedFiscalCode = fiscalCode.toUpperCase(Locale.ROOT);
+        log.info("[AR-BFF][CITIZEN_CONSENT_TOGGLE] Update started");
+        return citizenConnector.toggleCitizenConsent(normalizedFiscalCode, tppId)
+                .map(response -> toConsentApiResponse(response, tppId))
+                .doOnSuccess(response -> log.info("[AR-BFF][CITIZEN_CONSENT_TOGGLE] Update completed"))
+                .doOnError(error -> log.error("[AR-BFF][CITIZEN_CONSENT_TOGGLE] Update failed: {}",
+                        error.getClass().getSimpleName()));
+    }
+
     private static SearchParameters validateAndNormalize(String fiscalCode, String cursor, String size) {
         if (fiscalCode == null || fiscalCode.length() < 3 || fiscalCode.length() > 16
                 || !ASCII_ALPHANUMERIC.matcher(fiscalCode).matches()) {
@@ -114,16 +125,25 @@ public class CitizenServiceImpl implements CitizenService {
     }
 
     private static CitizenConsentSearchResponseDTOV1 toConsentApiResponse(CitizenConsentSearchResponse response) {
+        return toConsentApiResponse(response, null);
+    }
+
+    private static CitizenConsentSearchResponseDTOV1 toConsentApiResponse(
+            CitizenConsentSearchResponse response, String requestedTppId) {
         Map<String, CitizenConsentSearchResponseDTOV1.ConsentDTOV1> consents = response.getConsents() == null
                 ? null : new LinkedHashMap<>();
         if (response.getConsents() != null) {
-            response.getConsents().forEach((tppId, consent) -> consents.put(tppId, consent == null ? null
-                    : CitizenConsentSearchResponseDTOV1.ConsentDTOV1.builder()
-                            .tppState(consent.getTppState())
-                            .tcDate(consent.getTcDate())
-                            .entityId(consent.getEntityId())
-                            .businessName(consent.getBusinessName())
-                            .build()));
+            response.getConsents().forEach((tppId, consent) -> {
+                if (requestedTppId == null || requestedTppId.equals(tppId)) {
+                    consents.put(tppId, consent == null ? null
+                            : CitizenConsentSearchResponseDTOV1.ConsentDTOV1.builder()
+                                    .tppState(consent.getTppState())
+                                    .tcDate(consent.getTcDate())
+                                    .entityId(consent.getEntityId())
+                                    .businessName(consent.getBusinessName())
+                                    .build());
+                }
+            });
         }
         return CitizenConsentSearchResponseDTOV1.builder()
                 .fiscalCode(response.getFiscalCode())

@@ -27,6 +27,7 @@ public class CitizenConnectorImpl implements CitizenConnector {
 
     private static final String SEARCH_PATH = "/emd/citizen/search";
     private static final String CONSENT_SEARCH_PATH = "/emd/citizen/consent/search";
+    private static final String TOGGLE_CONSENT_PATH = "/emd/citizen/{fiscalCode}/{tppId}";
     private final WebClient webClient;
     private final String baseUrl;
 
@@ -83,6 +84,36 @@ public class CitizenConnectorImpl implements CitizenConnector {
                                 "CITIZEN_SERVICE", "searchCitizenConsents", "Upstream request failed"))
                 .doOnError(error -> log.warn("[AR-BFF][CITIZEN_CONSENT_SEARCH] Citizen request failed: {}",
                         error.getClass().getSimpleName()));
+    }
+
+    @Override
+    public Mono<CitizenConsentSearchResponse> toggleCitizenConsent(String fiscalCode, String tppId) {
+        return webClient.put()
+                .uri(buildConsentToggleUri(fiscalCode, tppId))
+                .retrieve()
+                .onStatus(status -> status.value() == 404, response ->
+                        response.bodyToMono(String.class)
+                                .then(Mono.error(new ResourceNotFoundException("Citizen consent", "requested TPP"))))
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .then(Mono.error(new ExternalServiceException(
+                                        "CITIZEN_SERVICE", "toggleCitizenConsent", "Upstream request failed"))))
+                .bodyToMono(CitizenConsentSearchResponse.class)
+                // This endpoint toggles state: even a transport retry could apply the toggle twice.
+                .onErrorMap(error -> !(error instanceof ResourceNotFoundException)
+                                && !(error instanceof ExternalServiceException),
+                        error -> new ExternalServiceException(
+                                "CITIZEN_SERVICE", "toggleCitizenConsent", "Upstream request failed"))
+                .doOnError(error -> log.warn("[AR-BFF][CITIZEN_CONSENT_TOGGLE] Citizen request failed: {}",
+                        error.getClass().getSimpleName()));
+    }
+
+    private URI buildConsentToggleUri(String fiscalCode, String tppId) {
+        return UriComponentsBuilder.fromUriString(baseUrl)
+                .path(TOGGLE_CONSENT_PATH)
+                .encode(StandardCharsets.UTF_8)
+                .buildAndExpand(fiscalCode, tppId)
+                .toUri();
     }
 
     private URI buildSearchUri(String fiscalCode, String cursor, int size) {

@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,6 +23,7 @@ public class CitizenConsentSearchResponseDTOV1 {
     @Builder
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class ConsentDTOV1 {
         private Boolean tppState;
         private LocalDateTime tcDate;

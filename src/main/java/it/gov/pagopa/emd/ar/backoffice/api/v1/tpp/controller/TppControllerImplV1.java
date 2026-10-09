@@ -88,7 +88,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
     @Override
     public Mono<ResponseEntity<TppResponseDTOV1>> patchTpp(String entityId, TppPatchDTOV1 patchDTO, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        log.info("[AR-BFF][TPP_PATCH][User:{}] Patching TPP for entityId={} \nRequested by {} - {}", userEmail, entityId);
+        log.info("[AR-BFF][TPP_PATCH][User:{}] Patching TPP for entityId={}", userEmail, entityId);
         return tppService.patchTpp(entityId, patchDTO)
                 .map(ResponseEntity::ok);
     }
@@ -108,7 +108,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
     @Override
     public Mono<ResponseEntity<TppDTOWithoutTokenSectionV1>> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        log.info("[AR-BFF][TPP_STATE_UPDATE][User:{}] Updating TPP state for tppId={} \nRequested by {} - {}", userEmail, tppId);
+        log.info("[AR-BFF][TPP_STATE_UPDATE][User:{}] Updating TPP state for tppId={}", userEmail, tppId);
         return tppService.updateTppState(tppId, tppUpdateStateDTO)
                 .map(ResponseEntity::ok);
     }
@@ -117,7 +117,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
     @Override
     public Mono<ResponseEntity<Void>> updateTppIsPaymentEnabled(String tppId, TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        log.info("[AR-BFF][TPP_PAYMENT_ENABLED_UPDATE][User:{}] Updating TPP payment enabled status for tppId={} \nRequested by {} - {}", userEmail, tppId);
+        log.info("[AR-BFF][TPP_PAYMENT_ENABLED_UPDATE][User:{}] Updating TPP payment enabled status for tppId={}", userEmail, tppId);
         return tppService.updateTppIsPaymentEnabled(tppId, tppUpdateIsPaymentEnabledDTO)
                 .thenReturn(ResponseEntity.noContent().build());
     }

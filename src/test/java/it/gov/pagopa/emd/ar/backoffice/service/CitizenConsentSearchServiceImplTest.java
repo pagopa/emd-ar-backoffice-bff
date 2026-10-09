@@ -105,4 +105,38 @@ class CitizenConsentSearchServiceImplTest {
                 .expectErrorSatisfies(error -> assertThat(error).isSameAs(failure))
                 .verify();
     }
+
+    @Test
+    void deleteNormalizesFiscalCodeAndMapsOnlySnapshotConsentFields() {
+        LocalDateTime tcDate = LocalDateTime.parse("2026-10-08T12:30:00");
+        CitizenConsentSearchResponse.EnrichedConsent consent = CitizenConsentSearchResponse.EnrichedConsent.builder()
+                .tppState(true)
+                .tcDate(tcDate)
+                .entityId("not-returned")
+                .businessName("not-returned")
+                .build();
+        when(citizenConnector.deleteCitizenConsents("RSSMRA85T10A562S"))
+                .thenReturn(Mono.just(CitizenConsentSearchResponse.builder()
+                        .fiscalCode("RSSMRA85T10A562S")
+                        .consents(Map.of("TPP_XYZ_123", consent))
+                        .build()));
+
+        StepVerifier.create(service.deleteCitizenConsents("rssmra85t10a562s"))
+                .assertNext(response -> {
+                    assertThat(response.getFiscalCode()).isEqualTo("RSSMRA85T10A562S");
+                    assertThat(response.getConsents()).containsOnlyKeys("TPP_XYZ_123");
+                    var mapped = response.getConsents().get("TPP_XYZ_123");
+                    assertThat(mapped.getTppState()).isTrue();
+                    assertThat(mapped.getTcDate()).isEqualTo(tcDate);
+                })
+                .verifyComplete();
+        verify(citizenConnector).deleteCitizenConsents("RSSMRA85T10A562S");
+    }
+
+    @Test
+    void rejectsInvalidFiscalCodeBeforeCallingConnector() {
+        StepVerifier.create(service.deleteCitizenConsents("not-a-fiscal-code"))
+                .expectError(jakarta.validation.ValidationException.class)
+                .verify();
+    }
 }

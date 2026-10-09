@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.12.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.11.1...v0.12.0) (2026-10-09)
+
+
+### Features
+
+* [MMC-1176] add get citizen details endpoint ([#64](https://github.com/pagopa/emd-ar-backoffice-bff/issues/64)) ([12e6c32](https://github.com/pagopa/emd-ar-backoffice-bff/commit/12e6c32da999c997f5aa59df5418d2d860d4e631))
+* [MMC-1180] citizen consent update api ([#65](https://github.com/pagopa/emd-ar-backoffice-bff/issues/65)) ([3242e7a](https://github.com/pagopa/emd-ar-backoffice-bff/commit/3242e7acc108f79cee47b8346288c7bded865d54))
+* [MMC-1183] handle consent delete api ([#67](https://github.com/pagopa/emd-ar-backoffice-bff/issues/67)) ([cdf6c17](https://github.com/pagopa/emd-ar-backoffice-bff/commit/cdf6c174d6236624150623b92afaf1ca7370337b))
+
+
+### Bug Fixes
+
+* [MMC-1073] update search message parameter ([#61](https://github.com/pagopa/emd-ar-backoffice-bff/issues/61)) ([baa9d52](https://github.com/pagopa/emd-ar-backoffice-bff/commit/baa9d5270b22b32f6b1ac67029fcdafcb9530d0c))
+* [MMC-1155] emd-citizen search api ([#62](https://github.com/pagopa/emd-ar-backoffice-bff/issues/62)) ([ff00f27](https://github.com/pagopa/emd-ar-backoffice-bff/commit/ff00f27e91892cf1f6e5a29be50503a165b04801))
+
 ## [0.11.1](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.11.0...v0.11.1) (2026-09-16)
 
 

@@ -28,11 +28,11 @@ public class MessageCoreControllerImplV1 implements MessageCoreControllerV1 {
     @Override
     public Mono<ResponseEntity<MessageSearchResponseDTOV1>> searchMessages(
         String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate,
-        int page, int size, List<String> fields) {
-        log.info("[AR-BFF][MESSAGE_SEARCH] Searching messages — messageId={}, recipientId={}, originId={}, startDate={}, endDate={}, page={}, size={}, fields={}",
+        String cursor, int size, List<String> fields) {
+        log.info("[AR-BFF][MESSAGE_SEARCH] Searching messages — messageId={}, recipientId={}, originId={}, startDate={}, endDate={}, cursor={}, size={}, fields={}",
                 messageId != null ? "***" : null, recipientId != null ? "***" : null, originId != null ? "***" : null,
-                startDate, endDate, page, size, fields != null ? fields.size() : 0);
-        return messageService.searchMessages(messageId, recipientId, originId, startDate, endDate, page, size, fields)
+                startDate, endDate, cursor, size, fields != null ? fields.size() : 0);
+        return messageService.searchMessages(messageId, recipientId, originId, startDate, endDate, cursor, size, fields)
                 .map(ResponseEntity::ok);
     }
 

@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
-import it.gov.pagopa.common.utils.Constants;
 import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreService;
@@ -49,9 +48,8 @@ public class MessageCoreControllerImplV1 implements MessageCoreControllerV1 {
     @Override
     public Mono<ResponseEntity<Void>> deleteMessage(String entityId, String messageId, String authHeader){
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        String requestTimestamp = LocalDateTime.now().format(Constants.DATE_FORMAT);
 
-        log.info("[AR-BFF][MESSAGE_DELETE] Deleting Message by entityId={} and messageId={} \nRequested by {} - {}", entityId, messageId, userEmail, requestTimestamp);
+        log.info("[AR-BFF][MESSAGE_DELETE][User:{}] Deleting Message by entityId={} and messageId={}", userEmail, entityId, messageId);
         return messageService.deleteMessage(entityId, messageId)
                 .thenReturn(ResponseEntity.noContent().build());
     }

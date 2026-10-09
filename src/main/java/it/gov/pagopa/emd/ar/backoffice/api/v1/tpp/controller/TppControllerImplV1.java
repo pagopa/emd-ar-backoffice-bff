@@ -8,7 +8,6 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
-import it.gov.pagopa.common.utils.Constants;
 import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
@@ -21,7 +20,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -38,8 +36,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
     @Override
     public Mono<ResponseEntity<TppResponseDTOV1>> saveTpp(String entityId, TppDTOV1 tppDTO, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        String requestTimestamp = LocalDateTime.now().format(Constants.DATE_FORMAT);
-        log.info("[AR-BFF][TPP_SAVE] Saving TPP for entityId={} \nRequested by {} - {}", entityId, userEmail, requestTimestamp);
+        log.info("[AR-BFF][TPP_SAVE][User:{}] Saving TPP for entityId={}", userEmail, entityId);
         return tppService.createTppAndKeycloakClient(entityId, tppDTO)
                 .map(ResponseEntity::ok);
     }
@@ -56,10 +53,9 @@ public class TppControllerImplV1 implements TppControllerV1 {
     @Override
     public Mono<ResponseEntity<Void>> deleteTpp(String entityId, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        String requestTimestamp = LocalDateTime.now().format(Constants.DATE_FORMAT);
-        log.info("[AR-BFF][TPP_DELETE] Deleting TPP and Keycloak client for entityId={} \nRequested by {} - {}", entityId, userEmail, requestTimestamp);
+        log.info("[AR-BFF][TPP_DELETE][User:{}] Deleting TPP and Keycloak client for entityId={}", userEmail, entityId);
         return tppService.deleteTppAndKeycloakClient(entityId)
-                .thenReturn(ResponseEntity.<Void>noContent().build());
+                .thenReturn(ResponseEntity.noContent().build());
     }
 
     /** {@inheritDoc} */
@@ -82,8 +78,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
     @Override
     public Mono<ResponseEntity<TokenSectionDTOV1>> updateTppCredentials(String entityId, TokenSectionDTOV1 tokenSectionDTO, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        String requestTimestamp = LocalDateTime.now().format(Constants.DATE_FORMAT);
-        log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE] Updating token-section credentials for entityId={} \nRequested by {} - {}", entityId, userEmail, requestTimestamp);
+        log.info("[AR-BFF][TPP_CREDENTIALS_UPDATE][User:{}] Updating token-section credentials for entityId={}", userEmail, entityId);
         // Privacy: tokenSectionDTO is NOT logged — may contain client_secret
         return tppService.updateTppCredentials(entityId, tokenSectionDTO)
                 .map(ResponseEntity::ok);
@@ -93,8 +88,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
     @Override
     public Mono<ResponseEntity<TppResponseDTOV1>> patchTpp(String entityId, TppPatchDTOV1 patchDTO, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        String requestTimestamp = LocalDateTime.now().format(Constants.DATE_FORMAT);
-        log.info("[AR-BFF][TPP_PATCH] Patching TPP for entityId={} \nRequested by {} - {}", entityId, userEmail, requestTimestamp);
+        log.info("[AR-BFF][TPP_PATCH][User:{}] Patching TPP for entityId={} \nRequested by {} - {}", userEmail, entityId);
         return tppService.patchTpp(entityId, patchDTO)
                 .map(ResponseEntity::ok);
     }
@@ -114,8 +108,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
     @Override
     public Mono<ResponseEntity<TppDTOWithoutTokenSectionV1>> updateTppState(String tppId, TppUpdateStateDTOV1 tppUpdateStateDTO, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        String requestTimestamp = LocalDateTime.now().format(Constants.DATE_FORMAT);
-        log.info("[AR-BFF][TPP_STATE_UPDATE] Updating TPP state for tppId={} \nRequested by {} - {}", tppId, userEmail, requestTimestamp);
+        log.info("[AR-BFF][TPP_STATE_UPDATE][User:{}] Updating TPP state for tppId={} \nRequested by {} - {}", userEmail, tppId);
         return tppService.updateTppState(tppId, tppUpdateStateDTO)
                 .map(ResponseEntity::ok);
     }
@@ -124,8 +117,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
     @Override
     public Mono<ResponseEntity<Void>> updateTppIsPaymentEnabled(String tppId, TppUpdateIsPaymentEnabledDTOV1 tppUpdateIsPaymentEnabledDTO, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        String requestTimestamp = LocalDateTime.now().format(Constants.DATE_FORMAT);
-        log.info("[AR-BFF][TPP_PAYMENT_ENABLED_UPDATE] Updating TPP payment enabled status for tppId={} \nRequested by {} - {}", tppId, userEmail, requestTimestamp);
+        log.info("[AR-BFF][TPP_PAYMENT_ENABLED_UPDATE][User:{}] Updating TPP payment enabled status for tppId={} \nRequested by {} - {}", userEmail, tppId);
         return tppService.updateTppIsPaymentEnabled(tppId, tppUpdateIsPaymentEnabledDTO)
                 .thenReturn(ResponseEntity.noContent().build());
     }
@@ -136,9 +128,8 @@ public class TppControllerImplV1 implements TppControllerV1 {
     @Override
     public Mono<ResponseEntity<Void>> insertRecipientIdOnWhitelist(String tppId, RecipientIdOnWhitelistDTOV1 recipientIdOnWhitelistDTO, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        String requestTimestamp = LocalDateTime.now().format(Constants.DATE_FORMAT);
-        log.info("[AR-BFF][TPP_WHITELIST_ADD] Adding recipientId={} to whitelist for tppId={} \nRequested by {} - {}",
-                recipientIdOnWhitelistDTO.getRecipientId(), tppId, userEmail, requestTimestamp);
+        log.info("[AR-BFF][TPP_WHITELIST_ADD][User:{}] Adding recipientId={} to whitelist for tppId={}",
+                userEmail, recipientIdOnWhitelistDTO.getRecipientId(), tppId);
         return tppService.insertRecipientIdOnWhitelist(tppId, recipientIdOnWhitelistDTO)
                 .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
     }
@@ -149,8 +140,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
     @Override
     public Mono<ResponseEntity<Void>> removeRecipientIdOnWhitelist(String tppId, String recipientId, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        String requestTimestamp = LocalDateTime.now().format(Constants.DATE_FORMAT);
-        log.info("[AR-BFF][TPP_WHITELIST_DELETE] Removing recipientId={} from whitelist for tppId={} \nRequested by {} - {}", recipientId, tppId, userEmail, requestTimestamp);
+        log.info("[AR-BFF][TPP_WHITELIST_DELETE][User:{}] Removing recipientId={} from whitelist for tppId={}", userEmail, recipientId, tppId);
         return tppService.removeRecipientIdOnWhitelist(tppId, recipientId)
                 .thenReturn(ResponseEntity.noContent().build());
     }
@@ -159,8 +149,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
     @Override
     public Mono<ResponseEntity<Void>> updateRecipientIdOnWhitelist(String tppId, List<String> recipientIds, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        String requestTimestamp = LocalDateTime.now().format(Constants.DATE_FORMAT);
-        log.info("[AR-BFF][TPP_WHITELIST_UPDATE] Updating whitelist for tppId={} \nRequested by {} - {}", tppId, userEmail, requestTimestamp);
+        log.info("[AR-BFF][TPP_WHITELIST_UPDATE][User:{}] Updating whitelist for tppId={}", userEmail, tppId, userEmail);
         return tppService.updateRecipientIdOnWhitelist(tppId, recipientIds)
                 .thenReturn(ResponseEntity.noContent().build());
     }

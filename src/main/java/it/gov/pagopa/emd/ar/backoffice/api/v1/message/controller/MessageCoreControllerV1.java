@@ -81,6 +81,7 @@ public interface MessageCoreControllerV1 {
      * 
      * @param entityId the identifier of the tpp
      * @param messageId the identifier of the message
+     * @param authHeader  (Optional) the authorization token for the request
      * @return an empty {@link Mono} resulting in a 204 No Content response
      */
     @DeleteMapping(value = "message-core/{entityId}/{messageId}")

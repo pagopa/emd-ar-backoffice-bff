@@ -40,6 +40,8 @@ public interface TppControllerV1 {
      * URL-rewrite; the request body must NOT include it.</p>
      *
      * @param entityId the fiscal code (CF) or VAT number (P.IVA) injected by APIM
+     * @param tppDTO     the TPP data to be saved
+     * @param authHeader  (Optional) the authorization token for the request
      * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} The full TPP representation with status OK
      */
     @PostMapping(value = "tpp/{entityId}", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -77,6 +79,7 @@ public interface TppControllerV1 {
      * emd-tpp service and removes the associated Keycloak OIDC client.</p>
      *
      * @param entityId the fiscal code (CF) or VAT number (P.IVA) of the TPP to delete
+     * @param authHeader  (Optional) the authorization token for the request
      * @return {@code Mono<ResponseEntity<Void>>} with HTTP 204 No Content on success
      */
     @DeleteMapping(value = "tpp/{entityId}")
@@ -129,6 +132,7 @@ public interface TppControllerV1 {
      *
      * @param entityId       the fiscal code (CF) or VAT number (P.IVA) injected by APIM
      * @param tokenSectionDTO the new token-section data to persist
+     * @param authHeader  (Optional) the authorization token for the request
      * @return {@code Mono<ResponseEntity<TokenSectionDTOV1>>} HTTP 200 with the persisted token section,
      *         404 if no TPP is found, 502 if emd-tpp is unreachable
      */
@@ -153,6 +157,7 @@ public interface TppControllerV1 {
      *
      * @param entityId the fiscal code (CF) or VAT number (P.IVA) injected by APIM
      * @param patchDTO the partial update payload
+     * @param authHeader  (Optional) the authorization token for the request
      * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} HTTP 200 with the full updated TPP,
      *         404 if no TPP is found, 502 if emd-tpp is unreachable
      */
@@ -207,6 +212,7 @@ public interface TppControllerV1 {
      *
      * @param tppId             the identifier of the TPP
      * @param tppUpdateStateDTO the payload containing the new state (true/false)
+     * @param authHeader  (Optional) the authorization token for the request
      * @return {@code Mono<ResponseEntity<TppDTOWithoutTokenSectionV1>>} HTTP 200 with TPP details,
      *         404 if no TPP exists for that {@code tppId}, 502 if emd-tpp is unreachable
      */
@@ -227,6 +233,7 @@ public interface TppControllerV1 {
      *
      * @param tppId                         the identifier of the TPP
      * @param tppUpdateIsPaymentEnabledDTO  the payload containing the payment enabled flag
+     * @param authHeader  (Optional) the authorization token for the request
      * @return {@code Mono<ResponseEntity<Void>>} HTTP 204 No Content on success,
      *         404 if the TPP is not found, 502 if emd-tpp is unreachable
      */
@@ -246,6 +253,7 @@ public interface TppControllerV1 {
      *
      * @param tppId                    the identifier of the TPP
      * @param recipientIdOnWhitelistDTO containing the recipientId to be whitelisted
+     * @param authHeader  (Optional) the authorization token for the request
      * @return {@code Mono<ResponseEntity<Void>>} HTTP 201 Created on success, 404 if TPP not found, 409 if already exists
      */
     @PostMapping(value = "tpp/{tppId}/whitelist", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -257,6 +265,7 @@ public interface TppControllerV1 {
      *
      * @param tppId       the identifier of the TPP
      * @param recipientId the recipient identifier to remove from the whitelist
+     * @param authHeader  (Optional) the authorization token for the request
      * @return {@code Mono<ResponseEntity<Void>>} HTTP 204 No Content on success, 404 if TPP or recipient not found
      */
     @DeleteMapping("tpp/{tppId}/whitelist/{recipientId}")

@@ -16,8 +16,10 @@ public class TraceHeaderLogFilter implements WebFilter {
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
     HttpHeaders h = exchange.getRequest().getHeaders();
-    log.info("TRACE-DEBUG traceparent={} tracestate={} request-id={}",
-      h.getFirst("traceparent"), h.getFirst("tracestate"), h.getFirst("Request-Id"));
+    String traceparent = h.getFirst("traceparent");
+    if (traceparent != null) {
+      log.info("TRACE-DEBUG traceparent={}", traceparent);
+    }
     return chain.filter(exchange);
   }
 }

@@ -3,6 +3,9 @@ package it.gov.pagopa.common.utils;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.TraceContext;
 import io.micrometer.tracing.Tracer;
+
+import java.util.Base64;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,4 +72,111 @@ class UtilitiesTest {
     public static void clearTraceIdContext(){
         org.slf4j.MDC.clear();
     }
+
+    /**
+     * Happy path test: verifica che getEmailFromToken ritorni l'email corretta quando il token è valido e contiene il campo email.
+     */
+    @Test
+    void testGetEmailFromToken_Success() {
+        // Given: un payload JWT valido con il campo email
+        String email = "test@example.com";
+        String payload = "{\"email\":\"" + email + "\",\"sub\":\"12345\"}";
+        String encodedPayload = Base64.getUrlEncoder().encodeToString(payload.getBytes());
+        String authHeader = "Bearer header." + encodedPayload + ".signature";
+
+        // When
+        String result = Utilities.getEmailFromToken(authHeader);
+
+        // Then
+        Assertions.assertEquals(email, result);
+    }
+
+    /**
+     * Test di fallimento: verifica che getEmailFromToken ritorni "unknown-user" quando il token è valido ma non contiene il campo email.
+     */
+    @Test
+    void testGetEmailFromToken_NoEmailInPayload() {
+        // Given: payload valido ma senza campo "email"
+        String payload = "{\"sub\":\"12345\", \"name\":\"John\"}";
+        String encodedPayload = Base64.getUrlEncoder().encodeToString(payload.getBytes());
+        String authHeader = "Bearer header." + encodedPayload + ".signature";
+
+        // When
+        String result = Utilities.getEmailFromToken(authHeader);
+
+        // Then
+        Assertions.assertEquals("unknown-user", result);
+    }
+
+    /**
+     * Test di fallimento: verifica che getEmailFromToken ritorni un messaggio di errore quando l'header Authorization è nullo.
+     */
+    @Test
+    void testGetEmailFromToken_NullHeader() {
+        // When
+        String result = Utilities.getEmailFromToken(null);
+
+        // Then
+        Assertions.assertTrue(result.contains("no Authorization header"));
+    }
+
+    /**
+     * Test di fallimento: verifica che getEmailFromToken ritorni un messaggio di errore quando il token non è un Bearer token.
+     */
+    @Test
+    void testGetEmailFromToken_NotBearer() {
+        // When
+        String result = Utilities.getEmailFromToken("Basic dXNlcjpwYXNz");
+
+        // Then
+        Assertions.assertTrue(result.contains("not Bearer token"));
+    }
+
+    /**
+     * Test di fallimento: verifica che getEmailFromToken ritorni "invalid-token" quando il token non ha almeno 2 parti separate da punto.
+     */
+    @Test
+    void testGetEmailFromToken_InvalidFormat() {
+        // Given: un token che non ha almeno 2 parti separate da punto
+        String authHeader = "Bearer invalidTokenFormat";
+
+        // When
+        String result = Utilities.getEmailFromToken(authHeader);
+
+        // Then
+        Assertions.assertEquals("invalid-token", result);
+    }
+
+    /**
+     * Test di fallimento: verifica che getEmailFromToken ritorni "error-parsing-token" quando la parte centrale del token non è Base64 valida.
+     */
+    @Test
+    void testGetEmailFromToken_MalformedBase64() {
+        // Given: una parte centrale che non è Base64 valida
+        String authHeader = "Bearer header.!!!NotBase64!!!.signature";
+
+        // When
+        String result = Utilities.getEmailFromToken(authHeader);
+
+        // Then
+        Assertions.assertEquals("error-parsing-token", result);
+    }
+
+    /**
+     * Test di fallimento: verifica che getEmailFromToken ritorni "error-parsing-token" quando la parte centrale del token è Base64 valida ma non rappresenta un JSON valido.
+     */
+    @Test
+    void testGetEmailFromToken_InvalidJsonPayload() {
+        // Given: Base64 valido ma il contenuto non è un JSON
+        String payload = "not-a-json";
+        String encodedPayload = Base64.getUrlEncoder().encodeToString(payload.getBytes());
+        String authHeader = "Bearer header." + encodedPayload + ".signature";
+
+        // When
+        String result = Utilities.getEmailFromToken(authHeader);
+
+        // Then
+        Assertions.assertEquals("error-parsing-token", result);
+    }
+
 }

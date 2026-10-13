@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import reactor.core.publisher.Mono;
@@ -40,7 +41,8 @@ public interface CitizenControllerV1 {
     /** Deletes a citizen's consent aggregate and returns the deleted snapshot. */
     @DeleteMapping(value = "citizen/{fiscalCode}", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<CitizenConsentSnapshotDTOV1>> deleteCitizenConsents(
-            @PathVariable("fiscalCode") String fiscalCode);
+            @PathVariable("fiscalCode") String fiscalCode,
+            @RequestHeader(name = "Authorization", required = false) String authHeader);
 
     /**
      * Toggles the consent for the specified citizen and TPP; the caller does not provide a desired state.
@@ -51,5 +53,6 @@ public interface CitizenControllerV1 {
     @PutMapping(value = "citizen/{fiscalCode}/consents/{tppId}", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<CitizenConsentSearchResponseDTOV1>> toggleCitizenConsent(
             @PathVariable("fiscalCode") String fiscalCode,
-            @PathVariable("tppId") String tppId);
+            @PathVariable("tppId") String tppId,
+            @RequestHeader(name = "Authorization", required = false) String authHeader);
 }

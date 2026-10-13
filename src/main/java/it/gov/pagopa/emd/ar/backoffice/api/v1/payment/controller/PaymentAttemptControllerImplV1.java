@@ -1,6 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.api.v1.payment.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.payment.PaymentAttemptService;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,14 @@ public class PaymentAttemptControllerImplV1 implements PaymentAttemptControllerV
 
     public PaymentAttemptControllerImplV1(PaymentAttemptService paymentAttemptService) {
         this.paymentAttemptService = paymentAttemptService;
+    }
+
+    @Override
+    public Mono<ResponseEntity<PaymentAttemptResponseDTOV1>> getPaymentAttempt(String tppId, String iun) {
+        if (isBlank(tppId) || isBlank(iun)) {
+            return Mono.error(new ValidationException("Both tppId and iun must be provided."));
+        }
+        return paymentAttemptService.getPaymentAttempt(tppId, iun).map(ResponseEntity::ok);
     }
 
     @Override

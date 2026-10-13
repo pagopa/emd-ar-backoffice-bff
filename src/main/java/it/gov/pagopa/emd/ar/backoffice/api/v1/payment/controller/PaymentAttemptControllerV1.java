@@ -1,15 +1,23 @@
 package it.gov.pagopa.emd.ar.backoffice.api.v1.payment.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptResponseDTOV1;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import reactor.core.publisher.Mono;
 
 @RequestMapping("/emd/backoffice/api/v1")
 public interface PaymentAttemptControllerV1 {
+
+    /** Retrieves one payment attempt by its TPP and IUN identifiers. */
+    @GetMapping(value = "payment-core/attempts/{tppId}/{iun}", produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<PaymentAttemptResponseDTOV1>> getPaymentAttempt(
+            @PathVariable("tppId") String tppId,
+            @PathVariable("iun") String iun);
 
     /**
      * Searches payment attempts through payment-core using cursor-based pagination.

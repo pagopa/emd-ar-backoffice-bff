@@ -177,4 +177,14 @@ class PaymentAttemptConnectorSearchTest {
                         && !error.getMessage().contains("private upstream response"))
                 .verify();
     }
+
+    @Test
+    void getPaymentAttemptMapsMalformedCoreResponseToExternalServiceException() {
+        var connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.OK, "malformed response")));
+
+        StepVerifier.create(connector.getPaymentAttempt("tpp-456", "IUN-123"))
+                .expectErrorMatches(error -> error instanceof ExternalServiceException
+                        && !error.getMessage().contains("malformed response"))
+                .verify();
+    }
 }

@@ -10,12 +10,14 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptResponse
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.PaymentAttemptNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.payment.PaymentAttemptService;
+import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.util.List;
 
@@ -95,6 +97,23 @@ class PaymentAttemptControllerV1Test {
 		webTestClient.get().uri(SINGLE_ROUTE, "tpp-456", "IUN-123").exchange()
 				.expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
 				.expectBody().jsonPath("$.code").isEqualTo("GENERIC_ERROR");
+	}
+
+	@Test
+	void getSinglePaymentAttemptRejectsBlankTppId() {
+		StepVerifier.create(new PaymentAttemptControllerImplV1(service).getPaymentAttempt("", "IUN-123"))
+				.expectErrorMatches(error -> error instanceof ValidationException
+						&& error.getMessage().equals("Both tppId and iun must be provided."))
+				.verify();
+		verifyNoInteractions(service);
+	}
+
+	@Test
+	void getSinglePaymentAttemptRejectsBlankIun() {
+		StepVerifier.create(new PaymentAttemptControllerImplV1(service).getPaymentAttempt("tpp-456", "  "))
+				.expectError(ValidationException.class)
+				.verify();
+		verifyNoInteractions(service);
 	}
 
 	@Test

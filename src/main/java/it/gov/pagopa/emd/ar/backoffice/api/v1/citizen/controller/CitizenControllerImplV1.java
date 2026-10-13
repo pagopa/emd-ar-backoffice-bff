@@ -39,16 +39,16 @@ public class CitizenControllerImplV1 implements CitizenControllerV1 {
     }
 
     @Override
-    public Mono<ResponseEntity<CitizenConsentSnapshotDTOV1>> deleteCitizenConsents(String fiscalCode) {
-        log.info("[AR-BFF][CITIZEN_CONSENT_DELETE] Request received");
+    public Mono<ResponseEntity<CitizenConsentSnapshotDTOV1>> deleteCitizenConsents(String fiscalCode, String authHeader) {
+        log.info("[AR-BFF][CITIZEN_CONSENT_DELETE][User:{}] Request received", authHeader);
         return citizenService.deleteCitizenConsents(fiscalCode)
                 .map(ResponseEntity::ok);
     }
 
     @Override
     public Mono<ResponseEntity<CitizenConsentSearchResponseDTOV1>> toggleCitizenConsent(
-            String fiscalCode, String tppId) {
-        log.info("[AR-BFF][CITIZEN_CONSENT_TOGGLE] Request received");
+            String fiscalCode, String tppId, String authHeader) {
+        log.info("[AR-BFF][CITIZEN_CONSENT_TOGGLE][User:{}] Request received", authHeader);
         return citizenService.toggleCitizenConsent(fiscalCode, tppId)
                 .map(ResponseEntity::ok);
     }

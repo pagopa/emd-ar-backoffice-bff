@@ -109,6 +109,8 @@ rest:
       base-url: "\${EMD_TPP}"
     message:
       base-url: "\${EMD_MESSAGE_CORE}"
+    payment:
+      base-url: "\${EMD_PAYMENT_CORE}"
     citizen:
       base-url: "\${EMD_CITIZEN}"
 

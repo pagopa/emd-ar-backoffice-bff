@@ -43,11 +43,11 @@
     </appender>
 
     <logger name="AUDIT" additivity="false">
-        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="AUDIT"/>
     </logger>
 
     <root level="INFO">
-        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="ASYNC_STDOUT"/>
     </root>
 
 </configuration>

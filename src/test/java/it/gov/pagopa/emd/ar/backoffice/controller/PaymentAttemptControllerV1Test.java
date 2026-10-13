@@ -35,10 +35,10 @@ class PaymentAttemptControllerV1Test {
 
 	private PaymentAttemptSearchResponseDTOV1 pagedResponse() {
 		return PaymentAttemptSearchResponseDTOV1.builder()
-				.payments(List.of(PaymentAttemptSearchItemDTOV1.builder().iun("IUN-123")
+				.content(List.of(PaymentAttemptSearchItemDTOV1.builder().iun("IUN-123")
 						.tppId("tpp-456").attemptsCount(2).build()))
-				.returnedCount(1).attemptsCount(2L).nextCursor("507f1f77bcf86cd799439011")
-				.hasMore(true).build();
+				.pageSize(20).totalElements(135L).totalPages(7)
+				.nextCursor("507f1f77bcf86cd799439011").hasNext(true).build();
 	}
 
 	@Test
@@ -46,8 +46,13 @@ class PaymentAttemptControllerV1Test {
 		when(service.searchPaymentAttempts("IUN-123", "tpp-456", null, 20)).thenReturn(Mono.just(pagedResponse()));
 		webTestClient.get().uri(ROUTE + "?iun=IUN-123&tppId=tpp-456").exchange()
 				.expectStatus().isOk().expectHeader().contentType(MediaType.APPLICATION_JSON)
-				.expectBody().jsonPath("$.payments[0].tppId").isEqualTo("tpp-456")
-				.jsonPath("$.hasMore").isEqualTo(true)
+				.expectBody().jsonPath("$.content[0].iun").isEqualTo("IUN-123")
+				.jsonPath("$.content[0].tppId").isEqualTo("tpp-456")
+				.jsonPath("$.content[0].attemptsCount").isEqualTo(2)
+				.jsonPath("$.pageSize").isEqualTo(20)
+				.jsonPath("$.totalElements").isEqualTo(135)
+				.jsonPath("$.totalPages").isEqualTo(7)
+				.jsonPath("$.hasNext").isEqualTo(true)
 				.jsonPath("$.nextCursor").isEqualTo("507f1f77bcf86cd799439011");
 		verify(service).searchPaymentAttempts("IUN-123", "tpp-456", null, 20);
 	}
@@ -82,10 +87,12 @@ class PaymentAttemptControllerV1Test {
 	@Test
 	void emptyResultReturns200() {
 		when(service.searchPaymentAttempts("IUN-empty", null, null, 20)).thenReturn(Mono.just(
-				PaymentAttemptSearchResponseDTOV1.builder().payments(List.of()).returnedCount(0)
-						.attemptsCount(0L).hasMore(false).build()));
+				PaymentAttemptSearchResponseDTOV1.builder().content(List.of()).pageSize(20)
+						.totalElements(0L).totalPages(0).hasNext(false).build()));
 		webTestClient.get().uri(ROUTE + "?iun=IUN-empty").exchange().expectStatus().isOk()
-				.expectBody().jsonPath("$.payments").isEmpty().jsonPath("$.returnedCount").isEqualTo(0);
+				.expectBody().jsonPath("$.content").isEmpty().jsonPath("$.pageSize").isEqualTo(20)
+				.jsonPath("$.totalElements").isEqualTo(0).jsonPath("$.totalPages").isEqualTo(0)
+				.jsonPath("$.hasNext").isEqualTo(false);
 	}
 
 	@Test

@@ -18,7 +18,7 @@ class PaymentAttemptConnectorSearchTest {
 
     private static final String BASE_URL = "http://emd-payment.test";
     private static final String EMPTY_RESPONSE = """
-            {"payments":[],"returnedCount":0,"attemptsCount":0,"nextCursor":null,"hasMore":false}
+            {"content":[],"pageSize":20,"totalElements":0,"totalPages":0,"nextCursor":null,"hasNext":false}
             """;
 
     private PaymentAttemptConnectorImpl connectorWith(ExchangeFunction exchangeFunction) {
@@ -35,8 +35,9 @@ class PaymentAttemptConnectorSearchTest {
     @Test
     void searchForwardsBothFiltersAndReturnsCursorMetadata() {
         String body = """
-                {"payments":[{"iun":"IUN-123","tppId":"tpp-456","attemptsCount":2}],
-                 "returnedCount":1,"attemptsCount":2,"nextCursor":"507f1f77bcf86cd799439011","hasMore":true}
+                {"content":[{"iun":"IUN-123","tppId":"tpp-456","attemptsCount":2}],
+                 "pageSize":20,"totalElements":135,"totalPages":7,
+                 "nextCursor":"507f1f77bcf86cd799439011","hasNext":true}
                 """;
         String[] capturedUrl = new String[1];
         var connector = connectorWith(request -> {
@@ -46,9 +47,14 @@ class PaymentAttemptConnectorSearchTest {
 
         StepVerifier.create(connector.searchPaymentAttempts("IUN-123", "tpp-456", null, 20))
                 .assertNext(response -> {
-                    assertThat(response.getPayments()).hasSize(1);
-                    assertThat(response.getPayments().getFirst().getTppId()).isEqualTo("tpp-456");
-                    assertThat(response.getHasMore()).isTrue();
+                    assertThat(response.getContent()).hasSize(1);
+                    assertThat(response.getContent().getFirst().getTppId()).isEqualTo("tpp-456");
+                    assertThat(response.getContent().getFirst().getAttemptsCount()).isEqualTo(2);
+                    assertThat(response.getPageSize()).isEqualTo(20);
+                    // The core's document count is forwarded as-is, not calculated from attemptsCount.
+                    assertThat(response.getTotalElements()).isEqualTo(135L);
+                    assertThat(response.getTotalPages()).isEqualTo(7);
+                    assertThat(response.getHasNext()).isTrue();
                     assertThat(response.getNextCursor()).isEqualTo("507f1f77bcf86cd799439011");
                 })
                 .verifyComplete();
@@ -65,7 +71,15 @@ class PaymentAttemptConnectorSearchTest {
             return Mono.just(jsonResponse(HttpStatus.OK, EMPTY_RESPONSE));
         });
 
-        StepVerifier.create(connector.searchPaymentAttempts("IUN-123", null, null, 20)).expectNextCount(1).verifyComplete();
+        StepVerifier.create(connector.searchPaymentAttempts("IUN-123", null, null, 20))
+                .assertNext(response -> {
+                    assertThat(response.getContent()).isEmpty();
+                    assertThat(response.getPageSize()).isEqualTo(20);
+                    assertThat(response.getTotalElements()).isZero();
+                    assertThat(response.getTotalPages()).isZero();
+                    assertThat(response.getHasNext()).isFalse();
+                })
+                .verifyComplete();
         assertThat(capturedUrl[0]).contains("iun=IUN-123").doesNotContain("tppId=");
     }
 

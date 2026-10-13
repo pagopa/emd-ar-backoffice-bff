@@ -1,6 +1,7 @@
 package it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenSearchResponseDTOV1;
+import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSearchRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.citizen.dto.CitizenConsentSnapshotDTOV1;
@@ -39,16 +40,18 @@ public class CitizenControllerImplV1 implements CitizenControllerV1 {
     }
 
     @Override
-    public Mono<ResponseEntity<CitizenConsentSnapshotDTOV1>> deleteCitizenConsents(String fiscalCode) {
-        log.info("[AR-BFF][CITIZEN_CONSENT_DELETE] Request received");
+    public Mono<ResponseEntity<CitizenConsentSnapshotDTOV1>> deleteCitizenConsents(String fiscalCode, String authHeader) {
+        String userEmail = Utilities.getEmailFromToken(authHeader);
+        log.info("[AR-BFF][CITIZEN_CONSENT_DELETE][User:{}] Request received", userEmail);
         return citizenService.deleteCitizenConsents(fiscalCode)
                 .map(ResponseEntity::ok);
     }
 
     @Override
     public Mono<ResponseEntity<CitizenConsentSearchResponseDTOV1>> toggleCitizenConsent(
-            String fiscalCode, String tppId) {
-        log.info("[AR-BFF][CITIZEN_CONSENT_TOGGLE] Request received");
+            String fiscalCode, String tppId, String authHeader) {
+        String userEmail = Utilities.getEmailFromToken(authHeader);
+        log.info("[AR-BFF][CITIZEN_CONSENT_TOGGLE][User:{}] Request received", userEmail);
         return citizenService.toggleCitizenConsent(fiscalCode, tppId)
                 .map(ResponseEntity::ok);
     }

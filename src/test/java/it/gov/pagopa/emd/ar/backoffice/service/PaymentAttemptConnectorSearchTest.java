@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.service;
 
 import it.gov.pagopa.emd.ar.backoffice.connector.payment.PaymentAttemptConnectorImpl;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.PaymentAttemptNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -113,6 +114,77 @@ class PaymentAttemptConnectorSearchTest {
         var connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.INTERNAL_SERVER_ERROR, "core error")));
         StepVerifier.create(connector.searchPaymentAttempts("IUN-123", null, null, 20))
                 .expectError(ExternalServiceException.class)
+                .verify();
+    }
+
+    @Test
+    void getPaymentAttemptForwardsTppIdAndIunAsOriginIdAndPreservesSingleResponse() {
+        String body = """
+                {"originId":"IUN-123","tppId":"tpp-456","attemptDetails":[{"noticeNumber":"302000000000000000","paymentAttemptDate":"2026-10-13T10:15:30.000+00:00","fiscalCode":"RSSMRA80A01H501U","amount":"1000"}]}
+                """;
+        String[] capturedPath = new String[1];
+        var connector = connectorWith(request -> {
+            capturedPath[0] = request.url().getRawPath();
+            return Mono.just(jsonResponse(HttpStatus.OK, body));
+        });
+
+        StepVerifier.create(connector.getPaymentAttempt("tpp-456", "IUN-123"))
+                .assertNext(response -> {
+                    assertThat(response.getOriginId()).isEqualTo("IUN-123");
+                    assertThat(response.getTppId()).isEqualTo("tpp-456");
+                    assertThat(response.getAttemptDetails()).hasSize(1);
+                    assertThat(response.getAttemptDetails().getFirst().getNoticeNumber())
+                            .isEqualTo("302000000000000000");
+                    assertThat(response.getAttemptDetails().getFirst().getFiscalCode()).isEqualTo("RSSMRA80A01H501U");
+                    assertThat(response.getAttemptDetails().getFirst().getAmount()).isEqualTo("1000");
+                })
+                .verifyComplete();
+        assertThat(capturedPath[0]).isEqualTo("/emd/payment/paymentAttempts/tpp-456/IUN-123");
+    }
+
+    @Test
+    void getPaymentAttemptEncodesEachPathSegment() {
+        String[] capturedPath = new String[1];
+        var connector = connectorWith(request -> {
+            capturedPath[0] = request.url().getRawPath();
+            return Mono.just(jsonResponse(HttpStatus.OK,
+                    "{\"originId\":\"IUN 123?x=y\",\"tppId\":\"tpp/456\",\"attemptDetails\":[]}"));
+        });
+
+        StepVerifier.create(connector.getPaymentAttempt("tpp/456", "IUN 123?x=y"))
+                .expectNextCount(1)
+                .verifyComplete();
+        assertThat(capturedPath[0]).isEqualTo("/emd/payment/paymentAttempts/tpp%2F456/IUN%20123%3Fx%3Dy");
+    }
+
+    @Test
+    void getPaymentAttemptMapsCoreNotFoundToSpecificNotFoundError() {
+        var connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.NOT_FOUND,
+                "{\"code\":\"PAYMENT_ATTEMPT_NOT_FOUND\"}")));
+
+        StepVerifier.create(connector.getPaymentAttempt("tpp-456", "IUN-123"))
+                .expectError(PaymentAttemptNotFoundException.class)
+                .verify();
+    }
+
+    @Test
+    void getPaymentAttemptMapsUnexpectedCoreFailureToExternalServiceException() {
+        var connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.INTERNAL_SERVER_ERROR,
+                "private upstream response")));
+
+        StepVerifier.create(connector.getPaymentAttempt("tpp-456", "IUN-123"))
+                .expectErrorMatches(error -> error instanceof ExternalServiceException
+                        && !error.getMessage().contains("private upstream response"))
+                .verify();
+    }
+
+    @Test
+    void getPaymentAttemptMapsMalformedCoreResponseToExternalServiceException() {
+        var connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.OK, "malformed response")));
+
+        StepVerifier.create(connector.getPaymentAttempt("tpp-456", "IUN-123"))
+                .expectErrorMatches(error -> error instanceof ExternalServiceException
+                        && !error.getMessage().contains("malformed response"))
                 .verify();
     }
 }

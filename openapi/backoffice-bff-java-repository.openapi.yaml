@@ -45,6 +45,7 @@ components:
             - TOO_MANY_REQUESTS
             - UNAUTHORIZED
             - GENERIC_ERROR
+            - PAYMENT_ATTEMPT_NOT_FOUND
         message:
           type: string
         traceId:

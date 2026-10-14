@@ -4,6 +4,7 @@ import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.PaymentAttemptNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientAlreadyPresentException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
@@ -111,6 +112,18 @@ public class ControllerExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorDTO> handleResourceNotFoundException(ResourceNotFoundException ex, ServerHttpRequest request) {
         return handleException(ex, request, HttpStatus.NOT_FOUND, ErrorDTO.CodeEnum.NOT_FOUND);
+    }
+
+    /** Maps a missing payment attempt to the existing BFF not-found error format. */
+    @ExceptionHandler(PaymentAttemptNotFoundException.class)
+    public ResponseEntity<ErrorDTO> handlePaymentAttemptNotFoundException(
+            PaymentAttemptNotFoundException ex, ServerHttpRequest request) {
+        logException(ex, request, HttpStatus.NOT_FOUND);
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ErrorDTO(ErrorDTO.CodeEnum.PAYMENT_ATTEMPT_NOT_FOUND,
+                        "Payment attempt not found.", utilities.getTraceId()));
     }
 
     /**

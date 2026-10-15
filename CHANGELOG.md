@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.13.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.12.0...v0.13.0) (2026-10-15)
+
+
+### Features
+
+* [MMC-1191] add tpp info to search endpoint ([#76](https://github.com/pagopa/emd-ar-backoffice-bff/issues/76)) ([726067f](https://github.com/pagopa/emd-ar-backoffice-bff/commit/726067fc507804a402d9485d35493109c6992745))
+* [MMC-1191] payment search endpoint add ([#71](https://github.com/pagopa/emd-ar-backoffice-bff/issues/71)) ([77930a9](https://github.com/pagopa/emd-ar-backoffice-bff/commit/77930a9800a8463473d998a91686aec1f343bbd6))
+* [MMC-1197] payment attempt endpoint add ([#75](https://github.com/pagopa/emd-ar-backoffice-bff/issues/75)) ([c93b849](https://github.com/pagopa/emd-ar-backoffice-bff/commit/c93b849561f1fd848acacb50d9c4b9798bb2e51d))
+
 ## [0.12.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.11.1...v0.12.0) (2026-10-09)
 
 

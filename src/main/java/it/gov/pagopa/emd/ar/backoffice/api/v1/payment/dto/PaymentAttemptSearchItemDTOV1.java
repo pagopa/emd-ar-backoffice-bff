@@ -12,5 +12,7 @@ import lombok.NoArgsConstructor;
 public class PaymentAttemptSearchItemDTOV1 {
     private String iun;
     private String tppId;
+    private String businessName;
+    private String entityId;
     private Integer attemptsCount;
 }

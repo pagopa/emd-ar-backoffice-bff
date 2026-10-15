@@ -36,7 +36,7 @@ class PaymentAttemptConnectorSearchTest {
     @Test
     void searchForwardsBothFiltersAndReturnsCursorMetadata() {
         String body = """
-                {"content":[{"iun":"IUN-123","tppId":"tpp-456","attemptsCount":2}],
+                {"content":[{"iun":"IUN-123","tppId":"tpp-456","businessName":"Comune di Roma","entityId":"12345678901","attemptsCount":2}],
                  "pageSize":20,"totalElements":135,"totalPages":7,
                  "nextCursor":"507f1f77bcf86cd799439011","hasNext":true}
                 """;
@@ -49,7 +49,10 @@ class PaymentAttemptConnectorSearchTest {
         StepVerifier.create(connector.searchPaymentAttempts("IUN-123", "tpp-456", null, 20))
                 .assertNext(response -> {
                     assertThat(response.getContent()).hasSize(1);
+                    assertThat(response.getContent().getFirst().getIun()).isEqualTo("IUN-123");
                     assertThat(response.getContent().getFirst().getTppId()).isEqualTo("tpp-456");
+                    assertThat(response.getContent().getFirst().getBusinessName()).isEqualTo("Comune di Roma");
+                    assertThat(response.getContent().getFirst().getEntityId()).isEqualTo("12345678901");
                     assertThat(response.getContent().getFirst().getAttemptsCount()).isEqualTo(2);
                     assertThat(response.getPageSize()).isEqualTo(20);
                     // The core's document count is forwarded as-is, not calculated from attemptsCount.

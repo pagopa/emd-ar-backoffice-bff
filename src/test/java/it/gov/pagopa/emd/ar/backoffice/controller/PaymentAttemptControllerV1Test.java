@@ -42,7 +42,8 @@ class PaymentAttemptControllerV1Test {
 	private PaymentAttemptSearchResponseDTOV1 pagedResponse() {
 		return PaymentAttemptSearchResponseDTOV1.builder()
 				.content(List.of(PaymentAttemptSearchItemDTOV1.builder().iun("IUN-123")
-						.tppId("tpp-456").attemptsCount(2).build()))
+						.tppId("tpp-456").businessName("Comune di Roma").entityId("12345678901")
+						.attemptsCount(2).build()))
 				.pageSize(20).totalElements(135L).totalPages(7)
 				.nextCursor("507f1f77bcf86cd799439011").hasNext(true).build();
 	}
@@ -123,6 +124,8 @@ class PaymentAttemptControllerV1Test {
 				.expectStatus().isOk().expectHeader().contentType(MediaType.APPLICATION_JSON)
 				.expectBody().jsonPath("$.content[0].iun").isEqualTo("IUN-123")
 				.jsonPath("$.content[0].tppId").isEqualTo("tpp-456")
+				.jsonPath("$.content[0].businessName").isEqualTo("Comune di Roma")
+				.jsonPath("$.content[0].entityId").isEqualTo("12345678901")
 				.jsonPath("$.content[0].attemptsCount").isEqualTo(2)
 				.jsonPath("$.pageSize").isEqualTo(20)
 				.jsonPath("$.totalElements").isEqualTo(135)

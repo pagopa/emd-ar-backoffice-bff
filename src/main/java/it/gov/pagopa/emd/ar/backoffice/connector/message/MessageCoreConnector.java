@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.enums.MessageStatus;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import reactor.core.publisher.Mono;
 
@@ -28,6 +29,7 @@ public interface MessageCoreConnector {
      * @param messageId     optional exact-match filter on the message ID
      * @param recipientId  optional partial (case-insensitive) match on the recipientId name
      * @param originId     optional exact-match filter on the origin ID
+     * @param status       optional exact-match filter on the message status
      * @param startDate    optional start date for message registration period
      * @param endDate      optional end date for message registration period
      * @param cursor       optional cursor identifying the last element of the previous page
@@ -40,7 +42,7 @@ public interface MessageCoreConnector {
      *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException}
      *         on any other upstream error (401/429/500)
      */
-    Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields);
+    Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, MessageStatus status, LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields);
 
     /**
      * Retrieves a Message by its {@code entityId} ands {@code messageId}.

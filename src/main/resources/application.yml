@@ -106,7 +106,7 @@ rest:
       response-millis: "\${WEBCLIENT_TIMEOUT_RESPONSE_MILLIS:8000}"
   client:
     tpp:
-      base-url: "\${EMD_TPP}"
+      base-url: "\${EMD_TPP:https://mdc.itn.internal.dev.cstar.pagopa.it/emdtpp/}"
     message:
       base-url: "\${EMD_MESSAGE_CORE}"
     payment:
@@ -115,22 +115,22 @@ rest:
       base-url: "\${EMD_CITIZEN}"
 
 keycloak:
-  auth-server-url: "\${KEYCLOAK_AUTH_URL}"
-  realm: "\${KEYCLOAK_REALM}"
-  idp-alias: "\${KEYCLOAK_IDP_ALIAS}"
+  auth-server-url: "\${KEYCLOAK_AUTH_URL:http://localhost:8080}"
+  realm: "\${KEYCLOAK_REALM:MDC}"
+  idp-alias: "\${KEYCLOAK_IDP_ALIAS:alias}"
   manager:
-    client-id: "\${KEYCLOAK_MANAGER_CLIENT_ID}"
-    client-secret: "\${KEYCLOAK_MANAGER_CLIENT_SECRET}"
+    client-id: "\${KEYCLOAK_MANAGER_CLIENT_ID:client-id}"
+    client-secret: "\${KEYCLOAK_MANAGER_CLIENT_SECRET:client-secret}"
   ar-backoffice:
-    client-id: "\${KEYCLOAK_BACKOFFICE_CLIENT_ID}"
-    client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
+    client-id: "\${KEYCLOAK_BACKOFFICE_CLIENT_ID:client-id}"
+    client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET:client-secret}"
   groups:
-    tpp-name: "\${KEYCLOAK_TPP_GROUP_NAME}"
+    tpp-name: "\${KEYCLOAK_TPP_GROUP_NAME:tpp-name}"
 
 
 auth:
   sc:
     # SELFCARE
-    jwk-set-uri: "\${SC_JWT_SET_URI}"
-    expected-issuer: "\${SC_AUTH_EXPECTED_ISSUER}"
-    expected-audience: "\${SC_AUTH_EXPECTED_AUDIENCE}"
+    jwk-set-uri: "\${SC_JWT_SET_URI:https://dev.selfcare.pagopa.it/.well-known/jwks.json}"
+    expected-issuer: "\${SC_AUTH_EXPECTED_ISSUER:https://dev.selfcare.pagopa.it}"
+    expected-audience: "\${SC_AUTH_EXPECTED_AUDIENCE:mdc.pagopa.it}"

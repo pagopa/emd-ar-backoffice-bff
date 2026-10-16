@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
 import it.gov.pagopa.common.utils.Utilities;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.enums.MessageStatus;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreService;
 import lombok.extern.slf4j.Slf4j;
@@ -26,12 +27,16 @@ public class MessageCoreControllerImplV1 implements MessageCoreControllerV1 {
     /** {@inheritDoc} */
     @Override
     public Mono<ResponseEntity<MessageSearchResponseDTOV1>> searchMessages(
-        String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate,
+        String messageId, String recipientId, String originId, MessageStatus status,
+        LocalDateTime startDate, LocalDateTime endDate,
         String cursor, int size, List<String> fields) {
-        log.info("[AR-BFF][MESSAGE_SEARCH] Request received - Searching messages — messageId={}, recipientId={}, originId={}, startDate={}, endDate={}, cursor={}, size={}, fields={}",
-                messageId != null ? "***" : null, recipientId != null ? "***" : null, originId != null ? "***" : null,
+        log.info("[AR-BFF][MESSAGE_SEARCH] Searching messages — messageId={}, recipientId={}, originId={}, status={}, startDate={}, endDate={}, cursor={}, size={}, fields={}",
+                messageId != null ? "***" : null,
+                recipientId != null ? "***" : null,
+                originId != null ? "***" : null,
+                status != null ? "***" : null,
                 startDate, endDate, cursor, size, fields != null ? fields.size() : 0);
-        return messageService.searchMessages(messageId, recipientId, originId, startDate, endDate, cursor, size, fields)
+        return messageService.searchMessages(messageId, recipientId, originId, status, startDate, endDate, cursor, size, fields)
                 .map(ResponseEntity::ok);
     }
 

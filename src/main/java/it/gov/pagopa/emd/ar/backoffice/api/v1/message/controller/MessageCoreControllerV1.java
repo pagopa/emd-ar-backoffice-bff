@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.enums.MessageStatus;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import reactor.core.publisher.Mono;
 
@@ -54,6 +55,7 @@ public interface MessageCoreControllerV1 {
         @RequestParam(name = "messageId", required = false) String messageId,
         @RequestParam(name = "recipientId", required = false) String recipientId,
         @RequestParam(name = "originId", required = false) String originId,
+        @RequestParam(name = "status", required = false) MessageStatus status,
         @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)  LocalDateTime startDate,
         @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)  LocalDateTime endDate,
         @RequestParam(name = "cursor", required = false) String cursor,

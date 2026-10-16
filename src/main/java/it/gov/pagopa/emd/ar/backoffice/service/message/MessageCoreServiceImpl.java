@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.enums.MessageStatus;
 import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageCoreConnector;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -28,13 +29,14 @@ public class MessageCoreServiceImpl implements MessageCoreService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields) {
-        log.info("[AR-BFF][MESSAGE_SEARCH] Searching messages — messageId={}, recipientId={}, originId={}, startDate={}, endDate={}, cursor={}, size={}, fields={}",
+    public Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, MessageStatus status, LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields) {
+        log.info("[AR-BFF][MESSAGE_SEARCH] Searching messages — messageId={}, recipientId={}, originId={}, status={}, startDate={}, endDate={}, cursor={}, size={}, fields={}",
                 messageId != null ? "***" : null,
                 recipientId != null ? "***" : null,
                 originId != null ? "***" : null,
+                status != null ? "***" : null,
                 startDate, endDate, cursor, size, fields != null ? fields.size() : 0);
-        return messageConnector.searchMessages(messageId, recipientId, originId, startDate, endDate, cursor, size, fields)
+        return messageConnector.searchMessages(messageId, recipientId, originId, status, startDate, endDate, cursor, size, fields)
             .doOnSuccess(r -> log.info("[AR-BFF][MESSAGE_SEARCH] Search completed: totalElements={}, totalPages={}",
                     r.getTotalElements(), r.getTotalPages()))
             .doOnError(e -> log.error("[AR-BFF][MESSAGE_SEARCH] Search failed: {}", e.getMessage()));

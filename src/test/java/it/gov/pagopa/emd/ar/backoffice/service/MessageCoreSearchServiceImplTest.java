@@ -77,11 +77,11 @@ class MessageCoreSearchServiceImplTest {
     void searchMessages_ByFilters_ReturnsResponse() {
         MessageSearchResponseDTOV1 connectorResponse = pageOf("next-cursor", 10, 1);
         
-        when(messageConnector.searchMessages(eq("MSG-123"), eq("REC-456"), eq("ORG-789"), 
+        when(messageConnector.searchMessages(eq("MSG-123"), eq("REC-456"), eq("ORG-789"), isNull(),
                 isNull(), isNull(), eq("next-cursor"), eq(10), isNull()))
                 .thenReturn(Mono.just(connectorResponse));
 
-        StepVerifier.create(service.searchMessages("MSG-123", "REC-456", "ORG-789", null, null, "next-cursor", 10, null))
+        StepVerifier.create(service.searchMessages("MSG-123", "REC-456", "ORG-789", null, null, null, "next-cursor", 10, null))
                 .assertNext(dto -> {
                     assertThat(dto.getNextCursor()).isEqualTo("next-cursor");
                     assertThat(dto.getTotalElements()).isEqualTo(1);
@@ -98,11 +98,11 @@ class MessageCoreSearchServiceImplTest {
         LocalDateTime end = LocalDateTime.of(2026, 1, 31, 23, 59);
         MessageSearchResponseDTOV1 connectorResponse = pageOf(null, 10, 5);
 
-        when(messageConnector.searchMessages(isNull(), isNull(), isNull(),
+        when(messageConnector.searchMessages(isNull(), isNull(), isNull(), isNull(),
                 eq(start), eq(end), isNull(), eq(10), isNull()))
                 .thenReturn(Mono.just(connectorResponse));
 
-        StepVerifier.create(service.searchMessages(null, null, null, start, end, null, 10, null))
+        StepVerifier.create(service.searchMessages(null, null, null, null, start, end, null, 10, null))
                 .assertNext(dto -> assertThat(dto.getTotalElements()).isEqualTo(5))
                 .verifyComplete();
     }
@@ -114,10 +114,10 @@ class MessageCoreSearchServiceImplTest {
     void searchMessages_EmptyResult_ReturnsEmptyPage() {
         MessageSearchResponseDTOV1 emptyResponse = pageOf(null, 10, 0);
 
-        when(messageConnector.searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), any()))
+        when(messageConnector.searchMessages(any(), any(), any(), any(), any(), any(), any(), anyInt(), any()))
                 .thenReturn(Mono.just(emptyResponse));
 
-        StepVerifier.create(service.searchMessages("NOT-FOUND", null, null, null, null, null, 10, null))
+        StepVerifier.create(service.searchMessages("NOT-FOUND", null, null, null, null, null, null, 10, null))
                 .assertNext(dto -> {
                     assertThat(dto.getContent()).isEmpty();
                     assertThat(dto.getTotalElements()).isZero();
@@ -130,10 +130,10 @@ class MessageCoreSearchServiceImplTest {
      */
     @Test
     void searchMessages_UpstreamError_PropagatesException() {
-        when(messageConnector.searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), any()))
+        when(messageConnector.searchMessages(any(), any(), any(), any(), any(), any(), any(), anyInt(), any()))
                 .thenReturn(Mono.error(new ExternalServiceException("MESSAGE_SERVICE", "searchMessages", "Connection failed")));
 
-        StepVerifier.create(service.searchMessages(null, null, null, null, null, null, 10, null))
+        StepVerifier.create(service.searchMessages(null, null, null, null, null, null, null, 10, null))
                 .expectErrorMatches(ex -> ex instanceof ExternalServiceException &&
                                     ex.getMessage().contains("MESSAGE_SERVICE"))
                 .verify();
@@ -147,10 +147,10 @@ class MessageCoreSearchServiceImplTest {
         List<String> fields = List.of("id", "status", "timestamp");
         MessageSearchResponseDTOV1 connectorResponse = pageOf(null, 10, 1);
 
-        when(messageConnector.searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), eq(fields)))
+        when(messageConnector.searchMessages(any(), any(), any(), any(), any(), any(), any(), anyInt(), eq(fields)))
                 .thenReturn(Mono.just(connectorResponse));
 
-        StepVerifier.create(service.searchMessages(null, null, null, null, null, null, 10, fields))
+        StepVerifier.create(service.searchMessages(null, null, null, null, null, null, null, 10, fields))
                 .expectNextCount(1)
                 .verifyComplete();
     }
@@ -162,10 +162,10 @@ class MessageCoreSearchServiceImplTest {
     void searchMessages_InvalidField_PropagatesException() {
         List<String> invalidFields = List.of("unknownField");
         
-        when(messageConnector.searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), eq(invalidFields)))
+        when(messageConnector.searchMessages(any(), any(), any(), any(), any(), any(), any(), anyInt(), eq(invalidFields)))
                 .thenReturn(Mono.error(new InvalidSearchFieldException("unknownField", "Invalid field name")));
 
-        StepVerifier.create(service.searchMessages(null, null, null, null, null, null, 10, invalidFields))
+        StepVerifier.create(service.searchMessages(null, null, null, null, null, null, null, 10, invalidFields))
                 .expectError(InvalidSearchFieldException.class)
                 .verify();
     }

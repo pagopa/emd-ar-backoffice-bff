@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.enums.MessageStatus;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageStateV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
 import reactor.core.publisher.Mono;
 
@@ -37,7 +37,7 @@ public interface MessageCoreService {
      *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException}
      *         (HTTP 502) on any other upstream error
      */
-    Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, MessageStatus status, LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields);
+    Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, MessageStateV1 state, LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields);
 
     /**
      * Looks up an existing Message by its {@code entityId} and {@code messageId}.

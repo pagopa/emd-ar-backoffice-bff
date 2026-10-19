@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.service;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageStateV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageCoreConnectorImpl;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
@@ -84,7 +85,7 @@ class MessageCoreConnectorSearchTest {
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.searchMessages("MSG-1", "REC-1", "ORG-1", null, null, "cursor-0", 10, null))
+        StepVerifier.create(connector.searchMessages("MSG-1", "REC-1", "ORG-1", MessageStateV1.ERROR, null, null, "cursor-0", 10, null))
                 .expectNextCount(1)
                 .verifyComplete();
 
@@ -120,7 +121,7 @@ class MessageCoreConnectorSearchTest {
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.searchMessages(null, null, null, start, end, null, 10, null))
+        StepVerifier.create(connector.searchMessages(null, null, null, null, start, end, null, 10, null))
                 .expectNextCount(1)
                 .verifyComplete();
 
@@ -151,7 +152,7 @@ class MessageCoreConnectorSearchTest {
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, 10, fields))
+        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, null, 10, fields))
                 .expectNextCount(1)
                 .verifyComplete();
 
@@ -181,7 +182,7 @@ class MessageCoreConnectorSearchTest {
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.searchMessages("", "  ", null, null, null, "cursor-5", 50, null))
+        StepVerifier.create(connector.searchMessages("", "  ", null, null, null, null, "cursor-5", 50, null))
                 .expectNextCount(1)
                 .verifyComplete();
 
@@ -201,7 +202,7 @@ class MessageCoreConnectorSearchTest {
         MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.BAD_REQUEST, errorBody)));
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, 10, List.of("dummy")))
+        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, null, 10, List.of("dummy")))
                 .expectErrorMatches(ex -> ex instanceof InvalidSearchFieldException &&
                                     ex.getMessage().contains("dummy"))
                 .verify();
@@ -215,7 +216,7 @@ class MessageCoreConnectorSearchTest {
         MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.INTERNAL_SERVER_ERROR, "Server Error")));
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, 10, null))
+        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, null, 10, null))
                 .expectError(ExternalServiceException.class)
                 .verify();
     }
@@ -228,7 +229,7 @@ class MessageCoreConnectorSearchTest {
         MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests")));
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, 10, null))
+        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, null, 10, null))
                 .expectErrorMatches(ex -> ex instanceof TooManyRequestsException &&
                                     ex.getMessage().contains("Too Many Requests"))
                 .verify();

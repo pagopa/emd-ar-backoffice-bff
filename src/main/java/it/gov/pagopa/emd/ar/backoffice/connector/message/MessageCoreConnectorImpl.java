@@ -11,7 +11,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import org.springframework.web.util.UriBuilder;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.enums.MessageStatus;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageStateV1;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
@@ -52,11 +52,11 @@ public class MessageCoreConnectorImpl implements MessageCoreConnector {
      * {@link WebClientRetrySpecs#transientNetwork()}.</p>
      */
     @Override
-    public Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, MessageStatus messageStatus, LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields) {
+    public Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, MessageStateV1 messageState, LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields) {
         String joinedFields = fields != null ? String.join(",", fields) : "";
         int fieldCount     = fields != null ? fields.size() : 0;
         return webClient.get()
-                .uri(uriBuilder -> buildSearchUri(uriBuilder, messageId, recipientId, originId, messageStatus, startDate, endDate, cursor, size, fields))
+                .uri(uriBuilder -> buildSearchUri(uriBuilder, messageId, recipientId, originId, messageState, startDate, endDate, cursor, size, fields))
                 .retrieve()
                 .onStatus(status -> status.value() == 400, response ->
                         response.bodyToMono(String.class)
@@ -99,7 +99,7 @@ public class MessageCoreConnectorImpl implements MessageCoreConnector {
      * that are actually provided (non-null / non-blank). Extracted to keep the cognitive
      * complexity of {@link #searchMessages} within the allowed threshold.
      */
-    private URI buildSearchUri(UriBuilder uriBuilder, String messageId, String recipientId, String originId, MessageStatus messageStatus,
+    private URI buildSearchUri(UriBuilder uriBuilder, String messageId, String recipientId, String originId, MessageStateV1 messageState,
                                 LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields) {
 
         
@@ -116,8 +116,8 @@ public class MessageCoreConnectorImpl implements MessageCoreConnector {
         if (originId != null && !originId.isBlank()) {
             uriBuilder.queryParam("originId", originId);
         }
-        if (messageStatus != null) {
-            uriBuilder.queryParam("status", messageStatus);
+        if (messageState != null) {
+            uriBuilder.queryParam("state", messageState);
         }
         if (startDate != null) {
             uriBuilder.queryParam("startDate", startDate);

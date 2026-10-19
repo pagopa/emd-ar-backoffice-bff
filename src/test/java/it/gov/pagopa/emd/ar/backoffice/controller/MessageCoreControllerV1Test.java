@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.controller.MessageCoreControllerImplV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageStateV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.api.handler.ControllerExceptionHandler;
@@ -63,6 +64,7 @@ public class MessageCoreControllerV1Test {
                 eq("MSG-123"),
                 eq("REC-456"),
                 eq("ORG-789"),
+                any(MessageStateV1.class),
                 any(LocalDateTime.class),
                 any(LocalDateTime.class),
                 eq("cursor"),
@@ -90,7 +92,7 @@ public class MessageCoreControllerV1Test {
                 .jsonPath("$.totalElements").isEqualTo(0)
                 .jsonPath("$.nextCursor").isEqualTo("next-page-cursor");
         
-        Mockito.verify(messageService).searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), any());
+        Mockito.verify(messageService).searchMessages(any(), any(), any(), any(), any(), any(), any(), anyInt(), any());
     }
 
     /**
@@ -102,7 +104,7 @@ public class MessageCoreControllerV1Test {
                 .size(10)
                 .build();
 
-        when(messageService.searchMessages(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(10), isNull()))
+        when(messageService.searchMessages(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(10), isNull()))
                 .thenReturn(Mono.just(response));
 
         webTestClient.get()
@@ -119,7 +121,7 @@ public class MessageCoreControllerV1Test {
      */
     @Test
     void searchMessages_ServiceError_Returns502() {
-        when(messageService.searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), any()))
+        when(messageService.searchMessages(any(), any(), any(), any(), any(), any(), any(), anyInt(), any()))
                 .thenReturn(Mono.error(new ExternalServiceException("MESSAGE_SERVICE", "searchMessages", "Upstream error")));
 
         webTestClient.get()

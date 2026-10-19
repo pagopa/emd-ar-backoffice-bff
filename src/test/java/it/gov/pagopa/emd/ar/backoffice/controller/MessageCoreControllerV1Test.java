@@ -64,7 +64,7 @@ public class MessageCoreControllerV1Test {
                 eq("MSG-123"),
                 eq("REC-456"),
                 eq("ORG-789"),
-                any(MessageStateV1.class),
+                eq(MessageStateV1.SENT),
                 any(LocalDateTime.class),
                 any(LocalDateTime.class),
                 eq("cursor"),
@@ -78,6 +78,7 @@ public class MessageCoreControllerV1Test {
                         .queryParam("messageId", "MSG-123")
                         .queryParam("recipientId", "REC-456")
                         .queryParam("originId", "ORG-789")
+                        .queryParam("status", "SENT")
                         .queryParam("startDate", "2026-10-01T10:00:00")
                         .queryParam("endDate", "2026-10-31T10:00:00")
                         .queryParam("cursor", "cursor")

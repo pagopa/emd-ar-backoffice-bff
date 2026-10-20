@@ -1,15 +1,12 @@
 package it.gov.pagopa.emd.ar.backoffice.api.v1.message.controller;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
 import it.gov.pagopa.common.utils.Utilities;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageStateV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchParameterV1;
 import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreService;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -26,17 +23,14 @@ public class MessageCoreControllerImplV1 implements MessageCoreControllerV1 {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<MessageSearchResponseDTOV1>> searchMessages(
-        String messageId, String recipientId, String originId, MessageStateV1 state,
-        LocalDateTime startDate, LocalDateTime endDate,
-        String cursor, int size, List<String> fields) {
+    public Mono<ResponseEntity<MessageSearchResponseDTOV1>> searchMessages(MessageSearchParameterV1 request) {
         log.info("[AR-BFF][MESSAGE_SEARCH] Searching messages — messageId={}, recipientId={}, originId={}, status={}, startDate={}, endDate={}, cursor={}, size={}, fields={}",
-                messageId != null ? "***" : null,
-                recipientId != null ? "***" : null,
-                originId != null ? "***" : null,
-                state != null ? "***" : null,
-                startDate, endDate, cursor, size, fields != null ? fields.size() : 0);
-        return messageService.searchMessages(messageId, recipientId, originId, state, startDate, endDate, cursor, size, fields)
+                request.getMessageId() != null ? "***" : null,
+                request.getRecipientId() != null ? "***" : null,
+                request.getOriginId() != null ? "***" : null,
+                request.getState() != null ? "***" : null,
+                request.getStartDate(), request.getEndDate(), request.getCursor(), request.getSize(), request.getFields() != null ? request.getFields().size() : 0);
+        return messageService.searchMessages(request)
                 .map(ResponseEntity::ok);
     }
 

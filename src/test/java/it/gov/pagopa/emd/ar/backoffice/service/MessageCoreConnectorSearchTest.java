@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.service;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchParameterV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageStateV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageCoreConnectorImpl;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
@@ -79,19 +80,28 @@ class MessageCoreConnectorSearchTest {
                     "totalPages": 0
                 }
                 """;
+        MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setMessageId("MSG-1");
+        params.setRecipientId("REC-1");
+        params.setOriginId("ORG-1");
+        params.setState(MessageStateV1.ERROR);
+        params.setCursor("cursor-0");
+        params.setSize(10);
+        
         String[] capturedUrl = new String[1];
         MessageCoreConnectorImpl connector = connectorWith(request -> {
             capturedUrl[0] = request.url().toString();
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.searchMessages("MSG-1", "REC-1", "ORG-1", MessageStateV1.ERROR, null, null, "cursor-0", 10, null))
+        StepVerifier.create(connector.searchMessages(params))
                 .expectNextCount(1)
                 .verifyComplete();
 
         assertThat(capturedUrl[0]).contains("/emd/message-core/search");
         assertThat(capturedUrl[0]).contains("messageId=MSG-1");
         assertThat(capturedUrl[0]).contains("recipientId=REC-1");
+        assertThat(capturedUrl[0]).contains("state=ERROR");
         assertThat(capturedUrl[0]).contains("originId=ORG-1");
         assertThat(capturedUrl[0]).contains("cursor=cursor-0");
         assertThat(capturedUrl[0]).contains("size=10");
@@ -104,6 +114,11 @@ class MessageCoreConnectorSearchTest {
     void searchMessages_WithDates_SendsDatesInUrl() {
         LocalDateTime start = LocalDateTime.of(2026, 10, 1, 10, 0);
         LocalDateTime end = LocalDateTime.of(2026, 10, 31, 18, 0);
+
+        MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setStartDate(start);
+        params.setEndDate(end);
+        params.setSize(10);
         
         String json = """
                 {
@@ -121,12 +136,18 @@ class MessageCoreConnectorSearchTest {
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, start, end, null, 10, null))
+        // When
+        StepVerifier.create(connector.searchMessages(params))
                 .expectNextCount(1)
                 .verifyComplete();
 
+        // Then
+        assertThat(capturedUrl[0]).contains("/emd/message-core/search");
+        
         assertThat(capturedUrl[0]).contains("startDate=2026-10-01T10:00");
         assertThat(capturedUrl[0]).contains("endDate=2026-10-31T18:00");
+        
+        assertThat(capturedUrl[0]).contains("size=10");
     }
 
     /**
@@ -135,6 +156,10 @@ class MessageCoreConnectorSearchTest {
     @Test
     void searchMessages_WithFields_SendsMultiValueFields() {
         List<String> fields = List.of("id", "status");
+
+    MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setFields(fields);
+        params.setSize(10);
         
         String json = """
                 {
@@ -152,12 +177,18 @@ class MessageCoreConnectorSearchTest {
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, null, 10, fields))
+        // When
+        StepVerifier.create(connector.searchMessages(params))
                 .expectNextCount(1)
                 .verifyComplete();
 
+        // Then
+        assertThat(capturedUrl[0]).contains("/emd/message-core/search");
+
         assertThat(capturedUrl[0]).contains("fields=id");
         assertThat(capturedUrl[0]).contains("fields=status");
+        
+        assertThat(capturedUrl[0]).contains("size=10");
     }
 
     /**
@@ -175,6 +206,13 @@ class MessageCoreConnectorSearchTest {
                 "totalPages": 0
                 }
                 """;
+        
+        MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setMessageId("");
+        params.setRecipientId("  ");
+        params.setOriginId(null);
+        params.setCursor("cursor-5");
+        params.setSize(50);
 
         String[] capturedUrl = new String[1];
         MessageCoreConnectorImpl connector = connectorWith(request -> {
@@ -182,13 +220,18 @@ class MessageCoreConnectorSearchTest {
             return Mono.just(okJson(json));
         });
 
-        StepVerifier.create(connector.searchMessages("", "  ", null, null, null, null, "cursor-5", 50, null))
+        // When
+        StepVerifier.create(connector.searchMessages(params))
                 .expectNextCount(1)
                 .verifyComplete();
 
-        assertThat(capturedUrl[0]).doesNotContain("messageId");
-        assertThat(capturedUrl[0]).doesNotContain("recipientId");
-        assertThat(capturedUrl[0]).doesNotContain("originId");
+        // Then
+        assertThat(capturedUrl[0]).contains("/emd/message-core/search");
+
+        assertThat(capturedUrl[0]).doesNotContain("messageId=");
+        assertThat(capturedUrl[0]).doesNotContain("recipientId=");
+        assertThat(capturedUrl[0]).doesNotContain("originId=");
+
         assertThat(capturedUrl[0]).contains("cursor=cursor-5");
         assertThat(capturedUrl[0]).contains("size=50");
     }
@@ -198,11 +241,20 @@ class MessageCoreConnectorSearchTest {
      */
     @Test
     void searchMessages_Upstream400_ThrowsInvalidSearchFieldException() {
-        String errorBody = "{\"code\":\"INVALID_SEARCH_FIELD\",\"description\":\"Invalid field 'dummy'\"}";
-        MessageCoreConnectorImpl connector = connectorWith(request ->
-                Mono.just(errorJson(HttpStatus.BAD_REQUEST, errorBody)));
+        // Given
+        List<String> invalidFields = List.of("dummy");
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, null, 10, List.of("dummy")))
+        MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setFields(invalidFields);
+        params.setSize(10);
+
+        String errorBody = "{\"code\":\"INVALID_SEARCH_FIELD\",\"description\":\"Invalid field 'dummy'\"}";
+
+        MessageCoreConnectorImpl connector = connectorWith(request ->
+                Mono.just(errorJson(org.springframework.http.HttpStatus.BAD_REQUEST, errorBody)));
+
+        // When & Then
+        StepVerifier.create(connector.searchMessages(params))
                 .expectErrorMatches(ex -> ex instanceof InvalidSearchFieldException &&
                                     ex.getMessage().contains("dummy"))
                 .verify();
@@ -213,10 +265,14 @@ class MessageCoreConnectorSearchTest {
      */
     @Test
     void searchMessages_Upstream500_ThrowsExternalServiceException() {
+        // Given
+        MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setSize(10);
         MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.INTERNAL_SERVER_ERROR, "Server Error")));
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, null, 10, null))
+        // When & Then
+        StepVerifier.create(connector.searchMessages(params))
                 .expectError(ExternalServiceException.class)
                 .verify();
     }
@@ -226,12 +282,16 @@ class MessageCoreConnectorSearchTest {
      */
     @Test
     void searchMessages_Upstream429_ThrowsTooManyRequestsException() {
+        // Given
+        MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setSize(10);
+
         MessageCoreConnectorImpl connector = connectorWith(request ->
                 Mono.just(errorJson(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests")));
 
-        StepVerifier.create(connector.searchMessages(null, null, null, null, null, null, null, 10, null))
-                .expectErrorMatches(ex -> ex instanceof TooManyRequestsException &&
-                                    ex.getMessage().contains("Too Many Requests"))
+        // When & Then
+        StepVerifier.create(connector.searchMessages(params))
+                .expectErrorMatches(ex -> ex instanceof TooManyRequestsException && ex.getMessage().contains("Too Many Requests"))
                 .verify();
     }
 }

@@ -83,7 +83,15 @@ public class MessageCoreConnectorImpl implements MessageCoreConnector {
                     }
                     return new ExternalServiceException("MESSAGE_SERVICE", "searchMessages", ex.getMessage());
                 })
-                .doOnError(ex -> log.error("[MESSAGE-CONNECTOR] GET {} failed (request={}): {}", SEARCH_MESSAGE_PATH, request, ex.getMessage()));
+                .doOnError(ex -> log.error(
+                        "[MESSAGE-CONNECTOR] GET {} failed (messageId={}, recipientId={}, originId={}, cursor={}, fields={}): {}",
+                        SEARCH_MESSAGE_PATH,
+                        request.getMessageId() != null ? "***" : null,
+                        request.getRecipientId() != null ? "***" : null,
+                        request.getOriginId() != null ? "***" : null,
+                        request.getCursor() != null ? "***" : null,
+                        request.getFields() != null ? request.getFields().size() : 0,
+                        ex.getMessage()));
     }
 
     /**

@@ -9,7 +9,7 @@ public interface MessageCoreConnector {
     
     /**
      * Performs a paginated search for Messages by calling
-     * {@code GET /emd/message-core/searchV2} on the emd-message service.
+     * {@code GET /emd/message-core/search} on the emd-message service.
      *
      * @param request      the search parameters object.
      * @return {@code Mono<MessageSearchResponseDTOV1>} with the paginated result.

@@ -10,7 +10,7 @@ public interface MessageCoreService {
     /**
      * Searches for Messages using a paginated, filtered query.
      *
-     * <p>Delegates directly to the upstream {@code GET /emd/message-core/searchV2} endpoint via the
+     * <p>Delegates directly to the upstream {@code GET /emd/message-core/search} endpoint via the
      * connector. Filter parameters are optional.
      * </p>
      *

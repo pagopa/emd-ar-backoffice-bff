@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.13.0...v0.14.0) (2026-10-22)
+
+
+### Features
+
+* [MMC-1225] Add status parameter to search request ([#77](https://github.com/pagopa/emd-ar-backoffice-bff/issues/77)) ([89403ca](https://github.com/pagopa/emd-ar-backoffice-bff/commit/89403ca1c033601d3f3f67eb735eac7a16d4d155))
+
 ## [0.13.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.12.0...v0.13.0) (2026-10-15)
 
 

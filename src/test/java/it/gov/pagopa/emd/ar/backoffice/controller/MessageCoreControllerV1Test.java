@@ -2,14 +2,19 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.controller.MessageCoreControllerImplV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageStateV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.api.handler.ControllerExceptionHandler;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchParameterV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.message.MessageCoreService;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -17,7 +22,6 @@ import reactor.core.publisher.Mono;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import java.time.LocalDateTime;
 
 /**
  * Unit tests for {@link MessageCoreControllerImplV1}.
@@ -57,25 +61,17 @@ public class MessageCoreControllerV1Test {
                 .nextCursor("next-page-cursor")
                 .build();
 
-        // Mocking del servizio
-        // Usiamo any() per LocalDateTime e List per evitare problemi di uguaglianza esatta tra oggetti
-        when(messageService.searchMessages(
-                eq("MSG-123"),
-                eq("REC-456"),
-                eq("ORG-789"),
-                any(LocalDateTime.class),
-                any(LocalDateTime.class),
-                eq("cursor"),
-                eq(10),
-                anyList()))
+        when(messageService.searchMessages(any(MessageSearchParameterV1.class)))
             .thenReturn(Mono.just(response));
 
+        // When
         webTestClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/emd/backoffice/api/v1/message-core/search")
                         .queryParam("messageId", "MSG-123")
                         .queryParam("recipientId", "REC-456")
                         .queryParam("originId", "ORG-789")
+                        .queryParam("state", "SENT")
                         .queryParam("startDate", "2026-10-01T10:00:00")
                         .queryParam("endDate", "2026-10-31T10:00:00")
                         .queryParam("cursor", "cursor")
@@ -83,6 +79,7 @@ public class MessageCoreControllerV1Test {
                         .queryParam("fields", "id", "status")
                         .build())
                 .exchange()
+                // Then
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
                 .expectBody()
@@ -90,7 +87,14 @@ public class MessageCoreControllerV1Test {
                 .jsonPath("$.totalElements").isEqualTo(0)
                 .jsonPath("$.nextCursor").isEqualTo("next-page-cursor");
         
-        Mockito.verify(messageService).searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), any());
+        ArgumentCaptor<MessageSearchParameterV1> captor = ArgumentCaptor.forClass(MessageSearchParameterV1.class);
+        Mockito.verify(messageService).searchMessages(captor.capture());
+        
+        MessageSearchParameterV1 captured = captor.getValue();
+        Assertions.assertEquals("MSG-123", captured.getMessageId());
+        Assertions.assertEquals(MessageStateV1.SENT, captured.getState());
+        Assertions.assertEquals(10, captured.getSize());
+        Assertions.assertTrue(captured.getFields().contains("id"));
     }
 
     /**
@@ -102,16 +106,23 @@ public class MessageCoreControllerV1Test {
                 .size(10)
                 .build();
 
-        when(messageService.searchMessages(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(10), isNull()))
+        when(messageService.searchMessages(any(MessageSearchParameterV1.class)))
                 .thenReturn(Mono.just(response));
 
+        // When
         webTestClient.get()
                 .uri("/emd/backoffice/api/v1/message-core/search")
                 .exchange()
+                // Then
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.size").isEqualTo(10)
                 .jsonPath("$.nextCursor").doesNotExist();
+
+        ArgumentCaptor<MessageSearchParameterV1> captor = ArgumentCaptor.forClass(MessageSearchParameterV1.class);
+        Mockito.verify(messageService).searchMessages(captor.capture());
+        Assertions.assertEquals(10, captor.getValue().getSize());
+        Assertions.assertNull(captor.getValue().getMessageId());
     }
 
     /**
@@ -119,12 +130,16 @@ public class MessageCoreControllerV1Test {
      */
     @Test
     void searchMessages_ServiceError_Returns502() {
-        when(messageService.searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), any()))
-                .thenReturn(Mono.error(new ExternalServiceException("MESSAGE_SERVICE", "searchMessages", "Upstream error")));
+        // Given
+        when(messageService.searchMessages(any(MessageSearchParameterV1.class)))
+                .thenReturn(Mono.error(new it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException(
+                        "MESSAGE_SERVICE", "searchMessages", "Upstream error")));
 
+        // When
         webTestClient.get()
                 .uri("/emd/backoffice/api/v1/message-core/search")
                 .exchange()
+                // Then
                 .expectStatus().is5xxServerError();
     }
     

@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.service;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchParameterV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageCoreConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
@@ -20,7 +21,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests per il metodo {@code searchMessages} di {@link MessageCoreServiceImpl}.
@@ -75,18 +76,31 @@ class MessageCoreSearchServiceImplTest {
      */
     @Test
     void searchMessages_ByFilters_ReturnsResponse() {
-        MessageSearchResponseDTOV1 connectorResponse = pageOf("next-cursor", 10, 1);
+        // Given
+        String nextCursor = "next-cursor";
+        int size = 10;
         
-        when(messageConnector.searchMessages(eq("MSG-123"), eq("REC-456"), eq("ORG-789"), 
-                isNull(), isNull(), eq("next-cursor"), eq(10), isNull()))
+        MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setMessageId("MSG-123");
+        params.setRecipientId("REC-456");
+        params.setOriginId("ORG-789");
+        params.setCursor(nextCursor);
+        params.setSize(size);
+
+        MessageSearchResponseDTOV1 connectorResponse = pageOf(nextCursor, size, 1);
+        
+        when(messageConnector.searchMessages(any(MessageSearchParameterV1.class)))
                 .thenReturn(Mono.just(connectorResponse));
 
-        StepVerifier.create(service.searchMessages("MSG-123", "REC-456", "ORG-789", null, null, "next-cursor", 10, null))
+        StepVerifier.create(service.searchMessages(params))
                 .assertNext(dto -> {
-                    assertThat(dto.getNextCursor()).isEqualTo("next-cursor");
-                    assertThat(dto.getTotalElements()).isEqualTo(1);
+                    assertThat(dto.getNextCursor()).isEqualTo(nextCursor);
+                    assertThat(dto.getTotalElements()).isEqualTo(1L);
+                    assertThat(dto.getSize()).isEqualTo(size);
                 })
                 .verifyComplete();
+
+        verify(messageConnector).searchMessages(eq(params));
     }
 
     /**
@@ -94,17 +108,27 @@ class MessageCoreSearchServiceImplTest {
      */
     @Test
     void searchMessages_ByDateRange_PassesDatesToConnector() {
+        // Given
         LocalDateTime start = LocalDateTime.of(2026, 1, 1, 0, 0);
         LocalDateTime end = LocalDateTime.of(2026, 1, 31, 23, 59);
+        
+        MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setStartDate(start);
+        params.setEndDate(end);
+        params.setSize(10);
+
         MessageSearchResponseDTOV1 connectorResponse = pageOf(null, 10, 5);
 
-        when(messageConnector.searchMessages(isNull(), isNull(), isNull(),
-                eq(start), eq(end), isNull(), eq(10), isNull()))
+        when(messageConnector.searchMessages(eq(params)))
                 .thenReturn(Mono.just(connectorResponse));
 
-        StepVerifier.create(service.searchMessages(null, null, null, start, end, null, 10, null))
-                .assertNext(dto -> assertThat(dto.getTotalElements()).isEqualTo(5))
+        // When & Then
+        StepVerifier.create(service.searchMessages(params))
+                .assertNext(dto -> assertThat(dto.getTotalElements()).isEqualTo(5L))
                 .verifyComplete();
+        
+        // Verifica dell'invocazione
+        verify(messageConnector).searchMessages(eq(params));
     }
 
     /**
@@ -112,17 +136,27 @@ class MessageCoreSearchServiceImplTest {
      */
     @Test
     void searchMessages_EmptyResult_ReturnsEmptyPage() {
+        // Given
+        MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setMessageId("NOT-FOUND");
+        params.setSize(10);
+
         MessageSearchResponseDTOV1 emptyResponse = pageOf(null, 10, 0);
 
-        when(messageConnector.searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), any()))
+        // Mock del connector
+        when(messageConnector.searchMessages(any(MessageSearchParameterV1.class)))
                 .thenReturn(Mono.just(emptyResponse));
 
-        StepVerifier.create(service.searchMessages("NOT-FOUND", null, null, null, null, null, 10, null))
+        // When & Then
+        StepVerifier.create(service.searchMessages(params))
                 .assertNext(dto -> {
                     assertThat(dto.getContent()).isEmpty();
                     assertThat(dto.getTotalElements()).isZero();
                 })
                 .verifyComplete();
+
+        // Verifica che l'oggetto corretto sia arrivato al connector
+        verify(messageConnector).searchMessages(eq(params));
     }
 
     /**
@@ -130,10 +164,16 @@ class MessageCoreSearchServiceImplTest {
      */
     @Test
     void searchMessages_UpstreamError_PropagatesException() {
-        when(messageConnector.searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), any()))
-                .thenReturn(Mono.error(new ExternalServiceException("MESSAGE_SERVICE", "searchMessages", "Connection failed")));
+        // Given
+        MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setSize(10);
 
-        StepVerifier.create(service.searchMessages(null, null, null, null, null, null, 10, null))
+        when(messageConnector.searchMessages(any(MessageSearchParameterV1.class)))
+                .thenReturn(Mono.error(new ExternalServiceException(
+                        "MESSAGE_SERVICE", "searchMessages", "Connection failed")));
+
+        // When & Then
+        StepVerifier.create(service.searchMessages(params))
                 .expectErrorMatches(ex -> ex instanceof ExternalServiceException &&
                                     ex.getMessage().contains("MESSAGE_SERVICE"))
                 .verify();
@@ -144,15 +184,24 @@ class MessageCoreSearchServiceImplTest {
      */
     @Test
     void searchMessages_WithFields_PassesFieldsToConnector() {
+        // Given
         List<String> fields = List.of("id", "status", "timestamp");
-        MessageSearchResponseDTOV1 connectorResponse = pageOf(null, 10, 1);
+        MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setFields(fields);
+        params.setSize(10);
 
-        when(messageConnector.searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), eq(fields)))
+        MessageSearchResponseDTOV1 connectorResponse = pageOf(null, 10, 1);
+        
+        when(messageConnector.searchMessages(eq(params)))
                 .thenReturn(Mono.just(connectorResponse));
 
-        StepVerifier.create(service.searchMessages(null, null, null, null, null, null, 10, fields))
+        // When & Then
+        StepVerifier.create(service.searchMessages(params))
                 .expectNextCount(1)
                 .verifyComplete();
+
+        // Verifica finale: l'oggetto passato al connector deve contenere la lista campi corretta
+        verify(messageConnector).searchMessages(eq(params));
     }
 
     /**
@@ -160,12 +209,18 @@ class MessageCoreSearchServiceImplTest {
      */
     @Test
     void searchMessages_InvalidField_PropagatesException() {
+        // Given
         List<String> invalidFields = List.of("unknownField");
+        MessageSearchParameterV1 params = new MessageSearchParameterV1();
+        params.setFields(invalidFields);
+        params.setSize(10);
         
-        when(messageConnector.searchMessages(any(), any(), any(), any(), any(), any(), anyInt(), eq(invalidFields)))
-                .thenReturn(Mono.error(new InvalidSearchFieldException("unknownField", "Invalid field name")));
+        when(messageConnector.searchMessages(eq(params)))
+                .thenReturn(Mono.error(new InvalidSearchFieldException(
+                        "unknownField", "Invalid field name")));
 
-        StepVerifier.create(service.searchMessages(null, null, null, null, null, null, 10, invalidFields))
+        // When & Then
+        StepVerifier.create(service.searchMessages(params))
                 .expectError(InvalidSearchFieldException.class)
                 .verify();
     }

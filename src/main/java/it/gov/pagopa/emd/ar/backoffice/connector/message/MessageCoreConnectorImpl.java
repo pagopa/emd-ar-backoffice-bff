@@ -1,11 +1,9 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.message;
 
 import java.net.URI;
-import java.time.LocalDateTime;
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriBuilder;
@@ -18,6 +16,7 @@ import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundExceptio
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TooManyRequestsException;
 import lombok.extern.slf4j.Slf4j;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.message.dto.MessageSearchParameterV1;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 
@@ -51,11 +50,12 @@ public class MessageCoreConnectorImpl implements MessageCoreConnector {
      * {@link WebClientRetrySpecs#transientNetwork()}.</p>
      */
     @Override
-    public Mono<MessageSearchResponseDTOV1> searchMessages(String messageId, String recipientId, String originId, LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields) {
-        String joinedFields = fields != null ? String.join(",", fields) : "";
-        int fieldCount     = fields != null ? fields.size() : 0;
+    public Mono<MessageSearchResponseDTOV1> searchMessages(MessageSearchParameterV1 request) {
+        
+        String joinedFields = request.getFields() != null ? String.join(",", request.getFields()) : "";
+                
         return webClient.get()
-                .uri(uriBuilder -> buildSearchUri(uriBuilder, messageId, recipientId, originId, startDate, endDate, cursor, size, fields))
+                .uri(uriBuilder -> buildSearchUri(uriBuilder, request))
                 .retrieve()
                 .onStatus(status -> status.value() == 400, response ->
                         response.bodyToMono(String.class)
@@ -84,12 +84,13 @@ public class MessageCoreConnectorImpl implements MessageCoreConnector {
                     return new ExternalServiceException("MESSAGE_SERVICE", "searchMessages", ex.getMessage());
                 })
                 .doOnError(ex -> log.error(
-                        "[MESSAGE-CONNECTOR] GET {} failed (messageId={}, recipientId={}, originId={}, fields={}): {}",
+                        "[MESSAGE-CONNECTOR] GET {} failed (messageId={}, recipientId={}, originId={}, cursor={}, fields={}): {}",
                         SEARCH_MESSAGE_PATH,
-                        messageId != null ? "***" : null,
-                        recipientId != null ? "***" : null,
-                        originId != null ? "***" : null,
-                        fieldCount,
+                        request.getMessageId() != null ? "***" : null,
+                        request.getRecipientId() != null ? "***" : null,
+                        request.getOriginId() != null ? "***" : null,
+                        request.getCursor() != null ? "***" : null,
+                        request.getFields() != null ? request.getFields().size() : 0,
                         ex.getMessage()));
     }
 
@@ -98,32 +99,38 @@ public class MessageCoreConnectorImpl implements MessageCoreConnector {
      * that are actually provided (non-null / non-blank). Extracted to keep the cognitive
      * complexity of {@link #searchMessages} within the allowed threshold.
      */
-    private URI buildSearchUri(UriBuilder uriBuilder, String messageId, String recipientId, String originId,
-                                LocalDateTime startDate, LocalDateTime endDate, String cursor, int size, List<String> fields) {
-
+    private URI buildSearchUri(UriBuilder uriBuilder, MessageSearchParameterV1 request) {
         
-        uriBuilder.path(SEARCH_MESSAGE_PATH).queryParam("size", size);
-        if (cursor != null && !cursor.isBlank()) {
-            uriBuilder.queryParam("cursor", cursor);
+        uriBuilder.path(SEARCH_MESSAGE_PATH);
+        
+        if (StringUtils.hasText(request.getMessageId())) {
+            uriBuilder.queryParam("messageId", request.getMessageId());
         }
-        if (messageId != null && !messageId.isBlank()) {
-            uriBuilder.queryParam("messageId", messageId);
+        if (StringUtils.hasText(request.getRecipientId())) {
+            uriBuilder.queryParam("recipientId", request.getRecipientId());
         }
-        if (recipientId != null && !recipientId.isBlank()) {
-            uriBuilder.queryParam("recipientId", recipientId);
+        if (StringUtils.hasText(request.getOriginId())) {
+            uriBuilder.queryParam("originId", request.getOriginId());
         }
-        if (originId != null && !originId.isBlank()) {
-            uriBuilder.queryParam("originId", originId);
+        if (request.getState() != null) {
+            uriBuilder.queryParam("state", request.getState());
         }
-        if (startDate != null) {
-            uriBuilder.queryParam("startDate", startDate);
+        if (request.getStartDate() != null) {
+            uriBuilder.queryParam("startDate", request.getStartDate());
         }
-        if (endDate != null) {
-            uriBuilder.queryParam("endDate", endDate);
+        if (request.getEndDate() != null) {
+            uriBuilder.queryParam("endDate", request.getEndDate());
         }
-        if (fields != null && !fields.isEmpty()) {
-            fields.forEach(f -> uriBuilder.queryParam("fields", f));
+        if (StringUtils.hasText(request.getCursor())) {
+            uriBuilder.queryParam("cursor", request.getCursor());
         }
+        if (request.getSize() != null) {
+            uriBuilder.queryParam("size", request.getSize());
+        }
+        if (request.getFields() != null && !request.getFields().isEmpty()) {
+            request.getFields().forEach(f -> uriBuilder.queryParam("fields", f));
+        }
+
         return uriBuilder.build();
     }
 

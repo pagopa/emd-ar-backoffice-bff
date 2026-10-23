@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.auth.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,5 +23,11 @@ public class AuthControllerImplV1 implements AuthControllerV1 {
     @Override
     public Mono<ResponseEntity<AuthResponseV1>> exchangeToken(AuthRequestDTOV1 authRequest) {
         return authService.exchangeToken(authRequest.getToken());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<UserResponseDTOV1>> getUser(String authHeader) {
+        return authService.getUser(authHeader);
     }
 }

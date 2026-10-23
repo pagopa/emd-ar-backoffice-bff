@@ -3,7 +3,9 @@ package it.gov.pagopa.emd.ar.backoffice.service.auth;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
+import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.Organization;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.User;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakTokenService;
@@ -130,5 +132,20 @@ public class AuthServiceImpl implements AuthService {
                         .status("ERROR")
                         .message("Authentication failed")
                         .build()));
+    }
+
+    /** {@inheritDoc} */
+    public Mono<ResponseEntity<UserResponseDTOV1>> getUser(String authHeader) {
+        String userName = Utilities.getNameFromToken(authHeader);
+        String userEmail = Utilities.getEmailFromToken(authHeader);
+
+        log.info("[AR-BFF][USER_INFO] Request received - Getting User Info for userName={}, email={}", userName, userEmail);
+
+        UserResponseDTOV1 userResponse = UserResponseDTOV1.builder()
+                .name(userName)
+                .email(userEmail)
+                .build();
+
+        return Mono.just(ResponseEntity.ok(userResponse));
     }
 }

@@ -52,4 +52,29 @@ public class Utilities {
             return "error-parsing-token";
         }
     }
+
+    /**
+     * Helper to extract the full name from the Authorization header containing a Bearer token.
+     */
+    public static String getNameFromToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return "Name not available";
+        }
+        try {
+            String token = authHeader.substring(7);
+            String[] chunks = token.split("\\.");
+            if (chunks.length < 2) return "invalid-token";
+
+            String payload = new String(Base64.getUrlDecoder().decode(chunks[1]));
+            JsonNode node = objectMapper.readTree(payload);
+
+            if (node.has("name")) {
+                return node.get("name").asText();
+            }
+
+            return "unknown-name";
+        } catch (Exception e) {
+            return "error-parsing-token";
+        }
+    }
 }

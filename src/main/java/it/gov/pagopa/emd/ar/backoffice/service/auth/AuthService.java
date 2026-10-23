@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.auth;
 import org.springframework.http.ResponseEntity;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserResponseDTOV1;
 import reactor.core.publisher.Mono;
 
 public interface AuthService {
@@ -16,4 +17,12 @@ public interface AuthService {
      *  Keycloak token or an error response
      */
     Mono<ResponseEntity<AuthResponseV1>> exchangeToken(String token);
+
+    /**
+     * Extracts user info (name and email) from the token payload within the Authorization header.
+     *
+     * @param authHeader the Authorization header to parse
+     * @return {@code Mono<ResponseEntity<UserResponseDTOV1>>} with the extracted user details
+     */
+    Mono<ResponseEntity<UserResponseDTOV1>> getUser(String authHeader);
 }

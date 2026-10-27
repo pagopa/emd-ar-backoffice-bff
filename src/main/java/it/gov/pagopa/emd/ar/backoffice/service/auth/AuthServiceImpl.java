@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.PageResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserPageResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.Organization;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.User;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakTokenService;
@@ -136,7 +136,7 @@ public class AuthServiceImpl implements AuthService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<PageResponseDTOV1>> getUsers(String search, Integer first, Integer max) {
+    public Mono<ResponseEntity<UserPageResponseDTOV1>> getUsers(String search, Integer first, Integer max) {
         return tokenService.getManagerToken()
                 .flatMap(managerToken -> userService.getPaginatedUsersWithRoles(managerToken, search, first, max))
                 .map(ResponseEntity::ok)

@@ -3,7 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakUserDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.PageResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserPageResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.Organization;
@@ -348,7 +348,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
      * @param max        pagination limit
      * @return {@code Mono<PageResponseDTOV1>} the paginated response containing users and total count
      */
-    public Mono<PageResponseDTOV1> getPaginatedUsersWithRoles(String adminToken, String search, Integer first, Integer max) {
+    public Mono<UserPageResponseDTOV1> getPaginatedUsersWithRoles(String adminToken, String search, Integer first, Integer max) {
         
         Mono<List<KeycloakUserDTOV1>> usersListMono = Mono.fromCallable(() -> {
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl)
@@ -379,7 +379,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
 
         // Execute both calls in parallel using Mono.zip
         return Mono.zip(usersListMono, countMono)
-                .map(tuple -> PageResponseDTOV1.builder()
+                .map(tuple -> UserPageResponseDTOV1.builder()
                         .content(tuple.getT1())
                         .totalElements(tuple.getT2())
                         .first(first)

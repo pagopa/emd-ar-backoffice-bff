@@ -4,7 +4,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.controller.AuthControllerImpl
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakUserDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.PageResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserPageResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,7 +57,7 @@ class AuthControllerV1Test {
                 .email("mario@example.com")
                 .build();
 
-        PageResponseDTOV1 pageResponse = PageResponseDTOV1.builder()
+        UserPageResponseDTOV1 pageResponse = UserPageResponseDTOV1.builder()
                 .content(List.of(user))
                 .totalElements(1)
                 .first(0)
@@ -85,7 +85,7 @@ class AuthControllerV1Test {
 
     @Test
     void getUsers_ShouldUseDefaultPagination_WhenParamsAreMissing() {
-        PageResponseDTOV1 emptyPage = PageResponseDTOV1.builder()
+        UserPageResponseDTOV1 emptyPage = UserPageResponseDTOV1.builder()
                 .content(List.of())
                 .totalElements(0)
                 .first(0)

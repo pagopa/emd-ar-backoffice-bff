@@ -10,7 +10,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PageResponseDTOV1{
+public class UserPageResponseDTOV1{
     private List<KeycloakUserDTOV1> content;
     private Integer totalElements;
     private Integer first;

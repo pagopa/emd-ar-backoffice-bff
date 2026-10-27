@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.PageResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserPageResponseDTOV1;
 import reactor.core.publisher.Mono;
 
 @RequestMapping("/emd/backoffice/api/v1")
@@ -42,7 +42,7 @@ public interface AuthControllerV1 {
      * @return {@code Mono<ResponseEntity<PageResponseDTOV1>>} containing the paginated list of users and the total count
      */
     @GetMapping("/users")
-    Mono<ResponseEntity<PageResponseDTOV1>> getUsers(
+    Mono<ResponseEntity<UserPageResponseDTOV1>> getUsers(
             @RequestParam(required = false) String search,
             @RequestParam(required = false, defaultValue = "0") Integer first,
             @RequestParam(required = false, defaultValue = "5") Integer max

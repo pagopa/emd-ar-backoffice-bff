@@ -3,7 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.auth;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakUserDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.PageResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserPageResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakTokenService;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakUserService;
 import org.junit.jupiter.api.Test;
@@ -52,7 +52,7 @@ public class AuthServiceUserTest {
                 .email("mario@example.com")
                 .build();
                 
-        PageResponseDTOV1 mockPage = PageResponseDTOV1.builder()
+        UserPageResponseDTOV1 mockPage = UserPageResponseDTOV1.builder()
                 .content(List.of(mockUser))
                 .totalElements(1)
                 .first(0)
@@ -67,7 +67,7 @@ public class AuthServiceUserTest {
                 .assertNext(response -> {
                     assertEquals(HttpStatus.OK, response.getStatusCode());
                     
-                    PageResponseDTOV1 body = response.getBody();
+                    UserPageResponseDTOV1 body = response.getBody();
                     assertNotNull(body);
                     assertEquals(1, body.getTotalElements());
                     assertEquals(0, body.getFirst());

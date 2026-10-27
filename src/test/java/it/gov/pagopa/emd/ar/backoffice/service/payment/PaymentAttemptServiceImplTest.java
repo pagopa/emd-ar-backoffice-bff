@@ -1,10 +1,9 @@
-package it.gov.pagopa.emd.ar.backoffice.service;
+package it.gov.pagopa.emd.ar.backoffice.service.payment;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptDetailDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.payment.PaymentAttemptConnector;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.PaymentAttemptNotFoundException;
-import it.gov.pagopa.emd.ar.backoffice.service.payment.PaymentAttemptServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -1,4 +1,4 @@
-package it.gov.pagopa.emd.ar.backoffice.service;
+package it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -6,7 +6,6 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakUserDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.Organization;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.Role;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.User;
-import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakUserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;

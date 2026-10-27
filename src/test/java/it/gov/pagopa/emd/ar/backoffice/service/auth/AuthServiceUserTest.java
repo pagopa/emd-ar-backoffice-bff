@@ -1,11 +1,9 @@
-package it.gov.pagopa.emd.ar.backoffice.service;
+package it.gov.pagopa.emd.ar.backoffice.service.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakUserDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.PageResponseDTOV1;
-import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthServiceImpl;
-import it.gov.pagopa.emd.ar.backoffice.service.auth.SelfCareTokenValidator;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakTokenService;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakUserService;
 import org.junit.jupiter.api.Test;

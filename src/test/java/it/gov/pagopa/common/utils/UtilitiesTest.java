@@ -28,7 +28,9 @@ class UtilitiesTest {
 
     private Utilities utilities;
 
-    // Header JWT standard in Base64Url: {"alg":"HS256","typ":"JWT"}
+    /**
+     * Header JWT standard in Base64Url: {"alg":"HS256","typ":"JWT"}
+     */
     private static final String VALID_JWT_HEADER = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
 
     @BeforeEach

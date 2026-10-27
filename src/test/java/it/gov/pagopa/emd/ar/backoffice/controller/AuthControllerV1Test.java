@@ -16,8 +16,6 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 import static org.mockito.ArgumentMatchers.*;
 
-import static org.mockito.ArgumentMatchers.anyString;
-
 import java.util.List;
 
 class AuthControllerV1Test {
@@ -66,7 +64,7 @@ class AuthControllerV1Test {
                 .max(5)
                 .build();
 
-        Mockito.when(authService.getUsers(eq("Mario"), eq(0), eq(5)))
+        Mockito.when(authService.getUsers("Mario", 0, 5))
                 .thenReturn(Mono.just(ResponseEntity.ok(pageResponse)));
 
         webTestClient.get()

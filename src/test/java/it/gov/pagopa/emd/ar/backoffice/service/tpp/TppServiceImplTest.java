@@ -182,8 +182,13 @@ public class TppServiceImplTest {
 
         tppService.createTppAndKeycloakClient(entityId, original).block();
 
-        assert original.getMessageUrl() == null : "Original DTO must not be mutated";
-        assert original.getAuthenticationUrl() == null : "Original DTO must not be mutated";
+        assertThat(original.getMessageUrl())
+            .as("Original DTO must not be mutated")
+            .isNull();
+            
+        assertThat(original.getAuthenticationUrl())
+                .as("Original DTO must not be mutated")
+                .isNull();
     }
 
     /**

@@ -38,6 +38,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
     private final WebClient webClient;
     private final String idpAlias;
     private final String idpAliasMdc;
+    private final static String USER_ENDPOINT = "/admin/realms/{realm}/users";
 
     public KeycloakUserService(
             WebClient webClient,
@@ -91,7 +92,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
         log.debug("[AR-BFF][GET_KC_USER] email={}", email);
 
         URI uri = UriComponentsBuilder.fromUriString(authServerUrl)
-                .path("/admin/realms/{realm}/users")
+                .path(USER_ENDPOINT)
                 .queryParam("username", email)
                 .queryParam("exact", true)
                 .buildAndExpand(realm)
@@ -229,7 +230,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
     public Mono<List<KeycloakUserDTOV1>> getUsersWithRoles(String adminToken, String search, Integer first, Integer max) {
         log.info("[AR-BFF][GET_USERS] Fetching users. search={}, idpAlias={}, first={}, max={}", search, idpAlias, first, max);
         return Mono.fromCallable(() -> {
-            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl).path("/admin/realms/{realm}/users");
+            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl).path(USER_ENDPOINT);
             if (search != null && !search.isBlank()) {
                 builder.queryParam("search", search);
             }
@@ -320,7 +321,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
         log.info("[AR-BFF][COUNT_USERS] Fetching total count. search={}, idpAlias={}", search, idpAliasMdc);
         return Mono.fromCallable(() -> {
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl)
-                    .path("/admin/realms/{realm}/users/count");
+                    .path(USER_ENDPOINT + "/count");
             if (search != null && !search.isBlank()) {
                 builder.queryParam("search", search);
             }
@@ -349,7 +350,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
         
         Mono<List<KeycloakUserDTOV1>> usersListMono = Mono.fromCallable(() -> {
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl)
-                    .path("/admin/realms/{realm}/users");
+                    .path(USER_ENDPOINT);
             if (search != null && !search.isBlank()) {
                 builder.queryParam("search", search);
             }

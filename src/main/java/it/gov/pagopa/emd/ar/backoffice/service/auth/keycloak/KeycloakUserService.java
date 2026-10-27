@@ -38,7 +38,9 @@ public class KeycloakUserService extends AbstractKeycloakService {
     private final WebClient webClient;
     private final String idpAlias;
     private final String idpAliasMdc;
-    private final static String USER_ENDPOINT = "/admin/realms/{realm}/users";
+    private static final String USER_ENDPOINT = "/admin/realms/{realm}/users";
+    private static final String SEARCH_FIELD = "search";
+    private static final String IDP_ALIAS_FIELD = "idpAlias";
 
     public KeycloakUserService(
             WebClient webClient,
@@ -232,7 +234,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
         return Mono.fromCallable(() -> {
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl).path(USER_ENDPOINT);
             if (search != null && !search.isBlank()) {
-                builder.queryParam("search", search);
+                builder.queryParam(SEARCH_FIELD, search);
             }
             if (first != null) {
                 builder.queryParam("first", first);
@@ -241,7 +243,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
                 builder.queryParam("max", max);
             }
             // Filter to exclude organization users and fetch only operators
-            builder.queryParam("idpAlias", idpAliasMdc);
+            builder.queryParam(IDP_ALIAS_FIELD, idpAliasMdc);
             return builder.buildAndExpand(realm).toUri();
         }).flatMap(uri -> webClient.get()
                 .uri(uri)
@@ -323,9 +325,9 @@ public class KeycloakUserService extends AbstractKeycloakService {
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl)
                     .path(USER_ENDPOINT + "/count");
             if (search != null && !search.isBlank()) {
-                builder.queryParam("search", search);
+                builder.queryParam(SEARCH_FIELD, search);
             }
-            builder.queryParam("idpAlias", idpAliasMdc);
+            builder.queryParam(IDP_ALIAS_FIELD, idpAliasMdc);
             return builder.buildAndExpand(realm).toUri();
         }).flatMap(uri -> webClient.get()
                 .uri(uri)
@@ -352,7 +354,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl)
                     .path(USER_ENDPOINT);
             if (search != null && !search.isBlank()) {
-                builder.queryParam("search", search);
+                builder.queryParam(SEARCH_FIELD, search);
             }
             if (first != null) {
                 builder.queryParam("first", first);
@@ -360,7 +362,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
             if (max != null) {
                 builder.queryParam("max", max);
             }
-            builder.queryParam("idpAlias", idpAliasMdc);
+            builder.queryParam(IDP_ALIAS_FIELD, idpAliasMdc);
             return builder.buildAndExpand(realm).toUri();
         }).flatMap(uri -> webClient.get()
                 .uri(uri)

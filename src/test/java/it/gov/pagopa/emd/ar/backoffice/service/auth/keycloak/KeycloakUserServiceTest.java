@@ -1,6 +1,8 @@
 package it.gov.pagopa.emd.ar.backoffice.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakUserDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.Organization;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.Role;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.User;
@@ -10,6 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -21,6 +24,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -45,12 +49,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class KeycloakUserServiceTest {
 
-    private static final String BASE_URL    = "https://keycloak.test";
-    private static final String REALM       = "test-realm";
-    private static final String IDP_ALIAS   = "selfcare";
-    private static final String ADMIN_TOKEN = "admin-token";
-    private static final String KC_ID       = "kc-internal-id-001";
-    private static final String USER_UID    = "user-uid-abc";
+    private static final String BASE_URL        = "https://keycloak.test";
+    private static final String REALM           = "test-realm";
+    private static final String IDP_ALIAS       = "selfcare";
+    private static final String IDP_ALIAS_MDC   = "azure-entra";
+    private static final String ADMIN_TOKEN     = "admin-token";
+    private static final String KC_ID           = "kc-internal-id-001";
+    private static final String USER_UID        = "user-uid-abc";
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -118,7 +123,7 @@ class KeycloakUserServiceTest {
         WebClient webClient = WebClient.builder()
                 .exchangeFunction(exchangeFunction)
                 .build();
-        return new KeycloakUserService(webClient, new ObjectMapper(), BASE_URL, REALM, IDP_ALIAS);
+        return new KeycloakUserService(webClient, new ObjectMapper(), BASE_URL, REALM, IDP_ALIAS, IDP_ALIAS_MDC);
     }
 
     /**
@@ -393,5 +398,84 @@ class KeycloakUserServiceTest {
         assertThat(attrs).doesNotContainKey("orgRoles");
         assertThat(attrs).doesNotContainKey("orgFiscalCode");
     }
+
+    /**
+     * Helper per gestire test con richieste asincrone parallele.
+     * Analizza l'URL e restituisce la risposta corretta.
+     */
+    private ExchangeFunction routedExchange(Function<ClientRequest, ClientResponse> router) {
+        return request -> Mono.just(router.apply(request));
+    }
+
+    @Test
+    void getPaginatedUsersWithRoles_Success() {
+        String usersJson = "[{\"id\":\"" + KC_ID + "\",\"firstName\":\"Mario\",\"email\":\"mario@test.com\"}]";
+        String rolesJson = "{\"realmMappings\":[{\"name\":\"realm-admin\"}],\"clientMappings\":{\"my-client\":{\"mappings\":[{\"name\":\"client-role\"}]}}}";
+
+        // Usiamo il router perché le chiamate avvengono in parallelo Mono.zip e l'ordine non è garantito
+        ExchangeFunction exchange = routedExchange(request -> {
+            String path = request.url().getPath();
+            if (path.endsWith("/users/count")) {
+                return ok("42");
+            } else if (path.endsWith("/users")) {
+                return ok(usersJson);
+            } else if (path.endsWith("/role-mappings")) {
+                return ok(rolesJson);
+            }
+            return serverError();
+        });
+
+        KeycloakUserService svc = serviceWith(exchange);
+
+        StepVerifier.create(svc.getPaginatedUsersWithRoles(ADMIN_TOKEN, "mario", 0, 5))
+                .assertNext(page -> {
+                    assertThat(page.getTotalElements()).isEqualTo(42);
+                    assertThat(page.getContent()).hasSize(1);
+
+                    KeycloakUserDTOV1 user = page.getContent().get(0);
+                    assertThat(user.getFirstName()).isEqualTo("Mario");
+                    
+                    // Verifica mappatura ruoli Realm
+                    assertThat(user.getRealmRoles()).containsExactly("realm-admin");
+                    
+                    // Verifica mappatura ruoli Client
+                    assertThat(user.getClientRoles()).containsKey("my-client");
+                    assertThat(user.getClientRoles().get("my-client")).containsExactly("client-role");
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void getPaginatedUsersWithRoles_RoleMappingFails_SilentlyHandled() {
+        String usersJson = "[{\"id\":\"" + KC_ID + "\",\"firstName\":\"Mario\"}]";
+
+        ExchangeFunction exchange = routedExchange(request -> {
+            String path = request.url().getPath();
+            if (path.endsWith("/users/count")) {
+                return ok("1");
+            } else if (path.endsWith("/users")) {
+                return ok(usersJson);
+            } else if (path.endsWith("/role-mappings")) {
+                return serverError();
+            }
+            return serverError();
+        });
+
+        KeycloakUserService svc = serviceWith(exchange);
+
+        StepVerifier.create(svc.getPaginatedUsersWithRoles(ADMIN_TOKEN, null, 0, 5))
+                .assertNext(page -> {
+                    assertThat(page.getTotalElements()).isEqualTo(1);
+                    assertThat(page.getContent()).hasSize(1);
+
+                    KeycloakUserDTOV1 user = page.getContent().get(0);
+                    assertThat(user.getFirstName()).isEqualTo("Mario");
+
+                    assertThat(user.getRealmRoles()).isEmpty();
+                    assertThat(user.getClientRoles()).isEmpty();
+                })
+                .verifyComplete();
+    }
+
 }
 

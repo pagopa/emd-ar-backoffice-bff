@@ -8,12 +8,12 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.PageResponseDTOV1;
 import reactor.core.publisher.Mono;
 
 @RequestMapping("/emd/backoffice/api/v1")
@@ -33,11 +33,18 @@ public interface AuthControllerV1 {
     Mono<ResponseEntity<AuthResponseV1>> exchangeToken(@Valid @RequestBody AuthRequestDTOV1 authRequest);
 
     /**
-     * Retrieves the user information (name and email) from the provided Authorization header.
+     * Retrieves a paginated list of Keycloak users, optionally filtered by a search string.
+     * The result includes the realm and client roles for each user.
      *
-     * @param authHeader the Authorization header containing the Bearer token
-     * @return {@code Mono<ResponseEntity<UserResponseDTOV1>>} containing the user's name and email
+     * @param search an optional search string to filter users by username, email, first name, or last name
+     * @param first  the index of the first result to return (used for pagination offset)
+     * @param max    the maximum number of results to return (used for pagination limit)
+     * @return {@code Mono<ResponseEntity<PageResponseDTOV1>>} containing the paginated list of users and the total count
      */
-    @GetMapping(value = "auth/user", produces = MediaType.APPLICATION_JSON_VALUE)
-    Mono<ResponseEntity<UserResponseDTOV1>> getUser(@RequestHeader(name = "Authorization", required = false) String authHeader);
+    @GetMapping("/users")
+    Mono<ResponseEntity<PageResponseDTOV1>> getUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "0") Integer first,
+            @RequestParam(required = false, defaultValue = "5") Integer max
+    );
 }

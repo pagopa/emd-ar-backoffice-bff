@@ -476,5 +476,55 @@ class KeycloakUserServiceTest {
                 .verifyComplete();
     }
 
+    @Test
+    void getUsersWithRoles_Success() {
+        String usersJson = "[{\"id\":\"" + KC_ID + "\",\"firstName\":\"Mario\",\"email\":\"mario@test.com\"}]";
+        String rolesJson = "{\"realmMappings\":[{\"name\":\"realm-admin\"}],\"clientMappings\":{\"my-client\":{\"mappings\":[{\"name\":\"client-role\"}]}}}";
+
+        ExchangeFunction exchange = routedExchange(request -> {
+            String path = request.url().getPath();
+            
+            if (path.endsWith("/users")) {
+                String query = request.url().getQuery();
+                assertThat(query).contains("search=mario");
+                assertThat(query).contains("first=0");
+                assertThat(query).contains("max=5");
+                assertThat(query).contains("idpAlias=" + IDP_ALIAS_MDC);
+                
+                return ok(usersJson);
+            } 
+            else if (path.endsWith("/role-mappings")) {
+                return ok(rolesJson);
+            }
+            return serverError();
+        });
+
+        KeycloakUserService svc = serviceWith(exchange);
+
+        StepVerifier.create(svc.getUsersWithRoles(ADMIN_TOKEN, "mario", 0, 5))
+                .assertNext(usersList -> {
+                    assertThat(usersList).hasSize(1);
+                    
+                    KeycloakUserDTOV1 user = usersList.get(0);
+                    assertThat(user.getFirstName()).isEqualTo("Mario");
+                    
+                    assertThat(user.getRealmRoles()).containsExactly("realm-admin");
+                    assertThat(user.getClientRoles()).containsKey("my-client");
+                    assertThat(user.getClientRoles().get("my-client")).containsExactly("client-role");
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void getUsersWithRoles_ApiError_PropagatesException() {
+        ExchangeFunction exchange = routedExchange(request -> serverError());
+
+        KeycloakUserService svc = serviceWith(exchange);
+
+        StepVerifier.create(svc.getUsersWithRoles(ADMIN_TOKEN, "mario", 0, 5))
+                .expectErrorMatches(ex -> ex.getMessage() != null && ex.getMessage().contains("KEYCLOAK"))
+                .verify();
+    }
+
 }
 

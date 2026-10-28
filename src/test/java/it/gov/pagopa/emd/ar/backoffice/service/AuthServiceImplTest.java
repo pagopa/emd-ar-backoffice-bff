@@ -4,8 +4,11 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakRoleDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthServiceImpl;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.SelfCareTokenValidator;
+import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakRoleService;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakTokenService;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakUserService;
 import org.junit.jupiter.api.Test;
@@ -21,9 +24,8 @@ import reactor.test.StepVerifier;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,6 +39,9 @@ class AuthServiceImplTest {
 
     @Mock
     private KeycloakUserService userService;
+
+    @Mock
+    private KeycloakRoleService roleService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -188,5 +193,38 @@ class AuthServiceImplTest {
                 .verify();
 
         verifyNoInteractions(userService);
+    }
+
+    @Test
+    void getAvailableRoles_Success() {
+        KeycloakRoleDTOV1 role = new KeycloakRoleDTOV1("id1", "operator-read", "desc");
+        when(roleService.getAvailableClientRoles()).thenReturn(Mono.just(List.of(role)));
+
+        StepVerifier.create(authService.getAvailableRoles())
+                .assertNext(response -> {
+                    assertEquals(HttpStatus.OK, response.getStatusCode());
+                    assertNotNull(response.getBody());
+                    assertEquals(1, response.getBody().size());
+                    assertEquals("operator-read", response.getBody().get(0).getName());
+                })
+                .verifyComplete();
+
+        verify(roleService, times(1)).getAvailableClientRoles();
+    }
+
+    @Test
+    void replaceUserRoles_Success() {
+        KeycloakRoleDTOV1 role = new KeycloakRoleDTOV1("id1", "operator-read", "desc");
+        String userId = "user-uuid";
+
+        when(roleService.replaceUserRoles(anyString(), anyList())).thenReturn(Mono.empty());
+
+        StepVerifier.create(authService.replaceUserRoles(userId, List.of(role)))
+                .assertNext(response -> {
+                    assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+                })
+                .verifyComplete();
+
+        verify(roleService, times(1)).replaceUserRoles(userId, List.of(role));
     }
 }

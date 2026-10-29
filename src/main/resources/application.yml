@@ -118,6 +118,7 @@ keycloak:
   auth-server-url: "\${KEYCLOAK_AUTH_URL}"
   realm: "\${KEYCLOAK_REALM}"
   idp-alias: "\${KEYCLOAK_IDP_ALIAS}"
+  idp-alias-mdc: "\${KEYCLOAK_IDP_ALIAS_MDC}"
   manager:
     client-id: "\${KEYCLOAK_MANAGER_CLIENT_ID}"
     client-secret: "\${KEYCLOAK_MANAGER_CLIENT_SECRET}"

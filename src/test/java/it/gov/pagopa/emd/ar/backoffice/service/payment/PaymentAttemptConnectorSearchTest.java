@@ -1,4 +1,4 @@
-package it.gov.pagopa.emd.ar.backoffice.service;
+package it.gov.pagopa.emd.ar.backoffice.service.payment;
 
 import it.gov.pagopa.emd.ar.backoffice.connector.payment.PaymentAttemptConnectorImpl;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;

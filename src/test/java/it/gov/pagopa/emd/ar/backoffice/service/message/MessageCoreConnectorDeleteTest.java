@@ -1,4 +1,4 @@
-package it.gov.pagopa.emd.ar.backoffice.service;
+package it.gov.pagopa.emd.ar.backoffice.service.message;
 
 import it.gov.pagopa.emd.ar.backoffice.connector.message.MessageCoreConnectorImpl;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;

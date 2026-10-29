@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.service.auth;
 import org.springframework.http.ResponseEntity;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserPageResponseDTOV1;
 import reactor.core.publisher.Mono;
 
 public interface AuthService {
@@ -16,4 +17,15 @@ public interface AuthService {
      *  Keycloak token or an error response
      */
     Mono<ResponseEntity<AuthResponseV1>> exchangeToken(String token);
+
+    /**
+     * Orchestrates the retrieval of a paginated list of Keycloak users.
+     * It fetches the manager token and then requests the users and their total count from Keycloak.
+     *
+     * @param search an optional string to filter the users
+     * @param first  the index of the first user to return
+     * @param max    the maximum number of users to retrieve
+     * @return {@code Mono<ResponseEntity<PageResponseDTOV1>>} containing the paginated users data
+     */
+    Mono<ResponseEntity<UserPageResponseDTOV1>> getUsers(String search, Integer first, Integer max);
 }

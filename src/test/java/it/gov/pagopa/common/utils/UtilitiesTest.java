@@ -28,6 +28,11 @@ class UtilitiesTest {
 
     private Utilities utilities;
 
+    /**
+     * Header JWT standard in Base64Url: {"alg":"HS256","typ":"JWT"}
+     */
+    private static final String VALID_JWT_HEADER = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
+
     @BeforeEach
     void setUp() {
         utilities = new Utilities(tracerMock);
@@ -78,11 +83,12 @@ class UtilitiesTest {
      */
     @Test
     void testGetEmailFromToken_Success() {
-        // Given: un payload JWT valido con il campo email
+        // Given
         String email = "test@example.com";
         String payload = "{\"email\":\"" + email + "\",\"sub\":\"12345\"}";
-        String encodedPayload = Base64.getUrlEncoder().encodeToString(payload.getBytes());
-        String authHeader = "Bearer header." + encodedPayload + ".signature";
+
+        String encodedPayload = Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes());
+        String authHeader = "Bearer " + VALID_JWT_HEADER + "." + encodedPayload + ".dummy_signature";
 
         // When
         String result = Utilities.getEmailFromToken(authHeader);
@@ -96,10 +102,10 @@ class UtilitiesTest {
      */
     @Test
     void testGetEmailFromToken_NoEmailInPayload() {
-        // Given: payload valido ma senza campo "email"
+        // Given
         String payload = "{\"sub\":\"12345\", \"name\":\"John\"}";
-        String encodedPayload = Base64.getUrlEncoder().encodeToString(payload.getBytes());
-        String authHeader = "Bearer header." + encodedPayload + ".signature";
+        String encodedPayload = Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes());
+        String authHeader = "Bearer " + VALID_JWT_HEADER + "." + encodedPayload + ".dummy_signature";
 
         // When
         String result = Utilities.getEmailFromToken(authHeader);
@@ -133,18 +139,18 @@ class UtilitiesTest {
     }
 
     /**
-     * Test di fallimento: verifica che getEmailFromToken ritorni "invalid-token" quando il token non ha almeno 2 parti separate da punto.
+     * Test di fallimento: verifica che getEmailFromToken catturi l'errore se il token non è formattato correttamente
      */
     @Test
     void testGetEmailFromToken_InvalidFormat() {
-        // Given: un token che non ha almeno 2 parti separate da punto
+        // Given
         String authHeader = "Bearer invalidTokenFormat";
 
         // When
         String result = Utilities.getEmailFromToken(authHeader);
 
         // Then
-        Assertions.assertEquals("invalid-token", result);
+        Assertions.assertEquals("error-parsing-token", result);
     }
 
     /**
@@ -152,8 +158,8 @@ class UtilitiesTest {
      */
     @Test
     void testGetEmailFromToken_MalformedBase64() {
-        // Given: una parte centrale che non è Base64 valida
-        String authHeader = "Bearer header.!!!NotBase64!!!.signature";
+        // Given
+        String authHeader = "Bearer " + VALID_JWT_HEADER + ".!!!NotBase64!!!.signature";
 
         // When
         String result = Utilities.getEmailFromToken(authHeader);
@@ -167,10 +173,10 @@ class UtilitiesTest {
      */
     @Test
     void testGetEmailFromToken_InvalidJsonPayload() {
-        // Given: Base64 valido ma il contenuto non è un JSON
+        // Given
         String payload = "not-a-json";
-        String encodedPayload = Base64.getUrlEncoder().encodeToString(payload.getBytes());
-        String authHeader = "Bearer header." + encodedPayload + ".signature";
+        String encodedPayload = Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes());
+        String authHeader = "Bearer " + VALID_JWT_HEADER + "." + encodedPayload + ".signature";
 
         // When
         String result = Utilities.getEmailFromToken(authHeader);

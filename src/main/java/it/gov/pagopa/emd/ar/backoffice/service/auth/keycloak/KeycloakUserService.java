@@ -229,7 +229,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
      * @param max        pagination limit
      * @return {@code Mono<List<KeycloakUserDTOV1>>} a list of users enriched with roles
      */
-    public Mono<List<KeycloakUserDTOV1>> getUsersWithRoles(String adminToken, String search, Integer first, Integer max) {
+    private Mono<List<KeycloakUserDTOV1>> getUsersWithRoles(String adminToken, String search, Integer first, Integer max) {
         log.info("[AR-BFF][GET_USERS] Fetching users. search={}, idpAlias={}, first={}, max={}", search, idpAlias, first, max);
         return Mono.fromCallable(() -> {
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl).path(USER_ENDPOINT);
@@ -350,34 +350,10 @@ public class KeycloakUserService extends AbstractKeycloakService {
      */
     public Mono<UserPageResponseDTOV1> getPaginatedUsersWithRoles(String adminToken, String search, Integer first, Integer max) {
         
-        Mono<List<KeycloakUserDTOV1>> usersListMono = Mono.fromCallable(() -> {
-            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl)
-                    .path(USER_ENDPOINT);
-            if (search != null && !search.isBlank()) {
-                builder.queryParam(SEARCH_FIELD, search);
-            }
-            if (first != null) {
-                builder.queryParam("first", first);
-            }
-            if (max != null) {
-                builder.queryParam("max", max);
-            }
-            builder.queryParam(IDP_ALIAS_FIELD, idpAliasMdc);
-            return builder.buildAndExpand(realm).toUri();
-        }).flatMap(uri -> webClient.get()
-                .uri(uri)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<List<KeycloakUserDTOV1>>() {})
-                .retryWhen(WebClientRetrySpecs.transientNetwork())
-                .flatMapMany(Flux::fromIterable)
-                .flatMap(user -> populateUserWithRoles(adminToken, user), 10)
-                .collectList()
-        );
-
+        // Retrieve users list and count in parallel
+        Mono<List<KeycloakUserDTOV1>> usersListMono = getUsersWithRoles(adminToken, search, first, max);
         Mono<Integer> countMono = countUsers(adminToken, search);
 
-        // Execute both calls in parallel using Mono.zip
         return Mono.zip(usersListMono, countMono)
                 .map(tuple -> UserPageResponseDTOV1.builder()
                         .content(tuple.getT1())

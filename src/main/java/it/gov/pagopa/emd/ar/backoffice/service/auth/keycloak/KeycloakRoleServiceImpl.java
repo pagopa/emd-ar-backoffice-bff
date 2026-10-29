@@ -38,7 +38,7 @@ public class KeycloakRoleServiceImpl extends AbstractKeycloakService implements 
     public KeycloakRoleServiceImpl(WebClient webClient, ObjectMapper objectMapper, KeycloakTokenService tokenService,
             @Value("${keycloak.auth-server-url}") String authServerUrl,
             @Value("${keycloak.realm}") String realm,
-                        @Value("${keycloak.portal-client-id:ar-backoffice-portal-client}") String arBackofficeClientId) { 
+            @Value("${keycloak.portal-client-id}") String arBackofficeClientId) { 
         super(authServerUrl, realm, objectMapper);
         this.webClient = webClient;
         this.tokenService = tokenService;

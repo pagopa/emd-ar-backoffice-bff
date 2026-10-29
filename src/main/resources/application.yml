@@ -118,12 +118,15 @@ keycloak:
   auth-server-url: "\${KEYCLOAK_AUTH_URL}"
   realm: "\${KEYCLOAK_REALM}"
   idp-alias: "\${KEYCLOAK_IDP_ALIAS}"
+  idp-alias-mdc: "\${KEYCLOAK_IDP_ALIAS_MDC}"
   manager:
     client-id: "\${KEYCLOAK_MANAGER_CLIENT_ID}"
     client-secret: "\${KEYCLOAK_MANAGER_CLIENT_SECRET}"
   ar-backoffice:
     client-id: "\${KEYCLOAK_BACKOFFICE_CLIENT_ID}"
     client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
+  portal-client:
+    client-id: "\${KEYCLOAK_PORTAL_CLIENT_ID}"
   groups:
     tpp-name: "\${KEYCLOAK_TPP_GROUP_NAME}"
 

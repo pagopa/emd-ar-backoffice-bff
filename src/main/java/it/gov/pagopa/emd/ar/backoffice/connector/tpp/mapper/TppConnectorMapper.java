@@ -7,12 +7,10 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.TokenSectionV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.VersionDetailsV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AgentLink;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AuthenticationType;
-import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.Contact;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
@@ -36,12 +34,6 @@ import java.util.stream.Collectors;
  */
 public final class TppConnectorMapper {
 
-    // ── Temporary defaults ────────────────────────────────────────────────────
-    private static final String DEFAULT_ID_PSP         = "Temporary PSP ID";
-    private static final String DEFAULT_LEGAL_ADDRESS  = "Temporary Address";
-    private static final String DEFAULT_CONTACT_NAME   = "Temporary Contact";
-    private static final String DEFAULT_CONTACT_NUMBER = "1234567890";
-    private static final String DEFAULT_CONTACT_EMAIL  = "test@example.com";
 
     private TppConnectorMapper() {}
 
@@ -60,14 +52,7 @@ public final class TppConnectorMapper {
                 .messageUrl(input.getMessageUrl())
                 .authenticationUrl(input.getAuthenticationUrl())
                 .tokenSection(toTokenSection(input.getTokenSection()))
-                .idPsp(DEFAULT_ID_PSP)
                 .pspDenomination(input.getPspDenomination() != null ? input.getPspDenomination() : input.getBusinessName())
-                .legalAddress(DEFAULT_LEGAL_ADDRESS)
-                .contact(Contact.builder()
-                        .name(DEFAULT_CONTACT_NAME)
-                        .number(DEFAULT_CONTACT_NUMBER)
-                        .email(DEFAULT_CONTACT_EMAIL)
-                        .build())
                 .state(false)
                 .isPaymentEnabled(false)
                 .build();
@@ -84,21 +69,11 @@ public final class TppConnectorMapper {
                 .messageUrl(input.getMessageUrl())
                 .authenticationUrl(input.getAuthenticationUrl())
                 .authenticationType(toAuthenticationType(input.getAuthenticationType()))
-                .contact(toContact(input.getContact()))
                 .pspDenomination(input.getPspDenomination())
                 .agentLinks(input.getAgentLinks() == null ? null
                         : new java.util.HashMap<>(toAgentLinks(input.getAgentLinks())))
                 .whitelistRecipient(input.getWhitelistRecipient() == null ? null
                         : new ArrayList<>(input.getWhitelistRecipient()))
-                .build();
-    }
-
-    private static Contact toContact(it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1 v1) {
-        if (v1 == null) return null;
-        return Contact.builder()
-                .name(v1.getName())
-                .number(v1.getNumber())
-                .email(v1.getEmail())
                 .build();
     }
 
@@ -158,7 +133,6 @@ public final class TppConnectorMapper {
                 .messageUrl(src.getMessageUrl())
                 .authenticationUrl(src.getAuthenticationUrl())
                 .authenticationType(toAuthenticationTypeV1(src.getAuthenticationType()))
-                .contact(toContactV1(src.getContact()))
                 .pspDenomination(src.getPspDenomination())
                 .agentLinks(toAgentLinksV1(src.getAgentLinks()))
                 .build();
@@ -167,7 +141,7 @@ public final class TppConnectorMapper {
     /**
      * Maps a {@link TppEntityIdResponse} (connector layer) to the API-layer
      * {@link TppResponseDTOV1} with <em>all</em> available fields populated,
-     * including server-managed ones (entityId, idPsp, legalAddress, state, dates,
+     * including server-managed ones (entityId, state, dates,
      * isPaymentEnabled, messageTemplate, whitelistRecipient, clientId).
      *
      * <p>Dates are converted from {@code LocalDateTime} to {@code OffsetDateTime} (UTC).</p>
@@ -181,14 +155,11 @@ public final class TppConnectorMapper {
                 .messageUrl(src.getMessageUrl())
                 .authenticationUrl(src.getAuthenticationUrl())
                 .authenticationType(toAuthenticationTypeV1(src.getAuthenticationType()))
-                .contact(toContactV1(src.getContact()))
                 .pspDenomination(src.getPspDenomination())
                 .agentLinks(toAgentLinksV1(src.getAgentLinks()))
                 // detailed-only fields
                 .entityId(src.getEntityId())
                 .clientId(src.getClientId())
-                .idPsp(src.getIdPsp())
-                .legalAddress(src.getLegalAddress())
                 .state(src.getState())
                 .creationDate(src.getCreationDate() != null
                         ? src.getCreationDate().atOffset(ZoneOffset.UTC) : null)
@@ -203,11 +174,6 @@ public final class TppConnectorMapper {
     private static AuthenticationTypeV1 toAuthenticationTypeV1(AuthenticationType connector) {
         if (connector == null) return null;
         return AuthenticationTypeV1.valueOf(connector.name());
-    }
-
-    private static ContactV1 toContactV1(Contact connector) {
-        if (connector == null) return null;
-        return new ContactV1(connector.getName(), connector.getNumber(), connector.getEmail());
     }
 
     private static Map<String, AgentLinkV1> toAgentLinksV1(Map<String, AgentLink> connectorMap) {
@@ -266,13 +232,10 @@ public final class TppConnectorMapper {
                 .tppId(src.getTppId())
                 .clientId(src.getClientId())
                 .entityId(src.getEntityId())
-                .idPsp(src.getIdPsp())
                 .businessName(src.getBusinessName())
-                .legalAddress(src.getLegalAddress())
                 .messageUrl(src.getMessageUrl())
                 .authenticationUrl(src.getAuthenticationUrl())
                 .authenticationType(toAuthenticationTypeV1(src.getAuthenticationType()))
-                .contact(toContactV1(src.getContact()))
                 .state(src.getState())
                 .creationDate(src.getCreationDate() != null
                         ? src.getCreationDate().atOffset(ZoneOffset.UTC) : null)

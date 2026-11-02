@@ -42,8 +42,6 @@ public class MessageDTOV1 {
 
     private WorkflowTypeV1 workflowType;
 
-    private String idPsp;
-
     private String messageRegistrationDate;
 
     private MessageStateV1 messageState;

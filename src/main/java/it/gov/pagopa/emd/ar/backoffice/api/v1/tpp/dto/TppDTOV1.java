@@ -2,7 +2,6 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.TokenSectionV1;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -17,8 +16,8 @@ import java.util.Map;
  * Data Transfer Object representing the fields the frontend can supply when creating a new TPP.
  *
  * <p>Intentionally limited: server-managed fields ({@code tppId}, {@code state}, timestamps)
- * and temporarily-defaulted fields ({@code idPsp}, {@code legalAddress},
- * {@code isPaymentEnabled}, {@code messageTemplate}, {@code whitelistRecipient}) are NOT
+ * and temporarily-defaulted fields ({@code isPaymentEnabled},
+ * {@code messageTemplate}, {@code whitelistRecipient}) are NOT
  * exposed here. {@code entityId} is injected by APIM as a path variable from the JWT
  * claim {@code orgFiscalCode}; the request body must NOT include it.</p>
  */
@@ -39,8 +38,6 @@ public class TppDTOV1 {
 
     @NotNull(message = "Authentication type must not be null")
     private AuthenticationTypeV1 authenticationType;
-
-    private ContactV1 contact;
 
     private TokenSectionV1 tokenSection;
 

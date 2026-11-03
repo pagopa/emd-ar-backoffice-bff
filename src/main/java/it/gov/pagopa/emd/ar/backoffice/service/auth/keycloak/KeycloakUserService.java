@@ -45,13 +45,13 @@ public class KeycloakUserService extends AbstractKeycloakService {
     /**
      * Maximum page size accepted for search operations.
      */
-    @Value ("${app.ar-backoffice-bff.search.max-page-size:20}")
+    @Value ("${keycloak.search-user.max-page-size:20}")
     private int maxPageSize;
 
     /**
      * Default page size used when the client does not provide a valid {@code size}.
      */
-    @Value ("${app.ar-backoffice-bff.search.default-page-size:10}")
+    @Value ("${keycloak.search-user.default-page-size:10}")
     private int defaultPageSize;
 
     public KeycloakUserService(

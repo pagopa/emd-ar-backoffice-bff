@@ -133,6 +133,9 @@ keycloak:
     client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
   groups:
     tpp-name: "\${KEYCLOAK_TPP_GROUP_NAME}"
+  search-user:
+      maxPageSize: "\${MAX_PAGE_SIZE:20}"
+      default-page-size: "\${DEFAULT_PAGE_SIZE:10}"
 
 
 auth:

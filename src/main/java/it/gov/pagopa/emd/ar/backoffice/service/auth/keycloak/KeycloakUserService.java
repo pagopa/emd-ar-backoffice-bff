@@ -233,8 +233,13 @@ public class KeycloakUserService extends AbstractKeycloakService {
         log.info("[AR-BFF][GET_USERS] Fetching users. search={}, idpAlias={}, first={}, max={}", search, idpAlias, first, max);
         return Mono.fromCallable(() -> {
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl).path(USER_ENDPOINT);
+            
+            Map<String, Object> uriVariables = new HashMap<>();
+            uriVariables.put("realm", realm);
+            
             if (search != null && !search.isBlank()) {
-                builder.queryParam(SEARCH_FIELD, search);
+                builder.queryParam(SEARCH_FIELD, "{search}");
+                uriVariables.put(SEARCH_FIELD, search);
             }
             if (first != null) {
                 builder.queryParam("first", first);
@@ -243,8 +248,9 @@ public class KeycloakUserService extends AbstractKeycloakService {
                 builder.queryParam("max", max);
             }
             // Filter to exclude organization users and fetch only operators
-            builder.queryParam(IDP_ALIAS_FIELD, idpAliasMdc);
-            return builder.buildAndExpand(realm).toUri();
+            builder.queryParam(IDP_ALIAS_FIELD, "{idpAlias}");
+            uriVariables.put(IDP_ALIAS_FIELD, idpAliasMdc);
+            return builder.encode().buildAndExpand(uriVariables).toUri();
         }).flatMap(uri -> webClient.get()
                 .uri(uri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
@@ -322,13 +328,19 @@ public class KeycloakUserService extends AbstractKeycloakService {
     private Mono<Integer> countUsers(String adminToken, String search) {
         log.info("[AR-BFF][COUNT_USERS] Fetching total count. search={}, idpAlias={}", search, idpAliasMdc);
         return Mono.fromCallable(() -> {
-            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl)
-                    .path(USER_ENDPOINT + "/count");
+            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl).path(USER_ENDPOINT + "/count");
+            
+            Map<String, Object> uriVariables = new HashMap<>();
+            uriVariables.put("realm", realm);
+
             if (search != null && !search.isBlank()) {
-                builder.queryParam(SEARCH_FIELD, search);
+                builder.queryParam(SEARCH_FIELD, "{search}");
+                uriVariables.put("search", search);
             }
-            builder.queryParam(IDP_ALIAS_FIELD, idpAliasMdc);
-            return builder.buildAndExpand(realm).toUri();
+
+            builder.queryParam(IDP_ALIAS_FIELD, "{idpAlias}");
+            uriVariables.put("idpAlias", idpAliasMdc);
+            return builder.encode().buildAndExpand(uriVariables).toUri();
         }).flatMap(uri -> webClient.get()
                 .uri(uri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)

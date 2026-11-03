@@ -42,6 +42,18 @@ public class KeycloakUserService extends AbstractKeycloakService {
     private static final String SEARCH_FIELD = "search";
     private static final String IDP_ALIAS_FIELD = "idpAlias";
 
+    /**
+     * Maximum page size accepted for search operations.
+     */
+    @Value ("${app.ar-backoffice-bff.search.max-page-size:20}")
+    private int maxPageSize;
+
+    /**
+     * Default page size used when the client does not provide a valid {@code size}.
+     */
+    @Value ("${app.ar-backoffice-bff.search.default-page-size:10}")
+    private int defaultPageSize;
+
     public KeycloakUserService(
             WebClient webClient,
             ObjectMapper objectMapper,
@@ -242,10 +254,12 @@ public class KeycloakUserService extends AbstractKeycloakService {
                 uriVariables.put(SEARCH_FIELD, search);
             }
             if (first != null) {
-                builder.queryParam("first", first);
+                builder.queryParam("first", "{first}");
+                uriVariables.put("first", first);
             }
             if (max != null) {
-                builder.queryParam("max", max);
+                builder.queryParam("max", "{max}");
+                uriVariables.put("max", max);
             }
             // Filter to exclude organization users and fetch only operators
             builder.queryParam(IDP_ALIAS_FIELD, "{idpAlias}");
@@ -362,17 +376,34 @@ public class KeycloakUserService extends AbstractKeycloakService {
      */
     public Mono<UserPageResponseDTOV1> getPaginatedUsersWithRoles(String adminToken, String search, Integer first, Integer max) {
         
+        int safeFirst = (first != null && first >= 0) ? first : 0;
+        int safeMax = normalizePageSize(max != null ? max : defaultPageSize);
+
         // Retrieve users list and count in parallel
-        Mono<List<KeycloakUserDTOV1>> usersListMono = getUsersWithRoles(adminToken, search, first, max);
+        Mono<List<KeycloakUserDTOV1>> usersListMono = getUsersWithRoles(adminToken, search, safeFirst, safeMax);
         Mono<Integer> countMono = countUsers(adminToken, search);
 
         return Mono.zip(usersListMono, countMono)
                 .map(tuple -> UserPageResponseDTOV1.builder()
                         .content(tuple.getT1())
                         .totalElements(tuple.getT2())
-                        .first(first)
-                        .max(max)
+                        .first(safeFirst)
+                        .max(safeMax)
                         .build());
+    }
+
+    /**
+     * Normalizes the requested page size, falling back to the default when non-positive and
+     * capping to the configured maximum otherwise.
+     *
+     * @param size the requested page size
+     * @return a safe page size within {@code [1, maxPageSize]}
+     */
+    private int normalizePageSize(int size) {
+        if (size <= 0) {
+            return defaultPageSize;
+        }
+        return Math.min(size, maxPageSize);
     }
 
 }

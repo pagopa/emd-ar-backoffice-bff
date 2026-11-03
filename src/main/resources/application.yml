@@ -10,6 +10,12 @@ spring:
     virtual:
       enabled: true
 
+app:
+  ar-backoffice-bff:
+    search:
+      maxPageSize: "\${MAX_PAGE_SIZE:20}"
+      default-page-size: "\${DEFAULT_PAGE_SIZE:10}"
+
 management:
   info:
     build.enabled: true

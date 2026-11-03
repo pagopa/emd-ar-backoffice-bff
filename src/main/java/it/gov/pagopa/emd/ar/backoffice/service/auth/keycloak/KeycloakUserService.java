@@ -278,7 +278,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
                 // Transforms the list into a stream of single users
                 .flatMapMany(Flux::fromIterable)
                 // concurrency=10: Launches max 10 parallel calls to avoid stressing Keycloak
-                .flatMap(user -> populateUserWithRoles(adminToken, user), 10)
+                .flatMapSequential(user -> populateUserWithRoles(adminToken, user), 10)
                  // Reassembles the stream into a single final List
                 .collectList()
         );

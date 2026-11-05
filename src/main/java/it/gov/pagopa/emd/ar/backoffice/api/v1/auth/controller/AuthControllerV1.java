@@ -49,9 +49,9 @@ public interface AuthControllerV1 {
      */
     @GetMapping("/users")
     Mono<ResponseEntity<UserPageResponseDTOV1>> getUsers(
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false, defaultValue = "0") Integer first,
-            @RequestParam(required = false, defaultValue = "5") Integer max
+            @RequestParam(required = false, name = "search") String search,
+            @RequestParam(required = false, name = "first", defaultValue = "0") Integer first,
+            @RequestParam(required = false, name = "max", defaultValue = "5") Integer max
     );
 
     /**

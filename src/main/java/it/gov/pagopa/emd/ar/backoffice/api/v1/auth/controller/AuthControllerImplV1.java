@@ -2,9 +2,11 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.auth.controller;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakRoleDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserPageResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthService;
 import lombok.extern.slf4j.Slf4j;
+
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakRoleDTOV1;
 
 import java.util.List;
 
@@ -30,6 +32,12 @@ public class AuthControllerImplV1 implements AuthControllerV1 {
 
     /** {@inheritDoc} */
     @Override
+    public Mono<ResponseEntity<UserPageResponseDTOV1>> getUsers(String search, Integer first, Integer max) {
+        log.info("[AR-BFF][GET_USERS] Start: search={}, first={}, max={}", search, first, max);
+        return authService.getUsers(search, first, max);
+    }
+
+    /** {@inheritDoc} */
     public Mono<ResponseEntity<List<KeycloakRoleDTOV1>>> getAvailableRoles() {
         return authService.getAvailableRoles();
     }

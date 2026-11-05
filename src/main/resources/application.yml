@@ -129,6 +129,9 @@ keycloak:
     client-id: "\${KEYCLOAK_PORTAL_CLIENT_ID}"
   groups:
     tpp-name: "\${KEYCLOAK_TPP_GROUP_NAME}"
+  search:
+      max-page-size: "\${KEYCLOAK_MAX_PAGE_SIZE:20}"
+      default-page-size: "\${KEYCLOAK_DEFAULT_PAGE_SIZE:10}"
 
 
 auth:

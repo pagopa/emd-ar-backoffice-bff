@@ -86,6 +86,8 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-validation")
   implementation("org.codehaus.janino:janino:$janinoVersion")
 
+  // Rendering message template
+  implementation("org.freemarker:freemarker:2.3.35")
 
 
   // CVE fix

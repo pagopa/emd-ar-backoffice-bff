@@ -6,6 +6,7 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppTemplatePreviewDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
@@ -15,11 +16,14 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.TppConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.mapper.TppConnectorMapper;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTemplateException;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import java.util.List;
 
 /**
@@ -56,10 +60,12 @@ public class TppServiceImpl implements TppService {
 
     private final TppConnector tppConnector;
     private final KeycloakClientService keycloakClientService;
+    private final TemplateRendererService templateRendererService;
 
-    public TppServiceImpl(TppConnector tppConnector, KeycloakClientService keycloakClientService) {
+    public TppServiceImpl(TppConnector tppConnector, KeycloakClientService keycloakClientService, TemplateRendererService templateRendererService) {
         this.tppConnector = tppConnector;
         this.keycloakClientService = keycloakClientService;
+        this.templateRendererService = templateRendererService;
     }
 
     /** {@inheritDoc} */
@@ -90,6 +96,31 @@ public class TppServiceImpl implements TppService {
                         : TppConnectorMapper.toTppResponseDTOV1(r))
                 .doOnSuccess(r -> log.info("[AR-BFF][TPP_GET] Found TPP for entityId={}", entityId))
                 .doOnError(e -> log.warn("[AR-BFF][TPP_GET] TPP not found for entityId={}: {}", entityId, e.getMessage()));
+    }
+
+    /**
+     * Enriches a detailed {@link TppResponseDTOV1} with the rendered message template.
+     *
+     * <p>The FreeMarker rendering is blocking, so it is offloaded to
+     * {@link Schedulers#boundedElastic()}. If the template is absent/blank the DTO is
+     * returned unchanged. A rendering failure is logged and swallowed: the response is
+     * still returned with {@code messageTemplateRendered=null} (omitted from JSON via
+     * {@code @JsonInclude(NON_NULL)}), so a malformed template never breaks the GET.</p>
+     */
+    private Mono<TppResponseDTOV1> renderMessageTemplate(TppResponseDTOV1 dto) {
+        String raw = dto.getMessageTemplate();
+        if (raw == null || raw.isBlank()) {
+            return Mono.just(dto);
+        }
+        return Mono.fromCallable(() -> {
+                    dto.setMessageTemplateRendered(templateRendererService.render(raw));
+                    return dto;
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(e -> {
+                    log.warn("[AR-BFF][TPP_GET] Failed to render message template: {}", e.getMessage());
+                    return Mono.just(dto);
+                });
     }
 
     /** {@inheritDoc} */
@@ -291,5 +322,42 @@ public class TppServiceImpl implements TppService {
         return tppConnector.testAuthConnection(tppId)
             .doOnNext(r -> log.info("[AR-BFF][TPP_AUTH_TEST] Connection test completed for tppId={} with status: {}", tppId, r.getStatus()))
             .doOnError(e -> log.error("[AR-BFF][TPP_AUTH_TEST] Connection test failed for tppId={}: {}", tppId, e.getMessage()));
+    }
+
+    @Override
+    public Mono<TppTemplatePreviewDTOV1> getTemplatePreview(String entityId) {
+        log.info("[AR-BFF][TPP_TEMPLATE_PREVIEW] Generating preview for entityId={}", entityId);
+        
+        return tppConnector.getTppByEntityId(entityId) // Assicurati che il connector abbia getTppByEntityId o usa entityId
+                .flatMap(tpp -> {
+                    String raw = tpp.getMessageTemplate();
+                    return Mono.fromCallable(() -> {
+                        String rendered = templateRendererService.render(raw);
+                        return TppTemplatePreviewDTOV1.builder()
+                                .rawTemplate(raw)
+                                .renderedMessage(rendered)
+                                .build();
+                    }).subscribeOn(Schedulers.boundedElastic()); // Esegue il rendering bloccante su thread pool dedicato
+                })
+                .doOnError(e -> log.error("[AR-BFF][TPP_TEMPLATE_PREVIEW] Error rendering template: {}", e.getMessage()));
+    }
+
+    @Override
+    public Mono<TppTemplatePreviewDTOV1> validateAndRenderTemplate(String templateSource) {
+        return Mono.fromCallable(() -> {
+            try {
+                String rendered = templateRendererService.render(templateSource);
+                return TppTemplatePreviewDTOV1.builder()
+                        .rawTemplate(templateSource)
+                        .renderedMessage(rendered)
+                        .build();
+            } catch (freemarker.core.ParseException e) {
+                // Questo cattura l'errore della graffa mancante
+                throw new InvalidTemplateException("Errore di sintassi nel template: " + e.getMessage());
+            } catch (Exception e) {
+                // Questo cattura altri errori (es. variabili non trovate o errori generici)
+                throw new InvalidTemplateException("Errore durante il rendering del template: " + e.getMessage());
+            }
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 }

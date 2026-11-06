@@ -79,5 +79,5 @@ public interface AuthControllerV1 {
     @PostMapping(value = "/users/{userId}/roles", consumes = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<Void>> replaceUserRoles(
             @PathVariable("userId") @NotBlank String userId,
-            @RequestBody @NotNull List<KeycloakRoleDTOV1> roles);
+            @RequestBody @NotNull List<@NotNull @Valid KeycloakRoleDTOV1> roles);
 }

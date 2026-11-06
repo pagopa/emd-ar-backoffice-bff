@@ -6,6 +6,10 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserPageResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.AuthService;
 import lombok.extern.slf4j.Slf4j;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakRoleDTOV1;
+
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
@@ -33,4 +37,14 @@ public class AuthControllerImplV1 implements AuthControllerV1 {
         return authService.getUsers(search, first, max);
     }
 
+    /** {@inheritDoc} */
+    public Mono<ResponseEntity<List<KeycloakRoleDTOV1>>> getAvailableRoles() {
+        return authService.getAvailableRoles();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<Void>> replaceUserRoles(String userId, List<KeycloakRoleDTOV1> roles) {
+        return authService.replaceUserRoles(userId, roles);
+    }
 }

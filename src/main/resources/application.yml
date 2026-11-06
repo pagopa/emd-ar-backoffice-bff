@@ -9,6 +9,24 @@ spring:
   threads:
     virtual:
       enabled: true
+  data:
+    redis:
+      # Shared Redis instance (same server used by emd-tpp). Only the key namespace
+      # is dedicated to this service; no application data is shared.
+      host: "\${REDIS_HOST:localhost}"
+      port: "\${REDIS_PORT:6379}"
+      password: "\${REDIS_PASSWORD:}"
+      ssl:
+        enabled: "\${REDIS_SSL_ENABLED:false}"
+      timeout: "\${REDIS_TIMEOUT:3000}"
+
+role-lock:
+  # Key namespace keeps BFF locks isolated from emd-tpp cache keys on the shared Redis.
+  key-prefix: "\${ROLE_LOCK_KEY_PREFIX:ar-bff:lock:roles}"
+  # Lease time: the lock auto-expires after this if the holder dies (safety net).
+  lease-millis: "\${ROLE_LOCK_LEASE_MS:10000}"
+  # Max time a caller waits to acquire the lock before failing fast.
+  wait-millis: "\${ROLE_LOCK_WAIT_MS:3000}"
 
 management:
   info:
@@ -106,7 +124,7 @@ rest:
       response-millis: "\${WEBCLIENT_TIMEOUT_RESPONSE_MILLIS:8000}"
   client:
     tpp:
-      base-url: "\${EMD_TPP}"
+      base-url: "\${EMD_TPP:https://mdc.itn.internal.dev.cstar.pagopa.it/emdtpp/}"
     message:
       base-url: "\${EMD_MESSAGE_CORE}"
     payment:
@@ -115,16 +133,17 @@ rest:
       base-url: "\${EMD_CITIZEN}"
 
 keycloak:
-  auth-server-url: "\${KEYCLOAK_AUTH_URL}"
-  realm: "\${KEYCLOAK_REALM}"
-  idp-alias: "\${KEYCLOAK_IDP_ALIAS}"
-  idp-alias-mdc: "\${KEYCLOAK_IDP_ALIAS_MDC}"
+  auth-server-url: "\${KEYCLOAK_AUTH_URL:http://localhost:8080}"
+  realm: "\${KEYCLOAK_REALM:MDC}"
+  idp-alias: "\${KEYCLOAK_IDP_ALIAS:alias}"
   manager:
-    client-id: "\${KEYCLOAK_MANAGER_CLIENT_ID}"
-    client-secret: "\${KEYCLOAK_MANAGER_CLIENT_SECRET}"
+    client-id: "\${KEYCLOAK_MANAGER_CLIENT_ID:client-id}"
+    client-secret: "\${KEYCLOAK_MANAGER_CLIENT_SECRET:client-secret}"
   ar-backoffice:
     client-id: "\${KEYCLOAK_BACKOFFICE_CLIENT_ID}"
     client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
+  portal-client:
+    client-id: "\${KEYCLOAK_PORTAL_CLIENT_ID}"
   groups:
     tpp-name: "\${KEYCLOAK_TPP_GROUP_NAME}"
   search:
@@ -135,6 +154,6 @@ keycloak:
 auth:
   sc:
     # SELFCARE
-    jwk-set-uri: "\${SC_JWT_SET_URI}"
-    expected-issuer: "\${SC_AUTH_EXPECTED_ISSUER}"
-    expected-audience: "\${SC_AUTH_EXPECTED_AUDIENCE}"
+    jwk-set-uri: "\${SC_JWT_SET_URI:https://dev.selfcare.pagopa.it/.well-known/jwks.json}"
+    expected-issuer: "\${SC_AUTH_EXPECTED_ISSUER:https://dev.selfcare.pagopa.it}"
+    expected-audience: "\${SC_AUTH_EXPECTED_AUDIENCE:mdc.pagopa.it}"

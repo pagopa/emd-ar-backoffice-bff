@@ -3,7 +3,6 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,7 +32,6 @@ public class TppResponseDTOV1 {
     private String messageUrl;
     private String authenticationUrl;
     private AuthenticationTypeV1 authenticationType;
-    private ContactV1 contact;
     private String pspDenomination;
     private Map<String, AgentLinkV1> agentLinks;
 
@@ -42,10 +40,6 @@ public class TppResponseDTOV1 {
     private String entityId;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String clientId;
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private String idPsp;
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private String legalAddress;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean state;
     @JsonInclude(JsonInclude.Include.NON_NULL)

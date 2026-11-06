@@ -2,7 +2,6 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,13 +32,10 @@ public class TppDTOWithoutTokenSectionV1 {
     private String tppId;
     private String clientId;
     private String entityId;
-    private String idPsp;
     private String businessName;
-    private String legalAddress;
     private String messageUrl;
     private String authenticationUrl;
     private AuthenticationTypeV1 authenticationType;
-    private ContactV1 contact;
     private Boolean state;
     private OffsetDateTime creationDate;
     private OffsetDateTime lastUpdateDate;

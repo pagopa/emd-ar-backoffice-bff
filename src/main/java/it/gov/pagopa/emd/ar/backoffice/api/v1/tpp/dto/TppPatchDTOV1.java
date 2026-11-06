@@ -2,7 +2,6 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,7 +19,7 @@ import java.util.List;
  * values in the database.</p>
  *
  * <p>Intentionally limited: {@code entityId} (injected by APIM via path variable),
- * {@code idPsp}, {@code legalAddress}, {@code isPaymentEnabled}, {@code messageTemplate}
+ * {@code isPaymentEnabled}, {@code messageTemplate}
  * and {@code whitelistRecipient} are NOT exposed — they will be added in a future iteration.</p>
  */
 @Data
@@ -40,8 +39,6 @@ public class TppPatchDTOV1 {
     private String authenticationUrl;
 
     private AuthenticationTypeV1 authenticationType;
-
-    private ContactV1 contact;
 
     private String pspDenomination;
 

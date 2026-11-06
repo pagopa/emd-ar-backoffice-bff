@@ -56,7 +56,7 @@ val httpClientVersion = "5.6"
 val httpCoreVersion = "5.4.1"
 
 // fix cve
-val jackson2CoreVersion = "2.22.0"
+val jackson2CoreVersion = "2.22.3"
 val jackson3CoreVersion = "3.2.0"
 
 dependencies {

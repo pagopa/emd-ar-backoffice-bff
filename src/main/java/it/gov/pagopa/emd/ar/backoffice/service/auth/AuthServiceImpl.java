@@ -2,8 +2,10 @@ package it.gov.pagopa.emd.ar.backoffice.service.auth;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserPageResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.Organization;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.User;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakTokenService;
@@ -130,5 +132,17 @@ public class AuthServiceImpl implements AuthService {
                         .status("ERROR")
                         .message("Authentication failed")
                         .build()));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<UserPageResponseDTOV1>> getUsers(String search, Integer first, Integer max) {
+        return tokenService.getManagerToken()
+                .flatMap(managerToken -> userService.getPaginatedUsersWithRoles(managerToken, search, first, max))
+                .map(ResponseEntity::ok)
+                .onErrorResume(e -> {
+                    log.error("[AR-BFF][GET_USERS] Failed to retrieve paginated users: {}", e.getMessage());
+                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+                });
     }
 }

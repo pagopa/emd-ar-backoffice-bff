@@ -1,9 +1,8 @@
-package it.gov.pagopa.emd.ar.backoffice.service;
+package it.gov.pagopa.emd.ar.backoffice.service.citizen;
 
 import it.gov.pagopa.emd.ar.backoffice.connector.citizen.CitizenConnector;
 import it.gov.pagopa.emd.ar.backoffice.connector.citizen.dto.CitizenConsentSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
-import it.gov.pagopa.emd.ar.backoffice.service.citizen.CitizenServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

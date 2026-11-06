@@ -118,6 +118,7 @@ keycloak:
   auth-server-url: "\${KEYCLOAK_AUTH_URL}"
   realm: "\${KEYCLOAK_REALM}"
   idp-alias: "\${KEYCLOAK_IDP_ALIAS}"
+  idp-alias-mdc: "\${KEYCLOAK_IDP_ALIAS_MDC}"
   manager:
     client-id: "\${KEYCLOAK_MANAGER_CLIENT_ID}"
     client-secret: "\${KEYCLOAK_MANAGER_CLIENT_SECRET}"
@@ -126,6 +127,9 @@ keycloak:
     client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
   groups:
     tpp-name: "\${KEYCLOAK_TPP_GROUP_NAME}"
+  search:
+      max-page-size: "\${KEYCLOAK_MAX_PAGE_SIZE:20}"
+      default-page-size: "\${KEYCLOAK_DEFAULT_PAGE_SIZE:10}"
 
 
 auth:

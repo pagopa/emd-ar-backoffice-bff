@@ -27,7 +27,7 @@ public class KeycloakRoleServiceImpl extends AbstractKeycloakService implements 
 
     private final WebClient webClient;
     private final KeycloakTokenService tokenService;
-    private final String arBackofficeClientId;
+    private final String arBackofficePortalClientClientId;
     
     /** 
      * In-memory cache for the internal Keycloak UUID of the target client
@@ -38,16 +38,16 @@ public class KeycloakRoleServiceImpl extends AbstractKeycloakService implements 
     public KeycloakRoleServiceImpl(WebClient webClient, ObjectMapper objectMapper, KeycloakTokenService tokenService,
             @Value("${keycloak.auth-server-url}") String authServerUrl,
             @Value("${keycloak.realm}") String realm,
-            @Value("${keycloak.portal-client-id}") String arBackofficeClientId) { 
+            @Value("${keycloak.portal-client.client-id}") String arBackofficePortalClientClientId) { 
         super(authServerUrl, realm, objectMapper);
         this.webClient = webClient;
         this.tokenService = tokenService;
-        this.arBackofficeClientId = arBackofficeClientId;
+        this.arBackofficePortalClientClientId = arBackofficePortalClientClientId;
     }
 
     @Override
     public Mono<List<KeycloakRoleDTOV1>> getAvailableClientRoles() {
-        log.info("[AR-BFF][GET_ROLES] Fetching available roles for client: {}", arBackofficeClientId);
+        log.info("[AR-BFF][GET_ROLES] Fetching available roles for client: {}", arBackofficePortalClientClientId);
         return tokenService.getManagerToken()
                 .flatMap(adminToken -> getTargetInternalClientId(adminToken)
                         .flatMap(internalId -> fetchClientRoles(adminToken, internalId)));
@@ -55,7 +55,7 @@ public class KeycloakRoleServiceImpl extends AbstractKeycloakService implements 
 
     @Override
     public Mono<Void> replaceUserRoles(String userId, List<KeycloakRoleDTOV1> requestedRoles) {
-        log.info("[AR-BFF][REPLACE_ROLES] Wiping and replacing roles for user {} on client {}", userId, arBackofficeClientId);
+        log.info("[AR-BFF][REPLACE_ROLES] Wiping and replacing roles for user {} on client {}", userId, arBackofficePortalClientClientId);
         
         return tokenService.getManagerToken()
                 .flatMap(adminToken -> getTargetInternalClientId(adminToken)
@@ -89,7 +89,7 @@ public class KeycloakRoleServiceImpl extends AbstractKeycloakService implements 
 
         URI uri = UriComponentsBuilder.fromUriString(authServerUrl)
                 .path("/admin/realms/{realm}/clients")
-                .queryParam("clientId", arBackofficeClientId)
+                .queryParam("clientId", arBackofficePortalClientClientId)
                 .buildAndExpand(realm)
                 .toUri();
 
@@ -107,7 +107,7 @@ public class KeycloakRoleServiceImpl extends AbstractKeycloakService implements 
                         .findFirst()
                         .map(Mono::just)
                         .orElseGet(() -> Mono.error(new ExternalServiceException("KEYCLOAK", "resolveTargetClient",
-                                "Target client not found in Keycloak: " + arBackofficeClientId))))
+                                "Target client not found in Keycloak: " + arBackofficePortalClientClientId))))
                 .doOnSuccess(cachedInternalClientId::set);
     }
 

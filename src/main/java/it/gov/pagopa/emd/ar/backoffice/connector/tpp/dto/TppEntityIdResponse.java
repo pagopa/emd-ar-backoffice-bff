@@ -34,13 +34,10 @@ public class TppEntityIdResponse {
      * For new TPPs this field is {@code null} and {@code entityId} is used instead.
      */
     private String clientId;
-    private String idPsp;
     private String businessName;
-    private String legalAddress;
     private String messageUrl;
     private String authenticationUrl;
     private AuthenticationType authenticationType;
-    private Contact contact;
     private Boolean state;
     private LocalDateTime creationDate;
     private LocalDateTime lastUpdateDate;

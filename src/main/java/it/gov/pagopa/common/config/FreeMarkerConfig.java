@@ -3,6 +3,8 @@ package it.gov.pagopa.common.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import freemarker.core.TemplateClassResolver;
+
 @Configuration
 public class FreeMarkerConfig {
 
@@ -11,6 +13,9 @@ public class FreeMarkerConfig {
         freemarker.template.Configuration cfg = new freemarker.template.Configuration(freemarker.template.Configuration.VERSION_2_3_32);
         cfg.setDefaultEncoding("UTF-8");
         cfg.setInterpolationSyntax(freemarker.template.Configuration.DOLLAR_INTERPOLATION_SYNTAX);
+        cfg.setNewBuiltinClassResolver(TemplateClassResolver.SAFER_RESOLVER);
+        cfg.setAPIBuiltinEnabled(false);
+        cfg.setOutputFormat(freemarker.core.HTMLOutputFormat.INSTANCE);
         return cfg;
     }
 }

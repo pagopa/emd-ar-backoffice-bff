@@ -164,13 +164,7 @@ public class TppControllerImplV1 implements TppControllerV1 {
                 .map(ResponseEntity::ok);
     }
 
-    @Override
-    public Mono<ResponseEntity<TppTemplatePreviewDTOV1>> getTemplatePreview(String entityId) {
-        log.info("[AR-BFF][TPP_TEMPLATE_PREVIEW] Request received for entityId={}", entityId);
-        return tppService.getTemplatePreview(entityId)
-                .map(ResponseEntity::ok);
-    }
-
+    /** {@inheritDoc} */
     @Override
     public Mono<ResponseEntity<TppTemplatePreviewDTOV1>> validateTemplate(TppTemplateValidationRequestDTOV1 validationRequest) {
         log.info("[AR-BFF][TPP_TEMPLATE_VALIDATE] Request received for template validation");

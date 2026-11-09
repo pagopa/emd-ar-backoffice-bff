@@ -231,7 +231,23 @@ public interface TppService {
      */
     Mono<TppConnectionResponseDTOV1> testAuthConnection(String tppId);
 
-    Mono<TppTemplatePreviewDTOV1> getTemplatePreview(String entityId);
-
+    /**
+     * Validates a raw FreeMarker template source and returns its rendered preview.
+     *
+     * <p>The provided {@code templateSource} is compiled and processed against a fixed set
+     * of mock data (no TPP lookup is performed), so the caller can preview how an arbitrary
+     * template will render before persisting it.</p>
+     *
+     * <p>The FreeMarker rendering is blocking and is therefore offloaded to a bounded-elastic
+     * scheduler.</p>
+     *
+     * @param templateSource the raw FreeMarker template to validate and render; may be
+     *                       {@code null} or blank, in which case an empty rendered message
+     *                       is produced
+     * @return {@code Mono<TppTemplatePreviewDTOV1>} containing the original {@code rawTemplate}
+     *         and the {@code renderedMessage}; the Mono fails with an
+     *         {@link it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTemplateException}
+     *         (HTTP 4xx) if the template has a syntax error or cannot be rendered
+     */
     Mono<TppTemplatePreviewDTOV1> validateAndRenderTemplate(String templateSource);
 }

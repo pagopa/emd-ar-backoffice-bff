@@ -302,9 +302,6 @@ public interface TppControllerV1 {
     @GetMapping(value = "tpp/{tppId}/network/connection/test", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TppConnectionResponseDTOV1>> testAuthConnection(@PathVariable("tppId") String tppId);
 
-    @GetMapping(value = "tpp/{entityId}/message-template/preview", produces = MediaType.APPLICATION_JSON_VALUE)
-    Mono<ResponseEntity<TppTemplatePreviewDTOV1>> getTemplatePreview(@PathVariable("entityId") String entityId);
-
     /**
      * Validates a FreeMarker template source and returns the rendered preview.
      * 

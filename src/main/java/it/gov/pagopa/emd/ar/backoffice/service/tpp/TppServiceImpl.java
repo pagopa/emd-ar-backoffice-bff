@@ -91,9 +91,13 @@ public class TppServiceImpl implements TppService {
     public Mono<TppResponseDTOV1> getTppByEntityId(String entityId, boolean detailed) {
         log.info("[AR-BFF][TPP_GET] Looking up TPP by entityId={}, detailed={}", entityId, detailed);
         return tppConnector.getTppByEntityId(entityId)
-                .map(r -> detailed
-                        ? TppConnectorMapper.toTppResponseDTOV1Detailed(r)
-                        : TppConnectorMapper.toTppResponseDTOV1(r))
+                .flatMap(r -> {
+                    if (!detailed) {
+                        return Mono.just(TppConnectorMapper.toTppResponseDTOV1(r));
+                    }
+                    TppResponseDTOV1 dto = TppConnectorMapper.toTppResponseDTOV1Detailed(r);
+                    return renderMessageTemplate(dto);
+                })
                 .doOnSuccess(r -> log.info("[AR-BFF][TPP_GET] Found TPP for entityId={}", entityId))
                 .doOnError(e -> log.warn("[AR-BFF][TPP_GET] TPP not found for entityId={}: {}", entityId, e.getMessage()));
     }
@@ -322,24 +326,6 @@ public class TppServiceImpl implements TppService {
         return tppConnector.testAuthConnection(tppId)
             .doOnNext(r -> log.info("[AR-BFF][TPP_AUTH_TEST] Connection test completed for tppId={} with status: {}", tppId, r.getStatus()))
             .doOnError(e -> log.error("[AR-BFF][TPP_AUTH_TEST] Connection test failed for tppId={}: {}", tppId, e.getMessage()));
-    }
-
-    @Override
-    public Mono<TppTemplatePreviewDTOV1> getTemplatePreview(String entityId) {
-        log.info("[AR-BFF][TPP_TEMPLATE_PREVIEW] Generating preview for entityId={}", entityId);
-        
-        return tppConnector.getTppByEntityId(entityId) // Assicurati che il connector abbia getTppByEntityId o usa entityId
-                .flatMap(tpp -> {
-                    String raw = tpp.getMessageTemplate();
-                    return Mono.fromCallable(() -> {
-                        String rendered = templateRendererService.render(raw);
-                        return TppTemplatePreviewDTOV1.builder()
-                                .rawTemplate(raw)
-                                .renderedMessage(rendered)
-                                .build();
-                    }).subscribeOn(Schedulers.boundedElastic()); // Esegue il rendering bloccante su thread pool dedicato
-                })
-                .doOnError(e -> log.error("[AR-BFF][TPP_TEMPLATE_PREVIEW] Error rendering template: {}", e.getMessage()));
     }
 
     @Override

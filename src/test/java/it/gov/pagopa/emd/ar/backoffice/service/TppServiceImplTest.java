@@ -16,8 +16,10 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppCreateRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTemplateException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
+import it.gov.pagopa.emd.ar.backoffice.service.tpp.TemplateRendererService;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,11 +59,14 @@ public class TppServiceImplTest {
     @Mock
     private KeycloakClientService keycloakClientService;
 
+    @Mock
+    private TemplateRendererService templateRendererService;
+
     private TppServiceImpl tppService;
 
     @BeforeEach
     void setUp() {
-        tppService = new TppServiceImpl(tppConnector, keycloakClientService);
+        tppService = new TppServiceImpl(tppConnector, keycloakClientService, templateRendererService);
     }
 
     // ── createTppAndKeycloakClient ─────────────────────────────────────────────
@@ -317,9 +322,10 @@ public class TppServiceImplTest {
     /**
      * Happy path (detailed=true): il connector restituisce il payload completo e il service
      * lo mappa nel {@link TppResponseDTOV1} con TUTTI i campi (inclusi quelli server-managed).
+     * @throws Exception
      */
     @Test
-    void getTppByEntityId_DetailedTrue_MapsAllFields() {
+    void getTppByEntityId_DetailedTrue_MapsAllFields() throws Exception {
         String entityId = "12345678901";
         String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
         java.time.LocalDateTime now = java.time.LocalDateTime.of(2026, 8, 7, 10, 0);
@@ -343,6 +349,8 @@ public class TppServiceImplTest {
 
         when(tppConnector.getTppByEntityId(entityId))
                 .thenReturn(Mono.just(connectorResponse));
+        // detailed=true con un messageTemplate presente ⇒ il service renderizza il template
+        when(templateRendererService.render("template-xyz")).thenReturn("Rendered template");
 
         StepVerifier.create(tppService.getTppByEntityId(entityId, true))
                 .assertNext(dto -> {
@@ -357,12 +365,100 @@ public class TppServiceImplTest {
                     assertThat(dto.getCreationDate()).isNotNull();
                     assertThat(dto.getLastUpdateDate()).isNotNull();
                     assertThat(dto.getMessageTemplate()).isEqualTo("template-xyz");
+                    assertThat(dto.getMessageTemplateRendered()).isEqualTo("Rendered template");
                     assertThat(dto.getWhitelistRecipient()).containsExactly("user@example.com");
                 })
                 .verifyComplete();
 
         verify(tppConnector, times(1)).getTppByEntityId(entityId);
         verify(keycloakClientService, never()).getPagopaClientCredentials(anyString());
+    }
+
+    /**
+     * detailed=true ma senza messageTemplate: il rendering NON viene invocato e il campo
+     * {@code messageTemplateRendered} resta null.
+     */
+    @Test
+    void getTppByEntityId_DetailedTrue_NoTemplate_DoesNotRender() throws Exception {
+        String entityId = "12345678901";
+        String tppId    = "tpp-no-template";
+
+        TppEntityIdResponse connectorResponse = TppEntityIdResponse.builder()
+                .tppId(tppId)
+                .entityId(entityId)
+                .businessName("My TPP Srl")
+                .messageTemplate(null)
+                .build();
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(connectorResponse));
+
+        StepVerifier.create(tppService.getTppByEntityId(entityId, true))
+                .assertNext(dto -> {
+                    assertThat(dto.getMessageTemplate()).isNull();
+                    assertThat(dto.getMessageTemplateRendered()).isNull();
+                })
+                .verifyComplete();
+
+        verify(templateRendererService, never()).render(anyString());
+    }
+
+    /**
+     * detailed=true con un messageTemplate malformato: il rendering fallisce ma l'errore
+     * viene assorbito — la risposta è comunque emessa con {@code messageTemplateRendered} null.
+     */
+    @Test
+    void getTppByEntityId_DetailedTrue_RenderFails_ReturnsDtoWithoutRenderedField() throws Exception {
+        String entityId = "12345678901";
+        String tppId    = "tpp-bad-template";
+
+        TppEntityIdResponse connectorResponse = TppEntityIdResponse.builder()
+                .tppId(tppId)
+                .entityId(entityId)
+                .businessName("My TPP Srl")
+                .messageTemplate("${broken")
+                .build();
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(connectorResponse));
+        when(templateRendererService.render("${broken"))
+                .thenThrow(new RuntimeException("parse error"));
+
+        StepVerifier.create(tppService.getTppByEntityId(entityId, true))
+                .assertNext(dto -> {
+                    assertThat(dto.getMessageTemplate()).isEqualTo("${broken");
+                    assertThat(dto.getMessageTemplateRendered()).isNull();
+                })
+                .verifyComplete();
+
+        verify(templateRendererService, times(1)).render("${broken");
+    }
+
+    /**
+     * detailed=false: il rendering non viene mai invocato, anche se un template è presente upstream.
+     */
+    @Test
+    void getTppByEntityId_DetailedFalse_NeverRenders() throws Exception {
+        String entityId = "12345678901";
+
+        TppEntityIdResponse connectorResponse = TppEntityIdResponse.builder()
+                .tppId("tpp-x")
+                .entityId(entityId)
+                .businessName("My TPP Srl")
+                .messageTemplate("template-xyz")
+                .build();
+
+        when(tppConnector.getTppByEntityId(entityId))
+                .thenReturn(Mono.just(connectorResponse));
+
+        StepVerifier.create(tppService.getTppByEntityId(entityId, false))
+                .assertNext(dto -> {
+                    assertThat(dto.getMessageTemplate()).isNull();
+                    assertThat(dto.getMessageTemplateRendered()).isNull();
+                })
+                .verifyComplete();
+
+        verify(templateRendererService, never()).render(anyString());
     }
 
     /**
@@ -1271,5 +1367,60 @@ public class TppServiceImplTest {
                 .verify();
 
         verify(tppConnector, times(1)).testAuthConnection(tppId);
+    }
+
+    // ── validateAndRenderTemplate ─────────────────────────────────────────────
+
+    /**
+     * Happy path: la sorgente template fornita viene renderizzata senza lookup della TPP.
+     */
+    @Test
+    void validateAndRenderTemplate_Success_ReturnsRenderedPreview() throws Exception {
+        String source = "Benvenuto ${title}";
+        when(templateRendererService.render(source)).thenReturn("Benvenuto Titolo di Prova");
+
+        StepVerifier.create(tppService.validateAndRenderTemplate(source))
+                .assertNext(dto -> {
+                    assertThat(dto.getRawTemplate()).isEqualTo(source);
+                    assertThat(dto.getRenderedMessage()).isEqualTo("Benvenuto Titolo di Prova");
+                })
+                .verifyComplete();
+
+        verify(templateRendererService, times(1)).render(source);
+    }
+
+    /**
+     * Errore di sintassi FreeMarker ({@link freemarker.core.ParseException}) →
+     * il service lo riavvolge in {@link InvalidTemplateException}.
+     */
+    @Test
+    void validateAndRenderTemplate_ParseError_WrapsInInvalidTemplateException() throws Exception {
+        String source = "${unclosed";
+        when(templateRendererService.render(source))
+                .thenThrow(mock(freemarker.core.ParseException.class));
+
+        StepVerifier.create(tppService.validateAndRenderTemplate(source))
+                .expectErrorMatches(ex -> ex instanceof InvalidTemplateException
+                        && ex.getMessage().contains("sintassi"))
+                .verify();
+
+        verify(templateRendererService, times(1)).render(source);
+    }
+
+    /**
+     * Errore generico durante il rendering → il service lo riavvolge in {@link InvalidTemplateException}.
+     */
+    @Test
+    void validateAndRenderTemplate_GenericError_WrapsInInvalidTemplateException() throws Exception {
+        String source = "Ciao ${missingVar}";
+        when(templateRendererService.render(source))
+                .thenThrow(new RuntimeException("variable not found"));
+
+        StepVerifier.create(tppService.validateAndRenderTemplate(source))
+                .expectErrorMatches(ex -> ex instanceof InvalidTemplateException
+                        && ex.getMessage().contains("rendering"))
+                .verify();
+
+        verify(templateRendererService, times(1)).render(source);
     }
 }

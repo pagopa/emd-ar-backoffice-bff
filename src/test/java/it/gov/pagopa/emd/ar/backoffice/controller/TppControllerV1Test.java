@@ -12,6 +12,9 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TokenSectionDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppConnectionResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppTemplatePreviewDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppTemplateValidationRequestDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTemplateException;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
@@ -920,5 +923,54 @@ class TppControllerV1Test {
                 .jsonPath("$.errorType").isEqualTo("TIMEOUT")
                 .jsonPath("$.httpStatus").isEqualTo(504)
                 .jsonPath("$.description").isEqualTo("Request timed out");
+    }
+
+    // ── validateTemplate ──────────────────────────────────────────────────────
+
+    /**
+     * POST /emd/backoffice/api/v1/tpp/template/validate — happy path →
+     * 200 OK con il template renderizzato.
+     */
+    @Test
+    void validateTemplate_Success_Returns200WithRenderedTemplate() {
+        TppTemplateValidationRequestDTOV1 requestBody = new TppTemplateValidationRequestDTOV1("Benvenuto ${title}");
+
+        TppTemplatePreviewDTOV1 response = TppTemplatePreviewDTOV1.builder()
+                .rawTemplate("Benvenuto ${title}")
+                .renderedMessage("Benvenuto Titolo di Prova")
+                .build();
+
+        when(tppService.validateAndRenderTemplate(eq("Benvenuto ${title}")))
+                .thenReturn(Mono.just(response));
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/template/validate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON_VALUE)
+                .expectBody()
+                .jsonPath("$.rawTemplate").isEqualTo("Benvenuto ${title}")
+                .jsonPath("$.renderedMessage").isEqualTo("Benvenuto Titolo di Prova");
+    }
+
+    /**
+     * POST .../template/validate — template con sintassi non valida →
+     * il service emette {@link InvalidTemplateException} che si propaga.
+     */
+    @Test
+    void validateTemplate_InvalidTemplate_PropagatesError() {
+        TppTemplateValidationRequestDTOV1 requestBody = new TppTemplateValidationRequestDTOV1("${unclosed");
+
+        when(tppService.validateAndRenderTemplate(eq("${unclosed")))
+                .thenReturn(Mono.error(new InvalidTemplateException("Errore di sintassi nel template")));
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/template/validate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchange()
+                .expectStatus().is5xxServerError();
     }
 }

@@ -7,6 +7,7 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
+import it.gov.pagopa.emd.ar.backoffice.service.tpp.TemplateRendererService;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,11 +49,14 @@ class TppSearchServiceImplTest {
     @Mock
     private KeycloakClientService keycloakClientService;
 
+    @Mock
+    private TemplateRendererService templateRendererService;
+
     private TppServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new TppServiceImpl(tppConnector, keycloakClientService);
+        service = new TppServiceImpl(tppConnector, keycloakClientService, templateRendererService);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

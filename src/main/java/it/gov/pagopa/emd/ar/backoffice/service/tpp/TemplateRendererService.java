@@ -12,7 +12,6 @@ public class TemplateRendererService {
 
     private final freemarker.template.Configuration freemarkerCfg;
 
-    // Spring inietta automaticamente il Bean definito in FreeMarkerConfig
     public TemplateRendererService(freemarker.template.Configuration freemarkerCfg) {
         this.freemarkerCfg = freemarkerCfg;
     }

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.14.0...v0.14.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* [MMC-1319] Remove tpp fields ([#81](https://github.com/pagopa/emd-ar-backoffice-bff/issues/81)) ([0d44a2b](https://github.com/pagopa/emd-ar-backoffice-bff/commit/0d44a2bf2e01e98b25c882551da81c9acc2fe7cf))
+
 ## [0.14.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.13.0...v0.14.0) (2026-11-05)
 
 

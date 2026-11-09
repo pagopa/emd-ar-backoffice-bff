@@ -44,7 +44,9 @@ public class AuthControllerImplV1 implements AuthControllerV1 {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<Void>> replaceUserRoles(String userId, List<KeycloakRoleDTOV1> roles) {
+    public Mono<ResponseEntity<Void>> replaceUserRoles(String userId, List<KeycloakRoleDTOV1> roles, String authHeader) {
+        String userEmail = Utilities.getEmailFromToken(authHeader);
+        log.info("[AR-BFF][REPLACE_USER_ROLES][User:{}] Request received - Replacing roles for userId={}", userEmail, userId);
         return authService.replaceUserRoles(userId, roles);
     }
 }

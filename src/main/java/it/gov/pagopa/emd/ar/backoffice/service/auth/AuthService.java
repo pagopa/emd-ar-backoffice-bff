@@ -43,18 +43,26 @@ public interface AuthService {
     /**
      * Replaces the assigned client roles for a specified user in Keycloak.
      * <p>
-     * Because Keycloak does not natively expose a "replace/PUT" endpoint for role mappings,
-     * this method orchestrates the replacement by sequentially:
+     * Keycloak does not expose an atomic "replace/PUT" endpoint for role mappings, so the
+     * replacement is orchestrated as a read-modify-write sequence. The whole sequence runs under
+     * a distributed lock keyed by user/client, so two concurrent replacements for the same
+     * user/client cannot interleave across replicas and leave the union of both requested sets.
+     * The steps are:
      * <ol>
-     *   <li>Fetching the user's current roles.</li>
-     *   <li>Issuing a DELETE request to wipe the current roles (if any).</li>
-     *   <li>Issuing a POST request to assign the newly requested roles (if not empty).</li>
+     *   <li>Validate that every requested role exists on the target client, before any mutation.</li>
+     *   <li>Fetch the user's current roles.</li>
+     *   <li>Add the requested roles via POST (add-before-remove), then remove the roles that are
+     *       no longer requested via DELETE. This ordering ensures a failure never strips the user
+     *       of permissions.</li>
+     *   <li>Re-read the roles and confirm they match the requested set; otherwise fail with an
+     *       explicit error instead of reporting a misleading success.</li>
      * </ol>
-     * </p>
+     * Passing an empty list removes all client roles from the user.
      *
      * @param userId the internal Keycloak UUID of the target user
      * @param roles  the new list of roles to be assigned to the user
-     * @return a {@code Mono<ResponseEntity<Void>>} completing when the Keycloak operations succeed
+     * @return a {@code Mono<ResponseEntity<Void>>} completing with 204 when the final state is
+     *         confirmed, or failing if the replacement could not be confirmed
      */
     Mono<ResponseEntity<Void>> replaceUserRoles(String userId, List<KeycloakRoleDTOV1> roles);
 }

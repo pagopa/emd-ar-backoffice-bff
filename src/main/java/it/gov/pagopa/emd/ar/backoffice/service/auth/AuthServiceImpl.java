@@ -159,6 +159,7 @@ public class AuthServiceImpl implements AuthService {
                 .map(ResponseEntity::ok);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Mono<ResponseEntity<Void>> replaceUserRoles(String userId, List<KeycloakRoleDTOV1> roles) {
         return roleService.replaceUserRoles(userId, roles)

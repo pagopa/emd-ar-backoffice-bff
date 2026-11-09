@@ -71,7 +71,7 @@ public interface AuthControllerV1 {
      * will remove all client roles from the user.
      * </p>
      *
-     * @param userId the internal Keycloak UUID of the user (not the external SelfCare UID)
+     * @param userId the internal Keycloak UUID of the portal user
      * @param roles  the complete list of roles the user should possess. Each role object must 
      *               contain at least a valid {@code id} and {@code name}.
      * @return a {@code Mono<ResponseEntity<Void>>} returning 204 NO_CONTENT on successful replacement

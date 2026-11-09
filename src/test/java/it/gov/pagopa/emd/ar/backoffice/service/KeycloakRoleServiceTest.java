@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakRoleDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakRoleServiceImpl;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakTokenService;
+import it.gov.pagopa.emd.ar.backoffice.service.lock.DistributedLockService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,12 +71,22 @@ class KeycloakRoleServiceTest {
         WebClient webClient = WebClient.builder()
                 .exchangeFunction(exchangeFunction)
                 .build();
+        // Pass-through lock: runs the guarded action without real Redis, so these
+        // unit tests focus on the Keycloak interaction. The locking behaviour itself
+        // is covered separately in RedissonDistributedLockServiceTest.
+        DistributedLockService lockPassThrough = new DistributedLockService() {
+            @Override
+            public <T> Mono<T> executeWithLock(String lockKey, Mono<T> action) {
+                return action;
+            }
+        };
         return new KeycloakRoleServiceImpl(
-                webClient, 
-                objectMapper, 
-                tokenServiceMock, 
-                BASE_URL, 
-                REALM, 
+                webClient,
+                objectMapper,
+                tokenServiceMock,
+                lockPassThrough,
+                BASE_URL,
+                REALM,
                 TARGET_CLIENT_ID);
     }
 
@@ -140,13 +151,18 @@ class KeycloakRoleServiceTest {
     @Test
     void replaceUserRoles_UserHasRoles_RolesReplacedSuccessfully() {
         String clientResolutionJson = "[{\"id\":\"" + CLIENT_INTERNAL_ID + "\"}]";
+        String clientRolesJson = "[{\"id\":\"role-new\",\"name\":\"operator-write\"}]";
         String currentRolesJson = "[{\"id\":\"role-old\",\"name\":\"operator-read\"}]";
-        
+        // Final verification GET returns the requested state -> confirmed.
+        String finalStateJson = "[{\"id\":\"role-new\",\"name\":\"operator-write\"}]";
+
         Queue<ClientResponse> responses = new LinkedList<>(List.of(
-                ok(clientResolutionJson), // 1. Resolve client UUID
-                ok(currentRolesJson),     // 2. GET current user roles
-                noContent(),              // 3. DELETE old roles
-                noContent()               // 4. POST new roles
+                ok(clientResolutionJson), // Resolve client UUID
+                ok(clientRolesJson),      // GET client roles (validation)
+                ok(currentRolesJson),     // GET current user roles
+                noContent(),              // POST new roles (add first)
+                noContent(),              // DELETE stale roles (remove after)
+                ok(finalStateJson)        // GET final state (verification)
         ));
         List<String> calls = new CopyOnWriteArrayList<>();
         KeycloakRoleServiceImpl svc = serviceWith(queuedExchange(responses, calls));
@@ -156,22 +172,28 @@ class KeycloakRoleServiceTest {
         StepVerifier.create(svc.replaceUserRoles(USER_ID, newRoles))
                 .verifyComplete();
 
-        assertThat(calls).hasSize(4);
+        assertThat(calls).hasSize(6);
         assertThat(calls.get(0)).startsWith("GET").contains("/clients");
-        assertThat(calls.get(1)).startsWith("GET").contains("/role-mappings");
-        assertThat(calls.get(2)).startsWith("DELETE").contains("/role-mappings");
+        assertThat(calls.get(1)).startsWith("GET").contains("/roles");
+        assertThat(calls.get(2)).startsWith("GET").contains("/role-mappings");
         assertThat(calls.get(3)).startsWith("POST").contains("/role-mappings");
+        assertThat(calls.get(4)).startsWith("DELETE").contains("/role-mappings");
+        assertThat(calls.get(5)).startsWith("GET").contains("/role-mappings");
     }
 
     @Test
     void replaceUserRoles_UserHasNoRoles_OnlyPostCalled() {
         String clientResolutionJson = "[{\"id\":\"" + CLIENT_INTERNAL_ID + "\"}]";
+        String clientRolesJson = "[{\"id\":\"role-new\",\"name\":\"operator-write\"}]";
         String currentRolesEmptyJson = "[]"; // User has no roles
-        
+        String finalStateJson = "[{\"id\":\"role-new\",\"name\":\"operator-write\"}]"; // verification OK
+
         Queue<ClientResponse> responses = new LinkedList<>(List.of(
-                ok(clientResolutionJson), // 1. Resolve client UUID
-                ok(currentRolesEmptyJson),// 2. GET current user roles
-                noContent()               // 3. POST new roles (DELETE is skipped)
+                ok(clientResolutionJson),  // Resolve client UUID
+                ok(clientRolesJson),       // GET client roles (validation)
+                ok(currentRolesEmptyJson), // GET current user roles
+                noContent(),               // POST new roles (DELETE skipped, nothing to remove)
+                ok(finalStateJson)         // GET final state (verification)
         ));
         List<String> calls = new CopyOnWriteArrayList<>();
         KeycloakRoleServiceImpl svc = serviceWith(queuedExchange(responses, calls));
@@ -181,21 +203,26 @@ class KeycloakRoleServiceTest {
         StepVerifier.create(svc.replaceUserRoles(USER_ID, newRoles))
                 .verifyComplete();
 
-        assertThat(calls).hasSize(3);
+        assertThat(calls).hasSize(5);
         assertThat(calls.get(0)).startsWith("GET").contains("/clients");
-        assertThat(calls.get(1)).startsWith("GET").contains("/role-mappings");
-        assertThat(calls.get(2)).startsWith("POST").contains("/role-mappings");
+        assertThat(calls.get(1)).startsWith("GET").contains("/roles");
+        assertThat(calls.get(2)).startsWith("GET").contains("/role-mappings");
+        assertThat(calls.get(3)).startsWith("POST").contains("/role-mappings");
+        assertThat(calls.get(4)).startsWith("GET").contains("/role-mappings");
     }
 
     @Test
     void replaceUserRoles_NewRolesEmpty_OnlyDeleteCalled() {
         String clientResolutionJson = "[{\"id\":\"" + CLIENT_INTERNAL_ID + "\"}]";
         String currentRolesJson = "[{\"id\":\"role-old\",\"name\":\"operator-read\"}]";
-        
+        String finalStateEmptyJson = "[]"; // verification: no roles left, matches empty request
+
+        // Empty requested list skips validation (no roles to validate against the client)
         Queue<ClientResponse> responses = new LinkedList<>(List.of(
-                ok(clientResolutionJson), // 1. Resolve client UUID
-                ok(currentRolesJson),     // 2. GET current user roles
-                noContent()               // 3. DELETE old roles (POST is skipped)
+                ok(clientResolutionJson), // Resolve client UUID
+                ok(currentRolesJson),     // GET current user roles
+                noContent(),              // DELETE old roles (POST skipped, empty request)
+                ok(finalStateEmptyJson)   // GET final state (verification)
         ));
         List<String> calls = new CopyOnWriteArrayList<>();
         KeycloakRoleServiceImpl svc = serviceWith(queuedExchange(responses, calls));
@@ -205,21 +232,79 @@ class KeycloakRoleServiceTest {
         StepVerifier.create(svc.replaceUserRoles(USER_ID, emptyNewRoles))
                 .verifyComplete();
 
-        assertThat(calls).hasSize(3);
+        assertThat(calls).hasSize(4);
         assertThat(calls.get(0)).startsWith("GET").contains("/clients");
         assertThat(calls.get(1)).startsWith("GET").contains("/role-mappings");
         assertThat(calls.get(2)).startsWith("DELETE").contains("/role-mappings");
+        assertThat(calls.get(3)).startsWith("GET").contains("/role-mappings");
     }
 
     @Test
-    void replaceUserRoles_KeycloakReturns500OnDelete_ErrorPropagatedAndPostSkipped() {
+    void replaceUserRoles_FinalStateDiverges_FailsWithUncertainStateError() {
         String clientResolutionJson = "[{\"id\":\"" + CLIENT_INTERNAL_ID + "\"}]";
+        String clientRolesJson = "[{\"id\":\"role-new\",\"name\":\"operator-write\"}]";
         String currentRolesJson = "[{\"id\":\"role-old\",\"name\":\"operator-read\"}]";
-        
+        // Final verification returns a state that does NOT match the requested roles.
+        String divergentFinalJson = "[{\"id\":\"role-old\",\"name\":\"operator-read\"}]";
+
         Queue<ClientResponse> responses = new LinkedList<>(List.of(
-                ok(clientResolutionJson), // 1. Resolve client UUID
-                ok(currentRolesJson),     // 2. GET current user roles
-                serverError()             // 3. DELETE fails with 500
+                ok(clientResolutionJson), // Resolve client UUID
+                ok(clientRolesJson),      // GET client roles (validation)
+                ok(currentRolesJson),     // GET current user roles
+                noContent(),              // POST
+                noContent(),              // DELETE
+                ok(divergentFinalJson)    // GET final state -> diverges from requested
+        ));
+        List<String> calls = new CopyOnWriteArrayList<>();
+        KeycloakRoleServiceImpl svc = serviceWith(queuedExchange(responses, calls));
+
+        List<KeycloakRoleDTOV1> newRoles = List.of(new KeycloakRoleDTOV1("role-new", "operator-write", ""));
+
+        // Instead of a misleading success, the operation fails with an explicit uncertain-state error.
+        StepVerifier.create(svc.replaceUserRoles(USER_ID, newRoles))
+                .expectErrorMatches(ex -> ex.getMessage() != null && ex.getMessage().contains("could not be confirmed"))
+                .verify();
+
+        assertThat(calls).hasSize(6);
+        assertThat(calls.get(5)).startsWith("GET").contains("/role-mappings");
+    }
+
+    @Test
+    void replaceUserRoles_RequestedRoleNotDefinedOnClient_FailsBeforeMutations() {
+        String clientResolutionJson = "[{\"id\":\"" + CLIENT_INTERNAL_ID + "\"}]";
+        // Client only defines "role-known"; the request asks for an unknown role
+        String clientRolesJson = "[{\"id\":\"role-known\",\"name\":\"operator-read\"}]";
+
+        Queue<ClientResponse> responses = new LinkedList<>(List.of(
+                ok(clientResolutionJson), // Resolve client UUID
+                ok(clientRolesJson)       // GET client roles (validation fails here)
+        ));
+        List<String> calls = new CopyOnWriteArrayList<>();
+        KeycloakRoleServiceImpl svc = serviceWith(queuedExchange(responses, calls));
+
+        List<KeycloakRoleDTOV1> newRoles = List.of(new KeycloakRoleDTOV1("role-unknown", "ghost", ""));
+
+        StepVerifier.create(svc.replaceUserRoles(USER_ID, newRoles))
+                .expectErrorMatches(ex -> ex.getMessage() != null && ex.getMessage().contains("not defined on client"))
+                .verify();
+
+        // Only resolution + validation ran; no GET current roles, no POST, no DELETE
+        assertThat(calls).hasSize(2);
+        assertThat(calls.get(0)).startsWith("GET").contains("/clients");
+        assertThat(calls.get(1)).startsWith("GET").contains("/roles");
+    }
+
+    @Test
+    void replaceUserRoles_PostFails_DeleteSkippedSoUserKeepsPreviousRoles() {
+        String clientResolutionJson = "[{\"id\":\"" + CLIENT_INTERNAL_ID + "\"}]";
+        String clientRolesJson = "[{\"id\":\"role-new\",\"name\":\"operator-write\"}]";
+        String currentRolesJson = "[{\"id\":\"role-old\",\"name\":\"operator-read\"}]";
+
+        Queue<ClientResponse> responses = new LinkedList<>(List.of(
+                ok(clientResolutionJson), // Resolve client UUID
+                ok(clientRolesJson),      // GET client roles (validation)
+                ok(currentRolesJson),     // GET current user roles
+                serverError()             // POST fails with 500 -> DELETE must NOT run
         ));
         List<String> calls = new CopyOnWriteArrayList<>();
         KeycloakRoleServiceImpl svc = serviceWith(queuedExchange(responses, calls));
@@ -230,10 +315,12 @@ class KeycloakRoleServiceTest {
                 .expectErrorMatches(ex -> ex.getMessage() != null && ex.getMessage().contains("KEYCLOAK"))
                 .verify();
 
-        assertThat(calls).hasSize(3);
-        assertThat(calls.get(0)).startsWith("GET");
-        assertThat(calls.get(1)).startsWith("GET");
-        assertThat(calls.get(2)).startsWith("DELETE");
-        // POST was skipped due to DELETE failure
+        // POST ran and failed; DELETE was never issued, so the old role is preserved
+        assertThat(calls).hasSize(4);
+        assertThat(calls.get(0)).startsWith("GET").contains("/clients");
+        assertThat(calls.get(1)).startsWith("GET").contains("/roles");
+        assertThat(calls.get(2)).startsWith("GET").contains("/role-mappings");
+        assertThat(calls.get(3)).startsWith("POST").contains("/role-mappings");
+        assertThat(calls).noneMatch(c -> c.startsWith("DELETE"));
     }
 }

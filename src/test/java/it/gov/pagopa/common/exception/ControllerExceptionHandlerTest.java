@@ -4,6 +4,7 @@ import it.gov.pagopa.common.utils.TestUtils;
 import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.api.handler.ControllerExceptionHandler;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTemplateException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.TooManyRequestsException;
@@ -334,5 +335,22 @@ class ControllerExceptionHandlerTest {
                 .jsonPath("$.code").isEqualTo("TOO_MANY_REQUESTS")
                 .jsonPath("$.message").isEqualTo("The system is temporarily busy due to high load. Please try again later.")
                 .jsonPath("$.traceId").isEqualTo(traceId);
+    }
+
+    @Test
+    void handleInvalidTemplateException_Returns400() {
+        String errorMessage = "FreeMarker syntax error at line 10";
+        when(testControllerMock.testEndpoint(any(), any()))
+                .thenReturn(Mono.error(new InvalidTemplateException(errorMessage)));
+
+        webTestClient.post()
+                .uri(uriBuilder -> uriBuilder.path("/test").queryParam("data", "val").build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new TestRequestBody("val", null, "abc", LocalDateTime.now()))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST")
+                .jsonPath("$.message").isEqualTo(errorMessage);
     }
 }

@@ -19,8 +19,6 @@ import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTemplateException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakClientService;
-import it.gov.pagopa.emd.ar.backoffice.service.tpp.TemplateRendererService;
-import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

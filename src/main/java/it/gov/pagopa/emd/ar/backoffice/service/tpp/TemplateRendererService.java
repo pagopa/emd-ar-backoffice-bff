@@ -7,12 +7,15 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import freemarker.template.Configuration;
+import freemarker.template.Template;
+
 @Service
 public class TemplateRendererService {
 
-    private final freemarker.template.Configuration freemarkerCfg;
+    private final Configuration freemarkerCfg;
 
-    public TemplateRendererService(freemarker.template.Configuration freemarkerCfg) {
+    public TemplateRendererService(Configuration freemarkerCfg) {
         this.freemarkerCfg = freemarkerCfg;
     }
 
@@ -34,7 +37,7 @@ public class TemplateRendererService {
         mockData.put("workflowType", "STANDARD");
         mockData.put("associatedPayment", true);
 
-        freemarker.template.Template temp = new freemarker.template.Template("preview", new StringReader(templateSource), freemarkerCfg);
+        Template temp = new Template("preview", new StringReader(templateSource), freemarkerCfg);
         StringWriter out = new StringWriter();
         temp.process(mockData, out);
         return out.toString();

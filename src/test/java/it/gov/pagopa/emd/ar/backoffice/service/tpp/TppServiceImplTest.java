@@ -1,4 +1,4 @@
-package it.gov.pagopa.emd.ar.backoffice.service;
+package it.gov.pagopa.emd.ar.backoffice.service.tpp;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
@@ -188,8 +188,13 @@ public class TppServiceImplTest {
 
         tppService.createTppAndKeycloakClient(entityId, original).block();
 
-        assert original.getMessageUrl() == null : "Original DTO must not be mutated";
-        assert original.getAuthenticationUrl() == null : "Original DTO must not be mutated";
+        assertThat(original.getMessageUrl())
+            .as("Original DTO must not be mutated")
+            .isNull();
+            
+        assertThat(original.getAuthenticationUrl())
+                .as("Original DTO must not be mutated")
+                .isNull();
     }
 
     /**

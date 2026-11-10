@@ -138,3 +138,15 @@ auth:
     jwk-set-uri: "\${SC_JWT_SET_URI}"
     expected-issuer: "\${SC_AUTH_EXPECTED_ISSUER}"
     expected-audience: "\${SC_AUTH_EXPECTED_AUDIENCE}"
+
+template:
+  renderer:
+    # Resource-containment limits for untrusted FreeMarker template rendering.
+    # Max number of characters allowed in the template source (rejected before compilation).
+    max-template-size: "\${TEMPLATE_RENDERER_MAX_TEMPLATE_SIZE:8192}"
+    # Max number of characters allowed in the rendered output (rendering aborted when exceeded).
+    max-output-size: "\${TEMPLATE_RENDERER_MAX_OUTPUT_SIZE:10240}"
+    # Execution budget for a single rendering, in milliseconds.
+    timeout-ms: "\${TEMPLATE_RENDERER_TIMEOUT_MS:2000}"
+    # Size of the dedicated thread pool isolated from the application/Reactor threads.
+    pool-size: "\${TEMPLATE_RENDERER_POOL_SIZE:4}"

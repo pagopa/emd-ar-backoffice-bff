@@ -242,7 +242,7 @@ public class KeycloakUserService extends AbstractKeycloakService {
      * @return {@code Mono<List<KeycloakUserDTOV1>>} a list of users enriched with roles
      */
     private Mono<List<KeycloakUserDTOV1>> getUsersWithRoles(String adminToken, String search, Integer first, Integer max) {
-        log.info("[AR-BFF][GET_USERS] Fetching users. search={}, idpAlias={}, first={}, max={}", search, idpAlias, first, max);
+        log.info("[AR-BFF][GET_USERS] Fetching users. search={}, idpAlias={}, first={}, max={}", search, idpAliasMdc, first, max);
         return Mono.fromCallable(() -> {
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(authServerUrl).path(USER_ENDPOINT);
             

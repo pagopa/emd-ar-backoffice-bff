@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.14.1...v0.15.0) (2026-11-10)
+
+
+### Features
+
+* [MMC-1296] Add getRoles and replaceRoles ([#80](https://github.com/pagopa/emd-ar-backoffice-bff/issues/80)) ([94f5bd1](https://github.com/pagopa/emd-ar-backoffice-bff/commit/94f5bd108a31e214fdf69b2cd357fd74584ce345))
+
 ## [0.14.1](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.14.0...v0.14.1) (2026-11-09)
 
 

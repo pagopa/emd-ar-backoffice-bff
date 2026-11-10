@@ -9,6 +9,22 @@ spring:
   threads:
     virtual:
       enabled: true
+  data:
+    redis:
+      database: "\${REDIS_DATABASE:1}"
+      host: "\${REDIS_CONNECTION_HOSTNAME:localhost}"
+      port: "\${REDIS_PORT:6380}"
+      ssl:
+        enabled: "\${REDIS_SSL_ENABLED:true}"
+      password: "\${REDIS_CONNECTION_PASSWORD:}"
+
+role-lock:
+  # Key namespace keeps BFF locks isolated from emd-tpp cache keys on the shared Redis.
+  key-prefix: "\${ROLE_LOCK_KEY_PREFIX:ar-bff:lock:roles}"
+  # Lease time: the lock auto-expires after this if the holder dies (safety net).
+  lease-millis: "\${ROLE_LOCK_LEASE_MS:10000}"
+  # Max time a caller waits to acquire the lock before failing fast.
+  wait-millis: "\${ROLE_LOCK_WAIT_MS:3000}"
 
 management:
   info:
@@ -125,6 +141,8 @@ keycloak:
   ar-backoffice:
     client-id: "\${KEYCLOAK_BACKOFFICE_CLIENT_ID}"
     client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
+  portal-client:
+    client-id: "\${KEYCLOAK_PORTAL_CLIENT_ID}"
   groups:
     tpp-name: "\${KEYCLOAK_TPP_GROUP_NAME}"
   search:

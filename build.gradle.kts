@@ -50,6 +50,7 @@ repositories {
 
 val springDocOpenApiVersion = "3.0.3"
 val janinoVersion = "3.1.12"
+val redissonVersion = "4.7.0"
 val openApiToolsVersion = "0.2.10"
 val micrometerVersion = "1.7.0"
 val httpClientVersion = "5.6"
@@ -85,6 +86,9 @@ dependencies {
   // Utilities
   implementation("org.springframework.boot:spring-boot-starter-validation")
   implementation("org.codehaus.janino:janino:$janinoVersion")
+
+  // Cache redis
+  implementation("org.redisson:redisson-spring-boot-starter:$redissonVersion")
 
 
 

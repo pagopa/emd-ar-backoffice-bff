@@ -182,13 +182,9 @@ public class TppServiceImplTest {
 
         tppService.createTppAndKeycloakClient(entityId, original).block();
 
-        assertThat(original.getMessageUrl())
-            .as("Original DTO must not be mutated")
-            .isNull();
-            
-        assertThat(original.getAuthenticationUrl())
-                .as("Original DTO must not be mutated")
-                .isNull();
+        assertThat(original.getMessageUrl()).as("Original DTO must not be mutated").isNull();
+        assertThat(original.getAuthenticationUrl()).as("Original DTO must not be mutated").isNull();
+        
     }
 
     /**
@@ -284,10 +280,7 @@ public class TppServiceImplTest {
                 .tppId(tppId)
                 .entityId(entityId)
                 .businessName("My TPP Srl")
-                .idPsp("PSP_001")
-                .legalAddress("Via Roma 1, 00100 Roma")
                 .authenticationType(it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AuthenticationType.OAUTH2)
-                .contact(new it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.Contact("Mario Rossi", "1234567890", "mario@tpp.it"))
                 .state(true)
                 .isPaymentEnabled(false)
                 .pspDenomination("My TPP Srl")
@@ -301,14 +294,9 @@ public class TppServiceImplTest {
                     assertThat(dto.getTppId()).isEqualTo(tppId);
                     assertThat(dto.getBusinessName()).isEqualTo("My TPP Srl");
                     assertThat(dto.getAuthenticationType()).isEqualTo(AuthenticationTypeV1.OAUTH2);
-                    assertThat(dto.getContact()).isNotNull();
-                    assertThat(dto.getContact().getName()).isEqualTo("Mario Rossi");
-                    assertThat(dto.getContact().getEmail()).isEqualTo("mario@tpp.it");
                     // detailed-only fields must NOT be populated
                     assertThat(dto.getEntityId()).isNull();
                     assertThat(dto.getState()).isNull();
-                    assertThat(dto.getIdPsp()).isNull();
-                    assertThat(dto.getLegalAddress()).isNull();
                     assertThat(dto.getCreationDate()).isNull();
                     assertThat(dto.getLastUpdateDate()).isNull();
                 })
@@ -332,10 +320,7 @@ public class TppServiceImplTest {
                 .tppId(tppId)
                 .entityId(entityId)
                 .businessName("My TPP Srl")
-                .idPsp("PSP_001")
-                .legalAddress("Via Roma 1, 00100 Roma")
                 .authenticationType(it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AuthenticationType.OAUTH2)
-                .contact(new it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.Contact("Mario Rossi", "1234567890", "mario@tpp.it"))
                 .state(true)
                 .isPaymentEnabled(true)
                 .pspDenomination("My TPP Srl")
@@ -354,8 +339,6 @@ public class TppServiceImplTest {
                     assertThat(dto.getBusinessName()).isEqualTo("My TPP Srl");
                     // detailed-only fields MUST be populated
                     assertThat(dto.getEntityId()).isEqualTo(entityId);
-                    assertThat(dto.getIdPsp()).isEqualTo("PSP_001");
-                    assertThat(dto.getLegalAddress()).isEqualTo("Via Roma 1, 00100 Roma");
                     assertThat(dto.getState()).isTrue();
                     assertThat(dto.getIsPaymentEnabled()).isTrue();
                     assertThat(dto.getCreationDate()).isNotNull();
@@ -951,7 +934,6 @@ public class TppServiceImplTest {
                     TppPatchRequest req = inv.getArgument(1);
                     assertThat(req.getBusinessName()).isEqualTo("New Name");
                     assertThat(req.getMessageUrl()).isEqualTo("https://new.url/messages");
-                    assertThat(req.getContact()).isNull();
                     assertThat(req.getAuthenticationType()).isNull();
                     return Mono.just(updatedResponse);
                 });

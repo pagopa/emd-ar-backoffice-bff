@@ -59,7 +59,7 @@ public interface TppControllerV1 {
      * <p>Returns HTTP 200 with a {@code TppResponseDTOV1} payload if found, or HTTP 404 if no TPP
      * exists for that {@code entityId}.</p>
      *
-     * <p>When {@code detailed=true} all server-managed fields (entityId, idPsp, legalAddress,
+     * <p>When {@code detailed=true} all server-managed fields (entityId,
      * state, creationDate, lastUpdateDate, isPaymentEnabled, messageTemplate, whitelistRecipient,
      * clientId) are included in the response. When {@code detailed=false} (default) only the
      * standard business fields are returned.</p>

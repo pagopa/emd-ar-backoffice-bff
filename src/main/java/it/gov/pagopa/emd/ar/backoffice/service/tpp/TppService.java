@@ -32,7 +32,7 @@ public interface TppService {
      * Looks up an existing TPP by its {@code entityId} (CF o P.IVA).
      *
      * @param entityId the fiscal code or VAT number
-     * @param detailed when {@code true} all server-managed fields (entityId, idPsp, legalAddress,
+     * @param detailed when {@code true} all server-managed fields (entityId,
      *                 state, creationDate, lastUpdateDate, isPaymentEnabled, messageTemplate,
      *                 whitelistRecipient, clientId) are included in the response;
      *                 when {@code false} only the base subset is returned (default behaviour)

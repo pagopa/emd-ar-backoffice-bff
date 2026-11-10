@@ -1,9 +1,5 @@
 package it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto;
 
-import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AgentLink;
-import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AuthenticationType;
-import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.Contact;
-import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TokenSection;
 import lombok.Builder;
 import lombok.Value;
 
@@ -25,13 +21,10 @@ public class TppCreateRequest {
 
     String entityId;
     String businessName;
-    String idPsp;
     String pspDenomination;
-    String legalAddress;
     String messageUrl;
     String authenticationUrl;
     AuthenticationType authenticationType;
-    Contact contact;
     Boolean state;
     TokenSection tokenSection;
     Map<String, AgentLink> agentLinks;

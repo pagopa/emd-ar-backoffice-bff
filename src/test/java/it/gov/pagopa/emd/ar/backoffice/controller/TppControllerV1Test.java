@@ -16,7 +16,6 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppTemplatePreviewDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppTemplateValidationRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTemplateException;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.ContactV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
@@ -100,7 +99,6 @@ class TppControllerV1Test {
                 .tppId("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
                 .businessName("My TPP Srl")
                 .authenticationType(AuthenticationTypeV1.OAUTH2)
-                .contact(new ContactV1("Mario Rossi", "1234567890", "mario@tpp.it"))
                 .build();
 
         when(tppService.getTppByEntityId(eq(entityId), eq(false)))
@@ -115,8 +113,6 @@ class TppControllerV1Test {
                 .jsonPath("$.tppId").isEqualTo("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
                 .jsonPath("$.businessName").isEqualTo("My TPP Srl")
                 .jsonPath("$.authenticationType").isEqualTo("OAUTH2")
-                .jsonPath("$.contact.name").isEqualTo("Mario Rossi")
-                .jsonPath("$.contact.email").isEqualTo("mario@tpp.it")
                 // detailed-only fields must be absent from JSON
                 .jsonPath("$.entityId").doesNotExist()
                 .jsonPath("$.state").doesNotExist();
@@ -134,8 +130,6 @@ class TppControllerV1Test {
                 .businessName("My TPP Srl")
                 .authenticationType(AuthenticationTypeV1.OAUTH2)
                 .entityId(entityId)
-                .idPsp("PSP_001")
-                .legalAddress("Via Roma 1, 00100 Roma")
                 .state(true)
                 .isPaymentEnabled(false)
                 .build();
@@ -152,8 +146,6 @@ class TppControllerV1Test {
                 .jsonPath("$.tppId").isEqualTo("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
                 .jsonPath("$.businessName").isEqualTo("My TPP Srl")
                 .jsonPath("$.entityId").isEqualTo(entityId)
-                .jsonPath("$.idPsp").isEqualTo("PSP_001")
-                .jsonPath("$.legalAddress").isEqualTo("Via Roma 1, 00100 Roma")
                 .jsonPath("$.state").isEqualTo(true);
     }
 
@@ -402,14 +394,12 @@ class TppControllerV1Test {
 
         TppPatchDTOV1 patchBody = TppPatchDTOV1.builder()
                 .messageUrl("https://api.acme.com/v2/messages")
-                .contact(new ContactV1("Luigi Bianchi", "0612345678", "nuovo-tech@acme.com"))
                 .build();
 
         TppResponseDTOV1 updatedResponse = TppResponseDTOV1.builder()
                 .tppId("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
                 .businessName("Acme TPP S.p.A.")
                 .messageUrl("https://api.acme.com/v2/messages")
-                .contact(new ContactV1("Luigi Bianchi", "0612345678", "nuovo-tech@acme.com"))
                 .build();
 
         when(tppService.patchTpp(eq(entityId), any(TppPatchDTOV1.class)))
@@ -425,9 +415,7 @@ class TppControllerV1Test {
                 .expectBody()
                 .jsonPath("$.tppId").isEqualTo("47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176")
                 .jsonPath("$.businessName").isEqualTo("Acme TPP S.p.A.")
-                .jsonPath("$.messageUrl").isEqualTo("https://api.acme.com/v2/messages")
-                .jsonPath("$.contact.name").isEqualTo("Luigi Bianchi")
-                .jsonPath("$.contact.email").isEqualTo("nuovo-tech@acme.com");
+                .jsonPath("$.messageUrl").isEqualTo("https://api.acme.com/v2/messages");
     }
 
     /**

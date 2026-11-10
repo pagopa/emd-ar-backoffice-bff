@@ -6,8 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.AuthResponseV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.UserPageResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.auth.dto.KeycloakRoleDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.Organization;
 import it.gov.pagopa.emd.ar.backoffice.domain.model.User;
+import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakRoleService;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakTokenService;
 import it.gov.pagopa.emd.ar.backoffice.service.auth.keycloak.KeycloakUserService;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,16 +37,19 @@ public class AuthServiceImpl implements AuthService {
     private final SelfCareTokenValidator selfCareValidator;
     private final KeycloakTokenService tokenService;
     private final KeycloakUserService userService;
+    private final KeycloakRoleService roleService;
     private final ObjectMapper objectMapper;
-
+    
     public AuthServiceImpl(
             SelfCareTokenValidator selfCareValidator,
             KeycloakTokenService tokenService,
             KeycloakUserService userService,
+            KeycloakRoleService roleService,
             ObjectMapper objectMapper) {
         this.selfCareValidator = selfCareValidator;
         this.tokenService = tokenService;
         this.userService = userService;
+        this.roleService = roleService;
         this.objectMapper = objectMapper;
     }
 
@@ -144,5 +150,19 @@ public class AuthServiceImpl implements AuthService {
                     log.error("[AR-BFF][GET_USERS] Failed to retrieve paginated users: {}", e.getMessage());
                     return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
                 });
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<List<KeycloakRoleDTOV1>>> getAvailableRoles() {
+        return roleService.getAvailableClientRoles()
+                .map(ResponseEntity::ok);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<Void>> replaceUserRoles(String userId, List<KeycloakRoleDTOV1> roles) {
+        return roleService.replaceUserRoles(userId, roles)
+                .thenReturn(ResponseEntity.<Void>noContent().build());
     }
 }

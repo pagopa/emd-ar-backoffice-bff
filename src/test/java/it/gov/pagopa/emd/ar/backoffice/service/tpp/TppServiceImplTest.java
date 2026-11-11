@@ -439,7 +439,6 @@ public class TppServiceImplTest {
 
         StepVerifier.create(tppService.getTppByEntityId(entityId, false))
                 .assertNext(dto -> {
-                    assertThat(dto.getMessageTemplate()).isNull();
                     assertThat(dto.getMessageTemplateRendered()).isNull();
                 })
                 .verifyComplete();

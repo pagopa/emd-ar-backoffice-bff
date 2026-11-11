@@ -135,6 +135,7 @@ public final class TppConnectorMapper {
                 .authenticationUrl(src.getAuthenticationUrl())
                 .authenticationType(toAuthenticationTypeV1(src.getAuthenticationType()))
                 .pspDenomination(src.getPspDenomination())
+                .messageTemplate(src.getMessageTemplate())
                 .agentLinks(toAgentLinksV1(src.getAgentLinks()))
                 .build();
     }

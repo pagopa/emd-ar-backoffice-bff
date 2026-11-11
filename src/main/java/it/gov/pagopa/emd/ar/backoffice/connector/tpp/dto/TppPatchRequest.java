@@ -31,5 +31,6 @@ public class TppPatchRequest {
     private AuthenticationType authenticationType;
     private String pspDenomination;
     private HashMap<String, AgentLink> agentLinks;
+    private String messageTemplate;
     private List<String> whitelistRecipient;
 }

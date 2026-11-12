@@ -18,6 +18,8 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppTemplatePreviewDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppTemplateValidationRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.RecipientIdOnWhitelistDTOV1;
@@ -300,4 +302,15 @@ public interface TppControllerV1 {
     @GetMapping(value = "tpp/{tppId}/network/connection/test", produces = MediaType.APPLICATION_JSON_VALUE)
     Mono<ResponseEntity<TppConnectionResponseDTOV1>> testAuthConnection(@PathVariable("tppId") String tppId);
 
+    /**
+     * Validates a FreeMarker template source and returns the rendered preview.
+     * 
+     * @param validationRequest the raw template source to validate
+     * @return {@code Mono<ResponseEntity<TppTemplatePreviewDTOV1>>} with the rendered result
+     */
+    @PostMapping(value = "tpp/template/validate", 
+                consumes = MediaType.APPLICATION_JSON_VALUE, 
+                produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<TppTemplatePreviewDTOV1>> validateTemplate(
+            @Valid @RequestBody TppTemplateValidationRequestDTOV1 validationRequest);
 }

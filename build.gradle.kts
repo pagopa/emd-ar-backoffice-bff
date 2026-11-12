@@ -90,6 +90,8 @@ dependencies {
   // Cache redis
   implementation("org.redisson:redisson-spring-boot-starter:$redissonVersion")
 
+  // Rendering message template
+  implementation("org.freemarker:freemarker:2.3.35")
 
 
   // CVE fix

@@ -6,6 +6,8 @@ import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPagopaCredentialsDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppPatchDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppSearchResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppTemplatePreviewDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppTemplateValidationRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateIsPaymentEnabledDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.TppUpdateStateDTOV1;
 import it.gov.pagopa.common.utils.Utilities;
@@ -159,6 +161,14 @@ public class TppControllerImplV1 implements TppControllerV1 {
     public Mono<ResponseEntity<TppConnectionResponseDTOV1>> testAuthConnection(String tppId) {
         log.info("[AR-BFF][TPP_AUTH_TEST] Request received - Initiating connection test for tppId={}", tppId);
         return tppService.testAuthConnection(tppId)
+                .map(ResponseEntity::ok);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Mono<ResponseEntity<TppTemplatePreviewDTOV1>> validateTemplate(TppTemplateValidationRequestDTOV1 validationRequest) {
+        log.info("[AR-BFF][TPP_TEMPLATE_VALIDATE] Request received for template validation");
+        return tppService.validateAndRenderTemplate(validationRequest.getTemplateSource())
                 .map(ResponseEntity::ok);
     }
 }

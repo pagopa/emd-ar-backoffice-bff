@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.api.handler;
 import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidSearchFieldException;
+import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTemplateException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.InvalidTokenException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.PaymentAttemptNotFoundException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.RecipientAlreadyPresentException;
@@ -305,5 +306,14 @@ public class ControllerExceptionHandler {
                         "The system is temporarily busy due to high load. Please try again later.",
                         utilities.getTraceId()
                 ));
+    }
+
+    /**
+     * Maps {@link InvalidTemplateException} → HTTP 400 Bad Request.
+     * Permette di restituire all'operatore l'errore di sintassi del template FreeMarker.
+     */
+    @ExceptionHandler(InvalidTemplateException.class)
+    public ResponseEntity<ErrorDTO> handleInvalidTemplateException(InvalidTemplateException ex, ServerHttpRequest request) {
+        return handleException(ex, request, HttpStatus.BAD_REQUEST, ErrorDTO.CodeEnum.BAD_REQUEST);
     }
 }

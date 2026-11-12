@@ -44,5 +44,7 @@ public class TppPatchDTOV1 {
 
     private HashMap<String, AgentLinkV1> agentLinks;
 
+    private String messageTemplate;
+
     private List<String> whitelistRecipient;
 }

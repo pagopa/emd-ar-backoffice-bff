@@ -51,6 +51,8 @@ public class TppResponseDTOV1 {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String messageTemplate;
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String messageTemplateRendered;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<String> whitelistRecipient;
 }
 

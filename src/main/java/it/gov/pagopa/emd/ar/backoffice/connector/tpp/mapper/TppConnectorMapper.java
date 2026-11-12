@@ -72,6 +72,7 @@ public final class TppConnectorMapper {
                 .pspDenomination(input.getPspDenomination())
                 .agentLinks(input.getAgentLinks() == null ? null
                         : new java.util.HashMap<>(toAgentLinks(input.getAgentLinks())))
+                .messageTemplate(input.getMessageTemplate())
                 .whitelistRecipient(input.getWhitelistRecipient() == null ? null
                         : new ArrayList<>(input.getWhitelistRecipient()))
                 .build();
@@ -134,6 +135,7 @@ public final class TppConnectorMapper {
                 .authenticationUrl(src.getAuthenticationUrl())
                 .authenticationType(toAuthenticationTypeV1(src.getAuthenticationType()))
                 .pspDenomination(src.getPspDenomination())
+                .messageTemplate(src.getMessageTemplate())
                 .agentLinks(toAgentLinksV1(src.getAgentLinks()))
                 .build();
     }

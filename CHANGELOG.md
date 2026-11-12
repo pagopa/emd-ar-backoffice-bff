@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.15.0...v0.16.0) (2026-11-12)
+
+
+### Features
+
+* [MMC-1370] Add render template ([#85](https://github.com/pagopa/emd-ar-backoffice-bff/issues/85)) ([2e9db82](https://github.com/pagopa/emd-ar-backoffice-bff/commit/2e9db82c7065acdf03933afe78504342e0f317d2))
+
 ## [0.15.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.14.1...v0.15.0) (2026-11-10)
 
 

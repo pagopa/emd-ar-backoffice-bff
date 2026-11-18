@@ -73,7 +73,7 @@ class TppControllerV1Test {
                 .authenticationType(AuthenticationTypeV1.OAUTH2)
                 .build();
 
-        when(tppService.createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class)))
+        when(tppService.createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class), eq(false)))
                 .thenReturn(Mono.just(expectedResponse));
 
         webTestClient.post()
@@ -86,6 +86,80 @@ class TppControllerV1Test {
                 .jsonPath("$.tppId").isEqualTo("TPP_CREATED_ID_123")
                 .jsonPath("$.businessName").isEqualTo("Test Tpp Name")
                 .jsonPath("$.authenticationType").isEqualTo("OAUTH2");
+
+        Mockito.verify(tppService).createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class), eq(false));
+    }
+
+    /**
+     * POST .../tpp/{entityId}?internal=true — il flag arriva al service come {@code true}
+     * (nessun client Keycloak da creare).
+     */
+    @Test
+    void saveTpp_WithInternalTrue_PassesFlagToService() {
+        String entityId = "12345678901";
+        TppDTOV1 dto = new TppDTOV1();
+        dto.setBusinessName("Internal Tpp");
+        dto.setAuthenticationType(AuthenticationTypeV1.OAUTH2);
+        dto.setAgentLinks(new HashMap<>());
+
+        when(tppService.createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class), eq(true)))
+                .thenReturn(Mono.just(TppResponseDTOV1.builder().tppId("INTERNAL_TPP_ID").build()));
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "?internal=true")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(dto)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo("INTERNAL_TPP_ID");
+
+        Mockito.verify(tppService).createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class), eq(true));
+    }
+
+    /**
+     * POST .../tpp/{entityId}?internal=false — esplicito, equivale al default: il service
+     * riceve {@code false}.
+     */
+    @Test
+    void saveTpp_WithInternalFalse_PassesFlagToService() {
+        String entityId = "12345678901";
+        TppDTOV1 dto = new TppDTOV1();
+        dto.setBusinessName("Standard Tpp");
+        dto.setAuthenticationType(AuthenticationTypeV1.OAUTH2);
+        dto.setAgentLinks(new HashMap<>());
+
+        when(tppService.createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class), eq(false)))
+                .thenReturn(Mono.just(TppResponseDTOV1.builder().tppId("STANDARD_TPP_ID").build()));
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "?internal=false")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(dto)
+                .exchange()
+                .expectStatus().isOk();
+
+        Mockito.verify(tppService).createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class), eq(false));
+    }
+
+    /**
+     * POST .../tpp/{entityId}?internal=abc — valore non booleano → 400 e service mai invocato.
+     */
+    @Test
+    void saveTpp_WithInvalidInternalValue_Returns400AndSkipsService() {
+        TppDTOV1 dto = new TppDTOV1();
+        dto.setBusinessName("Bad Flag Tpp");
+        dto.setAuthenticationType(AuthenticationTypeV1.OAUTH2);
+        dto.setAgentLinks(new HashMap<>());
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/12345678901?internal=abc")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(dto)
+                .exchange()
+                .expectStatus().isBadRequest();
+
+        Mockito.verifyNoInteractions(tppService);
     }
 
     /**

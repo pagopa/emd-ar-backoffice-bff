@@ -90,7 +90,7 @@ public class TppServiceImplTest {
         when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(connectorResponse));
         when(keycloakClientService.createKeycloakClient(entityId, entityId, "Pagopa TPP")).thenReturn(Mono.just(entityId));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, false))
                 .assertNext(response -> {
                     assertThat(response.getTppId()).isEqualTo(savedTppId);
                     assertThat(response.getBusinessName()).isEqualTo("Pagopa TPP");
@@ -128,7 +128,7 @@ public class TppServiceImplTest {
         when(keycloakClientService.createKeycloakClient(legacyClientId, entityId, "Legacy TPP"))
                 .thenReturn(Mono.just(legacyClientId));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, false))
                 .assertNext(response -> assertThat(response.getTppId()).isEqualTo(savedTppId))
                 .verifyComplete();
 
@@ -158,7 +158,7 @@ public class TppServiceImplTest {
         when(keycloakClientService.createKeycloakClient(entityId, entityId, "Empty ClientId TPP"))
                 .thenReturn(Mono.just(entityId));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, false))
                 .assertNext(r -> assertThat(r.getTppId()).isEqualTo(savedTppId))
                 .verifyComplete();
 
@@ -184,7 +184,7 @@ public class TppServiceImplTest {
         when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(connectorResponse));
         when(keycloakClientService.createKeycloakClient(anyString(), any(), any())).thenReturn(Mono.just("tpp-id"));
 
-        tppService.createTppAndKeycloakClient(entityId, original).block();
+        tppService.createTppAndKeycloakClient(entityId, original, false).block();
 
         assertThat(original.getMessageUrl()).as("Original DTO must not be mutated").isNull();
         assertThat(original.getAuthenticationUrl()).as("Original DTO must not be mutated").isNull();
@@ -203,7 +203,7 @@ public class TppServiceImplTest {
         when(tppConnector.saveTpp(any(TppCreateRequest.class)))
                 .thenReturn(Mono.error(new RuntimeException("Database error")));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, false))
                 .expectError(RuntimeException.class)
                 .verify();
 
@@ -232,7 +232,7 @@ public class TppServiceImplTest {
                 .thenReturn(Mono.error(kcException));
         when(tppConnector.deleteTpp(savedTppId)).thenReturn(Mono.empty());
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, false))
                 .expectError(RuntimeException.class)
                 .verify();
 
@@ -262,11 +262,64 @@ public class TppServiceImplTest {
         when(tppConnector.deleteTpp(savedTppId))
                 .thenReturn(Mono.error(new RuntimeException("DB also down")));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, false))
                 .expectErrorMatches(ex -> ex.getMessage().equals("Keycloak unavailable"))
                 .verify();
 
         verify(tppConnector, times(1)).deleteTpp(savedTppId);
+    }
+
+    /**
+     * internal=true: la TPP viene salvata su emd-tpp e il client Keycloak NON viene creato.
+     * La risposta è la stessa del flusso standard.
+     */
+    @Test
+    void createTppAndKeycloakClient_Internal_SkipsKeycloakClientCreation() {
+        String entityId   = "12345678901";
+        String savedTppId = "INTERNAL_ID_003";
+        TppDTOV1 dto = new TppDTOV1();
+        dto.setBusinessName("Internal TPP");
+
+        TppEntityIdResponse connectorResponse = TppEntityIdResponse.builder()
+                .tppId(savedTppId)
+                .entityId(entityId)
+                .businessName("Internal TPP")
+                .authenticationType(it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AuthenticationType.OAUTH2)
+                .build();
+
+        when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(connectorResponse));
+
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, true))
+                .assertNext(response -> {
+                    assertThat(response.getTppId()).isEqualTo(savedTppId);
+                    assertThat(response.getBusinessName()).isEqualTo("Internal TPP");
+                })
+                .verifyComplete();
+
+        verify(tppConnector, times(1)).saveTpp(any(TppCreateRequest.class));
+        verifyNoInteractions(keycloakClientService);
+        verify(tppConnector, never()).deleteTpp(anyString());
+    }
+
+    /**
+     * internal=true con errore del connector: l'errore si propaga, nessuna chiamata a Keycloak
+     * e nessuna compensazione.
+     */
+    @Test
+    void createTppAndKeycloakClient_Internal_ErrorOnConnector_PropagatesWithoutKeycloak() {
+        String entityId = "12345678901";
+        TppDTOV1 dto = new TppDTOV1();
+        dto.setBusinessName("Internal Fail TPP");
+
+        when(tppConnector.saveTpp(any(TppCreateRequest.class)))
+                .thenReturn(Mono.error(new RuntimeException("Database error")));
+
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, true))
+                .expectErrorMatches(ex -> ex.getMessage().equals("Database error"))
+                .verify();
+
+        verifyNoInteractions(keycloakClientService);
+        verify(tppConnector, never()).deleteTpp(anyString());
     }
 
     // ── getTppByEntityId ───────────────────────────────────────────────────────

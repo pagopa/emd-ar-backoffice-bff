@@ -36,10 +36,10 @@ public class TppControllerImplV1 implements TppControllerV1 {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<ResponseEntity<TppResponseDTOV1>> saveTpp(String entityId, TppDTOV1 tppDTO, String authHeader) {
+    public Mono<ResponseEntity<TppResponseDTOV1>> saveTpp(String entityId, TppDTOV1 tppDTO, boolean internal, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);
-        log.info("[AR-BFF][TPP_SAVE][User:{}] Request received - Saving TPP for entityId={}", userEmail, entityId);
-        return tppService.createTppAndKeycloakClient(entityId, tppDTO)
+        log.info("[AR-BFF][TPP_SAVE][User:{}] Request received - Saving TPP for entityId={}, internal={}", userEmail, entityId, internal);
+        return tppService.createTppAndKeycloakClient(entityId, tppDTO, internal)
                 .map(ResponseEntity::ok);
     }
 

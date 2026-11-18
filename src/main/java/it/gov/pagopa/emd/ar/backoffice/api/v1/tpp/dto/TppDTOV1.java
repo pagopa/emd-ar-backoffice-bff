@@ -3,6 +3,7 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.TokenSectionV1;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -44,5 +45,5 @@ public class TppDTOV1 {
     private String pspDenomination;
 
     @NotNull(message = "Agent Link must not be null")
-    private Map<String, AgentLinkV1> agentLinks;
+    private Map<String, @Valid AgentLinkV1> agentLinks;
 }

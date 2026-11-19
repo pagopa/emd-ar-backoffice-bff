@@ -24,7 +24,6 @@ import jakarta.validation.constraints.Pattern;
 @AllArgsConstructor
 public class AgentLinkV1 {
     private String fallBackLink;
-    @Valid
-    private Map<@Pattern(regexp = "^[^.]*$", message = "Agent link version keys must not contain a dot ('.')") String, VersionDetailsV1> versions;
+    private Map<@Pattern(regexp = "^[^.]*$", message = "Agent link version keys must not contain a dot ('.')") String, @Valid VersionDetailsV1> versions;
 }
 

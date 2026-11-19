@@ -21,6 +21,8 @@ import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundExceptio
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -528,6 +530,116 @@ class TppControllerV1Test {
                 .bodyValue(patchBody)
                 .exchange()
                 .expectStatus().is5xxServerError();
+    }
+
+    // ── agentLinks versions key validation ────────────────────────────────────
+
+    private static String tppJsonWithVersionKey(String versionKey) {
+        return """
+                {
+                  "businessName": "businessName",
+                  "authenticationType": "OAUTH2",
+                  "agentLinks": {
+                    "ios": {
+                      "fallBackLink": "https://www.fallback.it",
+                      "versions": {
+                        "%s": { "link": "https://www.versionlink.it" }
+                      }
+                    }
+                  }
+                }
+                """.formatted(versionKey);
+    }
+
+    private static String patchJsonWithVersionKey(String versionKey) {
+        return """
+                {
+                  "agentLinks": {
+                    "ios": {
+                      "fallBackLink": "https://www.fallback.it",
+                      "versions": {
+                        "%s": { "link": "https://www.versionlink.it" }
+                      }
+                    }
+                  }
+                }
+                """.formatted(versionKey);
+    }
+
+    /**
+     * POST .../tpp/{entityId} — a {@code versions} key containing a dot (e.g. "v1.1") is rejected
+     * with 400 and the service is never invoked.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"v1.1", "v1.0.0", "1.0", ".v1", "v1."})
+    void saveTpp_WithDottedVersionKey_Returns400AndSkipsService(String versionKey) {
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/12345678901")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(tppJsonWithVersionKey(versionKey))
+                .exchange()
+                .expectStatus().isBadRequest();
+
+        Mockito.verifyNoInteractions(tppService);
+    }
+
+    /**
+     * POST .../tpp/{entityId} — a dot-free {@code versions} key (e.g. "v1") is accepted and the
+     * request reaches the service.
+     */
+    @Test
+    void saveTpp_WithDotFreeVersionKey_Returns200() {
+        when(tppService.createTppAndKeycloakClient(eq("12345678901"), any(TppDTOV1.class), eq(false)))
+                .thenReturn(Mono.just(TppResponseDTOV1.builder().tppId("TPP_ID").build()));
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/12345678901")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(tppJsonWithVersionKey("v1"))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo("TPP_ID");
+
+        Mockito.verify(tppService).createTppAndKeycloakClient(eq("12345678901"), any(TppDTOV1.class), eq(false));
+    }
+
+    /**
+     * PATCH .../tpp/{entityId} — a {@code versions} key containing a dot (e.g. "v1.1") is rejected
+     * with 400 and the service is never invoked.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"v1.1", "v1.0.0", "1.0", ".v1", "v1."})
+    void patchTpp_WithDottedVersionKey_Returns400AndSkipsService(String versionKey) {
+        webTestClient.patch()
+                .uri("/emd/backoffice/api/v1/tpp/12345678901")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(patchJsonWithVersionKey(versionKey))
+                .exchange()
+                .expectStatus().isBadRequest();
+
+        Mockito.verifyNoInteractions(tppService);
+    }
+
+    /**
+     * PATCH .../tpp/{entityId} — a dot-free {@code versions} key (e.g. "v1") is accepted and the
+     * request reaches the service.
+     */
+    @Test
+    void patchTpp_WithDotFreeVersionKey_Returns200() {
+        when(tppService.patchTpp(eq("12345678901"), any(TppPatchDTOV1.class)))
+                .thenReturn(Mono.just(TppResponseDTOV1.builder().tppId("TPP_ID").build()));
+
+        webTestClient.patch()
+                .uri("/emd/backoffice/api/v1/tpp/12345678901")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(patchJsonWithVersionKey("v1"))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo("TPP_ID");
+
+        Mockito.verify(tppService).patchTpp(eq("12345678901"), any(TppPatchDTOV1.class));
     }
 
     // ── searchTpp ─────────────────────────────────────────────────────────────

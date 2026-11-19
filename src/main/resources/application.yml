@@ -13,10 +13,10 @@ spring:
     redis:
       database: "\${REDIS_DATABASE:1}"
       host: "\${REDIS_CONNECTION_HOSTNAME:localhost}"
-      port: "\${REDIS_PORT:6379}"
+      port: "\${REDIS_PORT:6380}"
       ssl:
         enabled: "\${REDIS_SSL_ENABLED:true}"
-      #password: "\${REDIS_CONNECTION_PASSWORD:}"
+      password: "\${REDIS_CONNECTION_PASSWORD:}"
 
 role-lock:
   # Key namespace keeps BFF locks isolated from emd-tpp cache keys on the shared Redis.
@@ -122,29 +122,29 @@ rest:
       response-millis: "\${WEBCLIENT_TIMEOUT_RESPONSE_MILLIS:8000}"
   client:
     tpp:
-      base-url: "\${EMD_TPP:https://mdc.itn.internal.dev.cstar.pagopa.it/emdtpp/}"
+      base-url: "\${EMD_TPP}"
     message:
-      base-url: "\${EMD_MESSAGE_CORE:https://mdc.itn.internal.dev.cstar.pagopa.it/emdmessagecore/}"
+      base-url: "\${EMD_MESSAGE_CORE}"
     payment:
-      base-url: "\${EMD_PAYMENT_CORE:https://mdc.itn.internal.dev.cstar.pagopa.it/emdpaymentcore/}"
+      base-url: "\${EMD_PAYMENT_CORE}"
     citizen:
-      base-url: "\${EMD_CITIZEN:https://mdc.itn.internal.dev.cstar.pagopa.it/emdcitizen/}"
+      base-url: "\${EMD_CITIZEN}"
 
 keycloak:
-  auth-server-url: "\${KEYCLOAK_AUTH_URL:https://keycloak.itn.internal.dev.cstar.pagopa.it/}"
-  realm: "\${KEYCLOAK_REALM:mdc}"
-  idp-alias: "\${KEYCLOAK_IDP_ALIAS:alias}"
-  idp-alias-mdc: "\${KEYCLOAK_IDP_ALIAS_MDC:azure-entra}"
+  auth-server-url: "\${KEYCLOAK_AUTH_URL}"
+  realm: "\${KEYCLOAK_REALM}"
+  idp-alias: "\${KEYCLOAK_IDP_ALIAS}"
+  idp-alias-mdc: "\${KEYCLOAK_IDP_ALIAS_MDC}"
   manager:
-    client-id: "\${KEYCLOAK_MANAGER_CLIENT_ID:ar-backoffice-admin}"
-    client-secret: "\${KEYCLOAK_MANAGER_CLIENT_SECRET:DLhFjJcrtjLqg5gnbdseAAn6DghAOKY2}"
+    client-id: "\${KEYCLOAK_MANAGER_CLIENT_ID}"
+    client-secret: "\${KEYCLOAK_MANAGER_CLIENT_SECRET}"
   ar-backoffice:
-    client-id: "\${KEYCLOAK_BACKOFFICE_CLIENT_ID:ar-backoffice}"
-    client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET:5oV78mQUqhahZZNG8dQf1FmyQSe65WzF}"
+    client-id: "\${KEYCLOAK_BACKOFFICE_CLIENT_ID}"
+    client-secret: "\${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}"
   portal-client:
-    client-id: "\${KEYCLOAK_PORTAL_CLIENT_ID:ar-backoffice-portal-client}"
+    client-id: "\${KEYCLOAK_PORTAL_CLIENT_ID}"
   groups:
-    tpp-name: "\${KEYCLOAK_TPP_GROUP_NAME:tpp-group}"
+    tpp-name: "\${KEYCLOAK_TPP_GROUP_NAME}"
   search:
       max-page-size: "\${KEYCLOAK_MAX_PAGE_SIZE:20}"
       default-page-size: "\${KEYCLOAK_DEFAULT_PAGE_SIZE:10}"
@@ -153,9 +153,9 @@ keycloak:
 auth:
   sc:
     # SELFCARE
-    jwk-set-uri: "\${SC_JWT_SET_URI:https://dev.selfcare.pagopa.it/.well-known/jwks.json}"
-    expected-issuer: "\${SC_AUTH_EXPECTED_ISSUER:https://dev.selfcare.pagopa.it}"
-    expected-audience: "\${SC_AUTH_EXPECTED_AUDIENCE:mdc.pagopa.it}"
+    jwk-set-uri: "\${SC_JWT_SET_URI:https}"
+    expected-issuer: "\${SC_AUTH_EXPECTED_ISSUER}"
+    expected-audience: "\${SC_AUTH_EXPECTED_AUDIENCE}"
 
 template:
   renderer:

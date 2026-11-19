@@ -45,5 +45,5 @@ public class TppDTOV1 {
     private String pspDenomination;
 
     @NotNull(message = "Agent Link must not be null")
-    private Map<String, @Valid AgentLinkV1> agentLinks;
+    private Map<@Pattern(regexp = "^[^.]*$", message = "Agent link keys must not contain a dot ('.')") String, @Valid AgentLinkV1> agentLinks;
 }

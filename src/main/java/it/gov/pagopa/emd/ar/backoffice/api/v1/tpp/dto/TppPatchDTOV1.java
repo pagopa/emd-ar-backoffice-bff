@@ -43,7 +43,7 @@ public class TppPatchDTOV1 {
 
     private String pspDenomination;
 
-    private HashMap<String, @Valid AgentLinkV1> agentLinks;
+    private HashMap<@Pattern(regexp = "^[^.]*$", message = "Agent link keys must not contain a dot ('.')") String, @Valid AgentLinkV1> agentLinks;
 
     private String messageTemplate;
 

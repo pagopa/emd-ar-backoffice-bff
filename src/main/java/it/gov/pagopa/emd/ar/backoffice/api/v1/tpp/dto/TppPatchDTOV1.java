@@ -2,6 +2,7 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -42,7 +43,7 @@ public class TppPatchDTOV1 {
 
     private String pspDenomination;
 
-    private HashMap<String, AgentLinkV1> agentLinks;
+    private HashMap<@Pattern(regexp = "^[^.]*$", message = "Agent link keys must not contain a dot ('.')") String, @Valid AgentLinkV1> agentLinks;
 
     private String messageTemplate;
 

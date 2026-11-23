@@ -29,6 +29,8 @@ import java.util.List;
 @NoArgsConstructor
 public class TppPatchDTOV1 {
 
+    private String clientId;
+
     private String businessName;
 
     @Pattern(regexp = "^(https?|ftp)://[^ /$.?#].[^ ]*$",

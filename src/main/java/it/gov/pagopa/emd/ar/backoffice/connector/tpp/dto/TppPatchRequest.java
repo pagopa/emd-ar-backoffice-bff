@@ -25,6 +25,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class TppPatchRequest {
 
+    private String clientId;
     private String businessName;
     private String messageUrl;
     private String authenticationUrl;

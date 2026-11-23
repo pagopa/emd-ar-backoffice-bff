@@ -46,6 +46,7 @@ public final class TppConnectorMapper {
     public static TppCreateRequest toCreateRequest(String entityId, TppDTOV1 input) {
         return TppCreateRequest.builder()
                 .entityId(entityId)
+                .clientId(input.getClientId())
                 .businessName(input.getBusinessName())
                 .authenticationType(toAuthenticationType(input.getAuthenticationType()))
                 .agentLinks(toAgentLinks(input.getAgentLinks()))
@@ -65,6 +66,7 @@ public final class TppConnectorMapper {
     public static TppPatchRequest toPatchRequest(TppPatchDTOV1 input) {
         if (input == null) return null;
         return TppPatchRequest.builder()
+                .clientId(input.getClientId())
                 .businessName(input.getBusinessName())
                 .messageUrl(input.getMessageUrl())
                 .authenticationUrl(input.getAuthenticationUrl())
@@ -130,6 +132,7 @@ public final class TppConnectorMapper {
     public static TppResponseDTOV1 toTppResponseDTOV1(TppEntityIdResponse src) {
         return TppResponseDTOV1.builder()
                 .tppId(src.getTppId())
+                .clientId(src.getClientId())
                 .businessName(src.getBusinessName())
                 .messageUrl(src.getMessageUrl())
                 .authenticationUrl(src.getAuthenticationUrl())

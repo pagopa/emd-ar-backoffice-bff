@@ -27,6 +27,7 @@ import java.util.Map;
 @NoArgsConstructor
 public class TppDTOV1 {
 
+    private String clientId;
 
     @NotBlank(message = "Business name must not be blank")
     private String businessName;

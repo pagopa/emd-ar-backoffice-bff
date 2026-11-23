@@ -1,5 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.service.payment;
 
+import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.RetrievalRequestDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.connector.payment.PaymentConnectorImpl;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.PaymentAttemptNotFoundException;
@@ -188,6 +189,48 @@ class PaymentConnectorSearchTest {
         StepVerifier.create(connector.getPaymentAttempt("tpp-456", "IUN-123"))
                 .expectErrorMatches(error -> error instanceof ExternalServiceException
                         && !error.getMessage().contains("malformed response"))
+                .verify();
+    }
+
+    @Test
+    void saveRetrievalMapsUpstreamErrorToExternalServiceExceptionWithBody() {
+        String entityId = "12345678901";
+        RetrievalRequestDTOV1 requestDto = RetrievalRequestDTOV1.builder().build();
+        String errorBody = "{\"detail\":\"Invalid originId\"}";
+
+        var connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.BAD_REQUEST, errorBody)));
+
+        StepVerifier.create(connector.saveRetrieval(entityId, requestDto))
+                .expectErrorMatches(error -> error instanceof ExternalServiceException
+                        && error.getMessage().contains(errorBody))
+                .verify();
+    }
+
+    @Test
+    void saveRetrievalUsesDefaultMessageWhenUpstreamErrorHasNoBody() {
+        String entityId = "12345678901";
+        RetrievalRequestDTOV1 requestDto = RetrievalRequestDTOV1.builder().build();
+
+        // No body at all: bodyToMono(String) completes empty, so defaultIfEmpty provides the message.
+        // (body("") would emit an empty string and bypass defaultIfEmpty.)
+        var connector = connectorWith(request -> Mono.just(
+                ClientResponse.create(HttpStatus.INTERNAL_SERVER_ERROR).build()));
+
+        StepVerifier.create(connector.saveRetrieval(entityId, requestDto))
+                .expectErrorMatches(error -> error instanceof ExternalServiceException
+                        && error.getMessage().contains("Upstream request failed"))
+                .verify();
+    }
+
+    @Test
+    void saveRetrievalMapsMalformedResponseToExternalServiceException() {
+        String entityId = "12345678901";
+        RetrievalRequestDTOV1 requestDto = RetrievalRequestDTOV1.builder().build();
+
+        var connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.OK, "{ invalid_json ]")));
+
+        StepVerifier.create(connector.saveRetrieval(entityId, requestDto))
+                .expectError(ExternalServiceException.class)
                 .verify();
     }
 }

@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 
@@ -39,8 +39,8 @@ public class TppEntityIdResponse {
     private String authenticationUrl;
     private AuthenticationType authenticationType;
     private Boolean state;
-    private LocalDateTime creationDate;
-    private LocalDateTime lastUpdateDate;
+    private OffsetDateTime creationDate;
+    private OffsetDateTime lastUpdateDate;
     private String pspDenomination;
     private HashMap<String, AgentLink> agentLinks;
     private Boolean isPaymentEnabled;

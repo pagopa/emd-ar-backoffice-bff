@@ -35,6 +35,8 @@ import static org.mockito.Mockito.*;
 
 import java.util.List;
 import java.util.Map;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 /**
  * Unit tests for {@link TppServiceImpl}.
@@ -188,7 +190,7 @@ public class TppServiceImplTest {
 
         assertThat(original.getMessageUrl()).as("Original DTO must not be mutated").isNull();
         assertThat(original.getAuthenticationUrl()).as("Original DTO must not be mutated").isNull();
-        
+
     }
 
     /**
@@ -372,7 +374,7 @@ public class TppServiceImplTest {
     void getTppByEntityId_DetailedTrue_MapsAllFields() throws Exception {
         String entityId = "12345678901";
         String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
-        java.time.LocalDateTime now = java.time.LocalDateTime.of(2026, 8, 7, 10, 0);
+        OffsetDateTime now = OffsetDateTime.of(2026, 8, 7, 10, 0, 0, 0, ZoneOffset.ofHours(2));
 
         TppEntityIdResponse connectorResponse = TppEntityIdResponse.builder()
                 .tppId(tppId)
@@ -401,8 +403,8 @@ public class TppServiceImplTest {
                     assertThat(dto.getEntityId()).isEqualTo(entityId);
                     assertThat(dto.getState()).isTrue();
                     assertThat(dto.getIsPaymentEnabled()).isTrue();
-                    assertThat(dto.getCreationDate()).isNotNull();
-                    assertThat(dto.getLastUpdateDate()).isNotNull();
+                    assertThat(dto.getCreationDate()).isEqualTo(now);
+                    assertThat(dto.getLastUpdateDate()).isEqualTo(now);
                     assertThat(dto.getMessageTemplate()).isEqualTo("template-xyz");
                     assertThat(dto.getMessageTemplateRendered()).isEqualTo("Rendered template");
                     assertThat(dto.getWhitelistRecipient()).containsExactly("user@example.com");
@@ -1250,7 +1252,7 @@ public class TppServiceImplTest {
 
         verify(tppConnector, times(1)).updateTppIsPaymentEnabled(eq(tppId), any(TppUpdateIsPaymentEnabledDTOV1.class));
     }
-    
+
     // ── Whitelist Service Tests ────────────────────────────────────────────────
 
     /**
@@ -1263,7 +1265,7 @@ public class TppServiceImplTest {
 
         StepVerifier.create(tppService.insertRecipientIdOnWhitelist("tpp1", dto))
                 .verifyComplete();
-        
+
         verify(tppConnector).insertRecipientIdOnWhitelist("tpp1", dto);
     }
 
@@ -1332,7 +1334,7 @@ public class TppServiceImplTest {
                 .expectError(ResourceNotFoundException.class)
                 .verify();
     }
-    
+
     // ── testAuthConnection ────────────────────────────────────────────────────
     /**
      * Verifica che il service chiami correttamente il connector con il tppId fornito
@@ -1341,7 +1343,7 @@ public class TppServiceImplTest {
     @Test
     void testAuthConnection_Success_CallsConnector() {
         String tppId = "tpp-123";
-        
+
         TppConnectionResponseDTOV1 expectedDto = TppConnectionResponseDTOV1.builder()
                 .status("SUCCESS")
                 .httpStatus(200)
@@ -1368,7 +1370,7 @@ public class TppServiceImplTest {
     @Test
     void testAuthConnection_LogicalFailure_ReturnsFailureDTO() {
         String tppId = "tpp-123";
-        
+
         TppConnectionResponseDTOV1 failureDto = TppConnectionResponseDTOV1.builder()
                 .status("FAILURE")
                 .errorType("TIMEOUT")
@@ -1395,7 +1397,7 @@ public class TppServiceImplTest {
     @Test
     void testAuthConnection_UnexpectedError_PropagatesError() {
         String tppId = "tpp-123";
-        
+
         when(tppConnector.testAuthConnection(tppId))
                 .thenReturn(Mono.error(new RuntimeException("Critical failure")));
 

@@ -16,6 +16,9 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -56,6 +59,23 @@ class TppConnectorImplTest {
     private TppConnectorImpl connectorWith(ExchangeFunction ef) {
         WebClient.Builder builder = WebClient.builder().exchangeFunction(ef);
         return new TppConnectorImpl(builder, BASE_URL);
+    }
+
+    @Test
+    void getTppByEntityId_PreservesUpstreamTimestampOffset() {
+        String responseBody = """
+                {"creationDate":"2026-11-23T12:21:45.139+01:00", "lastUpdateDate":"2026-11-23T11:21:45.139Z"}
+                """;
+        TppConnectorImpl connector = connectorWith(request -> Mono.just(okJson(responseBody)));
+
+        StepVerifier.create(connector.getTppByEntityId("entity-123"))
+                .assertNext(response -> {
+                    assertThat(response.getCreationDate())
+                            .isEqualTo(OffsetDateTime.parse("2026-11-23T12:21:45.139+01:00"));
+                    assertThat(response.getLastUpdateDate())
+                            .isEqualTo(OffsetDateTime.of(2026, 11, 23, 11, 21, 45, 139_000_000, ZoneOffset.UTC));
+                })
+                .verifyComplete();
     }
 
     // ── Tests updateTppState ──────────────────────────────────────────────────
@@ -109,9 +129,9 @@ class TppConnectorImplTest {
      */
     @Test
     void updateTppState_500_Error() {
-        TppConnectorImpl connector = connectorWith(request -> 
+        TppConnectorImpl connector = connectorWith(request ->
             Mono.error(WebClientResponseException.create(500, "Internal Server Error", HttpHeaders.EMPTY, null, null)));
-        
+
         TppUpdateStateDTOV1 request = TppUpdateStateDTOV1.builder().tppId(TPP_ID).state(true).build();
 
         StepVerifier.create(connector.updateTppState(request))
@@ -160,9 +180,9 @@ class TppConnectorImplTest {
      */
     @Test
     void updateTppIsPaymentEnabled_500_Error() {
-        TppConnectorImpl connector = connectorWith(request -> 
+        TppConnectorImpl connector = connectorWith(request ->
             Mono.error(WebClientResponseException.create(500, "Internal Server Error", HttpHeaders.EMPTY, null, null)));
-        
+
         TppUpdateIsPaymentEnabledDTOV1 request = TppUpdateIsPaymentEnabledDTOV1.builder().isPaymentEnabled(true).build();
 
         StepVerifier.create(connector.updateTppIsPaymentEnabled(TPP_ID, request))

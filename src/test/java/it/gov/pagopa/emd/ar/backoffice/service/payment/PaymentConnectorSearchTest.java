@@ -1,6 +1,6 @@
 package it.gov.pagopa.emd.ar.backoffice.service.payment;
 
-import it.gov.pagopa.emd.ar.backoffice.connector.payment.PaymentAttemptConnectorImpl;
+import it.gov.pagopa.emd.ar.backoffice.connector.payment.PaymentConnectorImpl;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.PaymentAttemptNotFoundException;
 import org.junit.jupiter.api.Test;
@@ -15,15 +15,15 @@ import reactor.test.StepVerifier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class PaymentAttemptConnectorSearchTest {
+class PaymentConnectorSearchTest {
 
     private static final String BASE_URL = "http://emd-payment.test";
     private static final String EMPTY_RESPONSE = """
             {"content":[],"pageSize":20,"totalElements":0,"totalPages":0,"nextCursor":null,"hasNext":false}
             """;
 
-    private PaymentAttemptConnectorImpl connectorWith(ExchangeFunction exchangeFunction) {
-        return new PaymentAttemptConnectorImpl(WebClient.builder().exchangeFunction(exchangeFunction), BASE_URL);
+    private PaymentConnectorImpl connectorWith(ExchangeFunction exchangeFunction) {
+        return new PaymentConnectorImpl(WebClient.builder().exchangeFunction(exchangeFunction), BASE_URL);
     }
 
     private ClientResponse jsonResponse(HttpStatus status, String body) {

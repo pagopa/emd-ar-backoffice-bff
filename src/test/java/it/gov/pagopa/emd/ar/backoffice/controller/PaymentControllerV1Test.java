@@ -2,14 +2,16 @@ package it.gov.pagopa.emd.ar.backoffice.controller;
 
 import it.gov.pagopa.common.utils.Utilities;
 import it.gov.pagopa.emd.ar.backoffice.api.handler.ControllerExceptionHandler;
-import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.controller.PaymentAttemptControllerImplV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.controller.PaymentControllerImplV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptSearchItemDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptDetailDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.RetrievalRequestDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.RetrievalResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.PaymentAttemptNotFoundException;
-import it.gov.pagopa.emd.ar.backoffice.service.payment.PaymentAttemptService;
+import it.gov.pagopa.emd.ar.backoffice.service.payment.PaymentService;
 import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,15 +29,16 @@ import static org.mockito.Mockito.*;
 class PaymentAttemptControllerV1Test {
 	private static final String ROUTE = "/emd/backoffice/api/v1/payment-core/attempts/search";
 	private static final String SINGLE_ROUTE = "/emd/backoffice/api/v1/payment-core/attempts/{tppId}/{iun}";
-	private PaymentAttemptService service;
+	private static final String RETRIEVAL_ROUTE = "/emd/backoffice/api/v1/payment-core/retrievalTokens/{entityId}";
+	private PaymentService service;
 	private WebTestClient webTestClient;
 
 	@BeforeEach
 	void setUp() {
-		service = mock(PaymentAttemptService.class);
+		service = mock(PaymentService.class);
 		Utilities utilities = mock(Utilities.class);
 		when(utilities.getTraceId()).thenReturn("TEST-TRACE-ID");
-		webTestClient = WebTestClient.bindToController(new PaymentAttemptControllerImplV1(service))
+		webTestClient = WebTestClient.bindToController(new PaymentControllerImplV1(service))
 				.controllerAdvice(new ControllerExceptionHandler(utilities)).build();
 	}
 
@@ -102,7 +105,7 @@ class PaymentAttemptControllerV1Test {
 
 	@Test
 	void getSinglePaymentAttemptRejectsBlankTppId() {
-		StepVerifier.create(new PaymentAttemptControllerImplV1(service).getPaymentAttempt("", "IUN-123"))
+		StepVerifier.create(new PaymentControllerImplV1(service).getPaymentAttempt("", "IUN-123"))
 				.expectErrorMatches(error -> error instanceof ValidationException
 						&& error.getMessage().equals("Both tppId and iun must be provided."))
 				.verify();
@@ -111,7 +114,7 @@ class PaymentAttemptControllerV1Test {
 
 	@Test
 	void getSinglePaymentAttemptRejectsBlankIun() {
-		StepVerifier.create(new PaymentAttemptControllerImplV1(service).getPaymentAttempt("tpp-456", "  "))
+		StepVerifier.create(new PaymentControllerImplV1(service).getPaymentAttempt("tpp-456", "  "))
 				.expectError(ValidationException.class)
 				.verify();
 		verifyNoInteractions(service);
@@ -178,5 +181,81 @@ class PaymentAttemptControllerV1Test {
 		when(service.searchPaymentAttempts(any(), any(), any(), anyInt())).thenReturn(Mono.error(
 				new ExternalServiceException("PAYMENT_CORE", "searchPaymentAttempts", "core error")));
 		webTestClient.get().uri(ROUTE + "?iun=IUN-123").exchange().expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY);
+	}
+
+	private RetrievalRequestDTOV1 retrievalRequest() {
+		return RetrievalRequestDTOV1.builder().agent("agent-1").originId("IUN-123").linkVersion("v1").build();
+	}
+
+	@Test
+	void retrievalTokensForwardsEntityIdAndRequestAndReturnsResponse() {
+		RetrievalResponseDTOV1 response = RetrievalResponseDTOV1.builder()
+				.retrievalId("retrieval-1").deeplink("https://tpp.test/deeplink")
+				.pspDenomination("Nome PSP").originId("IUN-123").tppId("tpp-456")
+				.isPaymentEnabled(true).build();
+		when(service.saveRetrieval("12345678901", retrievalRequest())).thenReturn(Mono.just(response));
+
+		webTestClient.post().uri(RETRIEVAL_ROUTE, "12345678901")
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue(retrievalRequest())
+				.exchange()
+				.expectStatus().isOk()
+				.expectHeader().contentType(MediaType.APPLICATION_JSON)
+				.expectBody()
+				.jsonPath("$.retrievalId").isEqualTo("retrieval-1")
+				.jsonPath("$.deeplink").isEqualTo("https://tpp.test/deeplink")
+				.jsonPath("$.pspDenomination").isEqualTo("Nome PSP")
+				.jsonPath("$.originId").isEqualTo("IUN-123")
+				.jsonPath("$.tppId").isEqualTo("tpp-456")
+				.jsonPath("$.isPaymentEnabled").isEqualTo(true);
+		verify(service).saveRetrieval("12345678901", retrievalRequest());
+	}
+
+	@Test
+	void retrievalTokensAcceptsRequestWithoutOptionalLinkVersion() {
+		RetrievalRequestDTOV1 request = RetrievalRequestDTOV1.builder().agent("agent-1").originId("IUN-123").build();
+		when(service.saveRetrieval("12345678901", request))
+				.thenReturn(Mono.just(RetrievalResponseDTOV1.builder().retrievalId("retrieval-1").build()));
+
+		webTestClient.post().uri(RETRIEVAL_ROUTE, "12345678901")
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue(request)
+				.exchange()
+				.expectStatus().isOk()
+				.expectBody().jsonPath("$.retrievalId").isEqualTo("retrieval-1");
+		verify(service).saveRetrieval("12345678901", request);
+	}
+
+	@Test
+	void retrievalTokensWithMissingRequiredFieldsReturns400() {
+		webTestClient.post().uri(RETRIEVAL_ROUTE, "12345678901")
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue("{\"originId\":\"IUN-123\"}")
+				.exchange().expectStatus().isBadRequest();
+		webTestClient.post().uri(RETRIEVAL_ROUTE, "12345678901")
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue("{\"agent\":\"agent-1\"}")
+				.exchange().expectStatus().isBadRequest();
+		verifyNoInteractions(service);
+	}
+
+	@Test
+	void retrievalTokensWithMalformedBodyReturns400() {
+		webTestClient.post().uri(RETRIEVAL_ROUTE, "12345678901")
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue("{\"agent\":[\"agent-1\"]}")
+				.exchange().expectStatus().isBadRequest();
+		verifyNoInteractions(service);
+	}
+
+	@Test
+	void retrievalTokensDownstreamErrorReturns502() {
+		when(service.saveRetrieval(eq("12345678901"), any())).thenReturn(Mono.error(
+				new ExternalServiceException("PAYMENT_CORE", "saveRetrieval", "core error")));
+		webTestClient.post().uri(RETRIEVAL_ROUTE, "12345678901")
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue(retrievalRequest())
+				.exchange()
+				.expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY);
 	}
 }

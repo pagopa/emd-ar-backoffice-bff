@@ -2,12 +2,15 @@ package it.gov.pagopa.emd.ar.backoffice.connector.payment;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptSearchResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.PaymentAttemptResponseDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.RetrievalRequestDTOV1;
+import it.gov.pagopa.emd.ar.backoffice.api.v1.payment.dto.RetrievalResponseDTOV1;
 import it.gov.pagopa.emd.ar.backoffice.config.WebClientRetrySpecs;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.ExternalServiceException;
 import it.gov.pagopa.emd.ar.backoffice.domain.exception.PaymentAttemptNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriBuilder;
@@ -17,13 +20,14 @@ import java.net.URI;
 
 @Slf4j
 @Service
-public class PaymentAttemptConnectorImpl implements PaymentAttemptConnector {
+public class PaymentConnectorImpl implements PaymentConnector {
 
     private static final String SEARCH_PATH = "/emd/payment/attempts/search";
     private static final String PAYMENT_ATTEMPT_PATH = "/emd/payment/paymentAttempts";
+    private static final String RETRIEVAL_TOKENS_PATH = "/emd/payment/retrievalTokens/{entityId}";
     private final WebClient webClient;
 
-    public PaymentAttemptConnectorImpl(WebClient.Builder webClientBuilder,
+    public PaymentConnectorImpl(WebClient.Builder webClientBuilder,
                                        @Value("${rest.client.payment.base-url}") String baseUrl) {
         this.webClient = webClientBuilder.baseUrl(baseUrl).build();
     }
@@ -67,6 +71,35 @@ public class PaymentAttemptConnectorImpl implements PaymentAttemptConnector {
                         PAYMENT_ATTEMPT_PATH, error.getClass().getSimpleName()));
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Any upstream HTTP error is mapped to {@code ExternalServiceException}, with the upstream
+     * body as message. Since a POST is not idempotent, the call is retried only when the TCP
+     * connection could not be established (see {@link WebClientRetrySpecs#connectFailureOnly()}).</p>
+     */
+    @Override
+    public Mono<RetrievalResponseDTOV1> saveRetrieval(String entityId, RetrievalRequestDTOV1 retrievalRequest) {
+        return webClient.post()
+                .uri(RETRIEVAL_TOKENS_PATH, entityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(retrievalRequest)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .defaultIfEmpty("Upstream request failed")
+                                .flatMap(body -> Mono.error(new ExternalServiceException(
+                                        "PAYMENT_CORE", "saveRetrieval", body))))
+                .bodyToMono(RetrievalResponseDTOV1.class)
+                // POST is not idempotent: retry only when the TCP connection could not be established
+                .retryWhen(WebClientRetrySpecs.connectFailureOnly())
+                .onErrorMap(error -> !(error instanceof ExternalServiceException),
+                        error -> new ExternalServiceException("PAYMENT_CORE", "saveRetrieval",
+                                "Upstream request failed"))
+                .doOnError(error -> log.warn("[PAYMENT-CORE-CONNECTOR] POST {} failed: {}",
+                        RETRIEVAL_TOKENS_PATH, error.getClass().getSimpleName()));
+    }
+
     private URI buildSearchUri(UriBuilder uriBuilder, String iun, String tppId, String cursor, int limit) {
         uriBuilder.path(SEARCH_PATH).queryParam("limit", limit);
         if (iun != null && !iun.isBlank()) {
@@ -80,4 +113,5 @@ public class PaymentAttemptConnectorImpl implements PaymentAttemptConnector {
         }
         return uriBuilder.build();
     }
+
 }

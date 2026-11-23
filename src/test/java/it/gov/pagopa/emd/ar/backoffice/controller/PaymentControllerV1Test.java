@@ -26,7 +26,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-class PaymentAttemptControllerV1Test {
+class PaymentControllerV1Test {
 	private static final String ROUTE = "/emd/backoffice/api/v1/payment-core/attempts/search";
 	private static final String SINGLE_ROUTE = "/emd/backoffice/api/v1/payment-core/attempts/{tppId}/{iun}";
 	private static final String RETRIEVAL_ROUTE = "/emd/backoffice/api/v1/payment-core/retrievalTokens/{entityId}";

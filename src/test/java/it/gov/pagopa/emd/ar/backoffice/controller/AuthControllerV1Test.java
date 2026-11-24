@@ -20,9 +20,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
-import static org.mockito.ArgumentMatchers.*;
-
-import java.util.List;
 
 class AuthControllerV1Test {
 

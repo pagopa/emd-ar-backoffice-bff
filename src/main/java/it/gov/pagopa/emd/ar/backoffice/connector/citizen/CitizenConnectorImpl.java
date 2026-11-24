@@ -117,6 +117,10 @@ public class CitizenConnectorImpl implements CitizenConnector {
                 .onStatus(status -> status.value() == 400, response ->
                         response.bodyToMono(String.class)
                                 .then(Mono.error(new ValidationException("Citizen rejected the consent creation request."))))
+                // Citizen returns 404 TPP_NOT_FOUND when the TPP does not exist or is not active.
+                .onStatus(status -> status.value() == 404, response ->
+                        response.bodyToMono(String.class)
+                                .then(Mono.error(new ResourceNotFoundException("TPP", "requested TPP"))))
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(String.class)
                                 .then(Mono.error(new ExternalServiceException(
@@ -125,6 +129,7 @@ public class CitizenConnectorImpl implements CitizenConnector {
                 // Citizen creates the consent or reuses the existing one, so retrying a failed connect is safe.
                 .retryWhen(WebClientRetrySpecs.connectFailureOnly())
                 .onErrorMap(error -> !(error instanceof ValidationException)
+                                && !(error instanceof ResourceNotFoundException)
                                 && !(error instanceof ExternalServiceException),
                         error -> new ExternalServiceException(
                                 "CITIZEN_SERVICE", "saveCitizenConsent", "Upstream request failed"))

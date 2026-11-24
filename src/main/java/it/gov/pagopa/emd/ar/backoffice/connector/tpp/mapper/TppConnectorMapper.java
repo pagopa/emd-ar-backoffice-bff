@@ -17,8 +17,6 @@ import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppEntityIdResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppPatchRequest;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.TppSearchResponse;
 import it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.VersionDetails;
-
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +44,7 @@ public final class TppConnectorMapper {
     public static TppCreateRequest toCreateRequest(String entityId, TppDTOV1 input) {
         return TppCreateRequest.builder()
                 .entityId(entityId)
+                .clientId(input.getClientId())
                 .businessName(input.getBusinessName())
                 .authenticationType(toAuthenticationType(input.getAuthenticationType()))
                 .agentLinks(toAgentLinks(input.getAgentLinks()))
@@ -65,6 +64,7 @@ public final class TppConnectorMapper {
     public static TppPatchRequest toPatchRequest(TppPatchDTOV1 input) {
         if (input == null) return null;
         return TppPatchRequest.builder()
+                .clientId(input.getClientId())
                 .businessName(input.getBusinessName())
                 .messageUrl(input.getMessageUrl())
                 .authenticationUrl(input.getAuthenticationUrl())
@@ -130,6 +130,7 @@ public final class TppConnectorMapper {
     public static TppResponseDTOV1 toTppResponseDTOV1(TppEntityIdResponse src) {
         return TppResponseDTOV1.builder()
                 .tppId(src.getTppId())
+                .clientId(src.getClientId())
                 .businessName(src.getBusinessName())
                 .messageUrl(src.getMessageUrl())
                 .authenticationUrl(src.getAuthenticationUrl())
@@ -146,7 +147,7 @@ public final class TppConnectorMapper {
      * including server-managed ones (entityId, state, dates,
      * isPaymentEnabled, messageTemplate, whitelistRecipient, clientId).
      *
-     * <p>Dates are converted from {@code LocalDateTime} to {@code OffsetDateTime} (UTC).</p>
+     * <p>Dates are passed through as {@code OffsetDateTime}; JSON serialization emits them in UTC.</p>
      *
      * <p>Used when the caller requests {@code detailed=true}.</p>
      */
@@ -163,10 +164,8 @@ public final class TppConnectorMapper {
                 .entityId(src.getEntityId())
                 .clientId(src.getClientId())
                 .state(src.getState())
-                .creationDate(src.getCreationDate() != null
-                        ? src.getCreationDate().atOffset(ZoneOffset.UTC) : null)
-                .lastUpdateDate(src.getLastUpdateDate() != null
-                        ? src.getLastUpdateDate().atOffset(ZoneOffset.UTC) : null)
+                .creationDate(src.getCreationDate())
+                .lastUpdateDate(src.getLastUpdateDate())
                 .isPaymentEnabled(src.getIsPaymentEnabled())
                 .messageTemplate(src.getMessageTemplate())
                 .whitelistRecipient(src.getWhitelistRecipient())
@@ -226,8 +225,7 @@ public final class TppConnectorMapper {
 
     /**
      * Maps a {@link TppEntityIdResponse} (connector layer) to the API-layer
-     * {@link TppDTOWithoutTokenSectionV1}, converting dates from {@code LocalDateTime}
-     * to {@code OffsetDateTime} (UTC) for the frontend.
+     * {@link TppDTOWithoutTokenSectionV1}, preserving the upstream date offsets.
      */
     public static TppDTOWithoutTokenSectionV1 toTppDTOWithoutTokenSectionV1(TppEntityIdResponse src) {
         return TppDTOWithoutTokenSectionV1.builder()
@@ -239,10 +237,8 @@ public final class TppConnectorMapper {
                 .authenticationUrl(src.getAuthenticationUrl())
                 .authenticationType(toAuthenticationTypeV1(src.getAuthenticationType()))
                 .state(src.getState())
-                .creationDate(src.getCreationDate() != null
-                        ? src.getCreationDate().atOffset(ZoneOffset.UTC) : null)
-                .lastUpdateDate(src.getLastUpdateDate() != null
-                        ? src.getLastUpdateDate().atOffset(ZoneOffset.UTC) : null)
+                .creationDate(src.getCreationDate())
+                .lastUpdateDate(src.getLastUpdateDate())
                 .pspDenomination(src.getPspDenomination())
                 .agentLinks(toAgentLinksV1(src.getAgentLinks()))
                 .isPaymentEnabled(src.getIsPaymentEnabled())

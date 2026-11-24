@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import it.gov.pagopa.common.config.json.JsonConfig;
 import it.gov.pagopa.common.utils.TestUtils;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -68,6 +67,9 @@ class JsonConfigTest {
 
     // Then
     Assertions.assertEquals(j2Serialized, j3Serialized);
+
+    // OffsetDateTime is serialized in UTC, preserving the instant but normalizing its offset.
+    dto.setOffsetDateTime(dto.getOffsetDateTime().withOffsetSameInstant(ZoneOffset.UTC));
 
     // When deserialized
     SampleDTO j2Deserialized = j2ObjectMapper.readValue(j2Serialized, SampleDTO.class);

@@ -21,6 +21,8 @@ import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundExceptio
 import it.gov.pagopa.emd.ar.backoffice.service.tpp.TppService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -73,7 +75,7 @@ class TppControllerV1Test {
                 .authenticationType(AuthenticationTypeV1.OAUTH2)
                 .build();
 
-        when(tppService.createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class)))
+        when(tppService.createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class), eq(false)))
                 .thenReturn(Mono.just(expectedResponse));
 
         webTestClient.post()
@@ -86,6 +88,80 @@ class TppControllerV1Test {
                 .jsonPath("$.tppId").isEqualTo("TPP_CREATED_ID_123")
                 .jsonPath("$.businessName").isEqualTo("Test Tpp Name")
                 .jsonPath("$.authenticationType").isEqualTo("OAUTH2");
+
+        Mockito.verify(tppService).createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class), eq(false));
+    }
+
+    /**
+     * POST .../tpp/{entityId}?internal=true — il flag arriva al service come {@code true}
+     * (nessun client Keycloak da creare).
+     */
+    @Test
+    void saveTpp_WithInternalTrue_PassesFlagToService() {
+        String entityId = "12345678901";
+        TppDTOV1 dto = new TppDTOV1();
+        dto.setBusinessName("Internal Tpp");
+        dto.setAuthenticationType(AuthenticationTypeV1.OAUTH2);
+        dto.setAgentLinks(new HashMap<>());
+
+        when(tppService.createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class), eq(true)))
+                .thenReturn(Mono.just(TppResponseDTOV1.builder().tppId("INTERNAL_TPP_ID").build()));
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "?internal=true")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(dto)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo("INTERNAL_TPP_ID");
+
+        Mockito.verify(tppService).createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class), eq(true));
+    }
+
+    /**
+     * POST .../tpp/{entityId}?internal=false — esplicito, equivale al default: il service
+     * riceve {@code false}.
+     */
+    @Test
+    void saveTpp_WithInternalFalse_PassesFlagToService() {
+        String entityId = "12345678901";
+        TppDTOV1 dto = new TppDTOV1();
+        dto.setBusinessName("Standard Tpp");
+        dto.setAuthenticationType(AuthenticationTypeV1.OAUTH2);
+        dto.setAgentLinks(new HashMap<>());
+
+        when(tppService.createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class), eq(false)))
+                .thenReturn(Mono.just(TppResponseDTOV1.builder().tppId("STANDARD_TPP_ID").build()));
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/" + entityId + "?internal=false")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(dto)
+                .exchange()
+                .expectStatus().isOk();
+
+        Mockito.verify(tppService).createTppAndKeycloakClient(eq(entityId), any(TppDTOV1.class), eq(false));
+    }
+
+    /**
+     * POST .../tpp/{entityId}?internal=abc — valore non booleano → 400 e service mai invocato.
+     */
+    @Test
+    void saveTpp_WithInvalidInternalValue_Returns400AndSkipsService() {
+        TppDTOV1 dto = new TppDTOV1();
+        dto.setBusinessName("Bad Flag Tpp");
+        dto.setAuthenticationType(AuthenticationTypeV1.OAUTH2);
+        dto.setAgentLinks(new HashMap<>());
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/12345678901?internal=abc")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(dto)
+                .exchange()
+                .expectStatus().isBadRequest();
+
+        Mockito.verifyNoInteractions(tppService);
     }
 
     /**
@@ -454,6 +530,116 @@ class TppControllerV1Test {
                 .bodyValue(patchBody)
                 .exchange()
                 .expectStatus().is5xxServerError();
+    }
+
+    // ── agentLinks versions key validation ────────────────────────────────────
+
+    private static String tppJsonWithVersionKey(String versionKey) {
+        return """
+                {
+                  "businessName": "businessName",
+                  "authenticationType": "OAUTH2",
+                  "agentLinks": {
+                    "ios": {
+                      "fallBackLink": "https://www.fallback.it",
+                      "versions": {
+                        "%s": { "link": "https://www.versionlink.it" }
+                      }
+                    }
+                  }
+                }
+                """.formatted(versionKey);
+    }
+
+    private static String patchJsonWithVersionKey(String versionKey) {
+        return """
+                {
+                  "agentLinks": {
+                    "ios": {
+                      "fallBackLink": "https://www.fallback.it",
+                      "versions": {
+                        "%s": { "link": "https://www.versionlink.it" }
+                      }
+                    }
+                  }
+                }
+                """.formatted(versionKey);
+    }
+
+    /**
+     * POST .../tpp/{entityId} — a {@code versions} key containing a dot (e.g. "v1.1") is rejected
+     * with 400 and the service is never invoked.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"v1.1", "v1.0.0", "1.0", ".v1", "v1."})
+    void saveTpp_WithDottedVersionKey_Returns400AndSkipsService(String versionKey) {
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/12345678901")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(tppJsonWithVersionKey(versionKey))
+                .exchange()
+                .expectStatus().isBadRequest();
+
+        Mockito.verifyNoInteractions(tppService);
+    }
+
+    /**
+     * POST .../tpp/{entityId} — a dot-free {@code versions} key (e.g. "v1") is accepted and the
+     * request reaches the service.
+     */
+    @Test
+    void saveTpp_WithDotFreeVersionKey_Returns200() {
+        when(tppService.createTppAndKeycloakClient(eq("12345678901"), any(TppDTOV1.class), eq(false)))
+                .thenReturn(Mono.just(TppResponseDTOV1.builder().tppId("TPP_ID").build()));
+
+        webTestClient.post()
+                .uri("/emd/backoffice/api/v1/tpp/12345678901")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(tppJsonWithVersionKey("v1"))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo("TPP_ID");
+
+        Mockito.verify(tppService).createTppAndKeycloakClient(eq("12345678901"), any(TppDTOV1.class), eq(false));
+    }
+
+    /**
+     * PATCH .../tpp/{entityId} — a {@code versions} key containing a dot (e.g. "v1.1") is rejected
+     * with 400 and the service is never invoked.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"v1.1", "v1.0.0", "1.0", ".v1", "v1."})
+    void patchTpp_WithDottedVersionKey_Returns400AndSkipsService(String versionKey) {
+        webTestClient.patch()
+                .uri("/emd/backoffice/api/v1/tpp/12345678901")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(patchJsonWithVersionKey(versionKey))
+                .exchange()
+                .expectStatus().isBadRequest();
+
+        Mockito.verifyNoInteractions(tppService);
+    }
+
+    /**
+     * PATCH .../tpp/{entityId} — a dot-free {@code versions} key (e.g. "v1") is accepted and the
+     * request reaches the service.
+     */
+    @Test
+    void patchTpp_WithDotFreeVersionKey_Returns200() {
+        when(tppService.patchTpp(eq("12345678901"), any(TppPatchDTOV1.class)))
+                .thenReturn(Mono.just(TppResponseDTOV1.builder().tppId("TPP_ID").build()));
+
+        webTestClient.patch()
+                .uri("/emd/backoffice/api/v1/tpp/12345678901")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(patchJsonWithVersionKey("v1"))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.tppId").isEqualTo("TPP_ID");
+
+        Mockito.verify(tppService).patchTpp(eq("12345678901"), any(TppPatchDTOV1.class));
     }
 
     // ── searchTpp ─────────────────────────────────────────────────────────────

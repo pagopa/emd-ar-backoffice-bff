@@ -18,15 +18,21 @@ import java.util.List;
 public interface TppService {
 
     /**
-     * Creates a new TPP by first saving it through the connector and then creating a
-     * corresponding Keycloak client.
+     * Creates a new TPP by first saving it through the connector and then, unless the TPP is
+     * {@code internal}, creating a corresponding Keycloak client.
+     *
+     * <p>When {@code internal} is {@code true} only the TPP record is persisted: the Keycloak
+     * client (with its service-account user, group link and {@code entityId} mapper) is not
+     * created and no compensation is needed.</p>
      *
      * @param entityId the fiscal code (CF) or VAT number (P.IVA) injected by APIM
      * @param tppDTO   the TPP data to create (body fields only — entityId comes separately)
+     * @param internal {@code true} to skip the Keycloak client creation; {@code false} for the
+     *                 standard behaviour (TPP + Keycloak client)
      * @return {@code Mono<TppResponseDTOV1>} with the full representation of the created TPP,
      *         matching the same format returned by GET and PATCH
      */
-    Mono<TppResponseDTOV1> createTppAndKeycloakClient(String entityId, TppDTOV1 tppDTO);
+    Mono<TppResponseDTOV1> createTppAndKeycloakClient(String entityId, TppDTOV1 tppDTO, boolean internal);
 
     /**
      * Looks up an existing TPP by its {@code entityId} (CF o P.IVA).

@@ -41,8 +41,16 @@ public interface TppControllerV1 {
      * <p>The {@code entityId} is injected by APIM from the JWT claim {@code orgFiscalCode} via
      * URL-rewrite; the request body must NOT include it.</p>
      *
+     * <p>When the optional query parameter {@code internal} is {@code true} the TPP is persisted
+     * on emd-tpp: <strong>no Keycloak client is created</strong> (and therefore no
+     * service-account user, group link or {@code entityId} mapper). It defaults to {@code false},
+     * which keeps the standard behaviour (TPP + Keycloak client). A TPP saved with
+     * {@code internal=true} has no PagoPA credentials, so {@code GET tpp/{entityId}/credentials/pagopa}
+     * answers 404 for it.</p>
+     *
      * @param entityId the fiscal code (CF) or VAT number (P.IVA) injected by APIM
      * @param tppDTO     the TPP data to be saved
+     * @param internal   (Optional, default {@code false}) when {@code true} skips the Keycloak client creation
      * @param authHeader  (Optional) the authorization token for the request
      * @return {@code Mono<ResponseEntity<TppResponseDTOV1>>} The full TPP representation with status OK
      */
@@ -50,6 +58,7 @@ public interface TppControllerV1 {
     Mono<ResponseEntity<TppResponseDTOV1>> saveTpp(
             @PathVariable("entityId") String entityId,
             @Valid @RequestBody TppDTOV1 tppDTO,
+            @RequestParam(name = "internal", defaultValue = "false") boolean internal,
             @RequestHeader(name = "Authorization", required = false) String authHeader);
 
     /**

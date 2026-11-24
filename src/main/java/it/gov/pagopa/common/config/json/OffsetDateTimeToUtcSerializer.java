@@ -12,6 +12,6 @@ public class OffsetDateTimeToUtcSerializer extends JsonSerializer<OffsetDateTime
 
     @Override
     public void serialize(OffsetDateTime value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
-        gen.writeString(value.withOffsetSameInstant(ZoneOffset.UTC).toString());
+        gen.writeString(value.withOffsetSameInstant(ZoneOffset.UTC).format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME));
     }
 }

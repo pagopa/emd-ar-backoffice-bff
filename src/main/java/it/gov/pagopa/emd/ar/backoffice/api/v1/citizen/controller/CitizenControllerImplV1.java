@@ -48,6 +48,15 @@ public class CitizenControllerImplV1 implements CitizenControllerV1 {
     }
 
     @Override
+    public Mono<ResponseEntity<CitizenConsentSearchResponseDTOV1>> saveCitizenConsent(
+            String fiscalCode, String tppId, String authHeader) {
+        String userEmail = Utilities.getEmailFromToken(authHeader);
+        log.info("[AR-BFF][CITIZEN_CONSENT_SAVE][User:{}] Request received", userEmail);
+        return citizenService.saveCitizenConsent(fiscalCode, tppId)
+                .map(ResponseEntity::ok);
+    }
+
+    @Override
     public Mono<ResponseEntity<CitizenConsentSearchResponseDTOV1>> toggleCitizenConsent(
             String fiscalCode, String tppId, String authHeader) {
         String userEmail = Utilities.getEmailFromToken(authHeader);

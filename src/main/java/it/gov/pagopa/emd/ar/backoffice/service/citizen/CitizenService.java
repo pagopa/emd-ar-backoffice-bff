@@ -14,6 +14,9 @@ public interface CitizenService {
     /** Retrieves enriched consent details for one complete fiscal code. */
     Mono<CitizenConsentSearchResponseDTOV1> searchCitizenConsents(String fiscalCode);
 
+    /** Creates (or reuses) the consent of a citizen for the specified TPP. */
+    Mono<CitizenConsentSearchResponseDTOV1> saveCitizenConsent(String fiscalCode, String tppId);
+
     /** Toggles the consent of a citizen for the specified TPP. */
     Mono<CitizenConsentSearchResponseDTOV1> toggleCitizenConsent(String fiscalCode, String tppId);
 

@@ -27,7 +27,7 @@ public class CitizenConnectorImpl implements CitizenConnector {
 
     private static final String SEARCH_PATH = "/emd/citizen/search";
     private static final String CONSENT_SEARCH_PATH = "/emd/citizen/consent/search";
-    private static final String TOGGLE_CONSENT_PATH = "/emd/citizen/{fiscalCode}/{tppId}";
+    private static final String CONSENT_BY_TPP_PATH = "/emd/citizen/{fiscalCode}/{tppId}";
     private static final String CONSENT_DELETE_PATH = "/emd/citizen/{fiscalCode}";
     private final WebClient webClient;
     private final String baseUrl;
@@ -90,7 +90,7 @@ public class CitizenConnectorImpl implements CitizenConnector {
     @Override
     public Mono<CitizenConsentSearchResponse> toggleCitizenConsent(String fiscalCode, String tppId) {
         return webClient.put()
-                .uri(buildConsentToggleUri(fiscalCode, tppId))
+                .uri(buildConsentByTppUri(fiscalCode, tppId))
                 .retrieve()
                 .onStatus(status -> status.value() == 404, response ->
                         response.bodyToMono(String.class)
@@ -109,9 +109,32 @@ public class CitizenConnectorImpl implements CitizenConnector {
                         error.getClass().getSimpleName()));
     }
 
-    private URI buildConsentToggleUri(String fiscalCode, String tppId) {
+    @Override
+    public Mono<CitizenConsentSearchResponse> saveCitizenConsent(String fiscalCode, String tppId) {
+        return webClient.post()
+                .uri(buildConsentByTppUri(fiscalCode, tppId))
+                .retrieve()
+                .onStatus(status -> status.value() == 400, response ->
+                        response.bodyToMono(String.class)
+                                .then(Mono.error(new ValidationException("Citizen rejected the consent creation request."))))
+                .onStatus(HttpStatusCode::isError, response ->
+                        response.bodyToMono(String.class)
+                                .then(Mono.error(new ExternalServiceException(
+                                        "CITIZEN_SERVICE", "saveCitizenConsent", "Upstream request failed"))))
+                .bodyToMono(CitizenConsentSearchResponse.class)
+                // Citizen creates the consent or reuses the existing one, so retrying a failed connect is safe.
+                .retryWhen(WebClientRetrySpecs.connectFailureOnly())
+                .onErrorMap(error -> !(error instanceof ValidationException)
+                                && !(error instanceof ExternalServiceException),
+                        error -> new ExternalServiceException(
+                                "CITIZEN_SERVICE", "saveCitizenConsent", "Upstream request failed"))
+                .doOnError(error -> log.warn("[AR-BFF][CITIZEN_CONSENT_SAVE] Citizen request failed: {}",
+                        error.getClass().getSimpleName()));
+    }
+
+    private URI buildConsentByTppUri(String fiscalCode, String tppId) {
         return UriComponentsBuilder.fromUriString(baseUrl)
-                .path(TOGGLE_CONSENT_PATH)
+                .path(CONSENT_BY_TPP_PATH)
                 .encode(StandardCharsets.UTF_8)
                 .buildAndExpand(fiscalCode, tppId)
                 .toUri();

@@ -50,7 +50,11 @@ public interface PaymentControllerV1 {
      *         {@link RetrievalResponseDTOV1} representing the outcome of the token creation;
      *         400 if the request body is invalid
      */
-    @PostMapping("payment-core/retrievalTokens/{entityId}")
-    Mono<ResponseEntity<RetrievalResponseDTOV1>> retrievalTokens(@Valid @PathVariable String entityId, @Valid @RequestBody RetrievalRequestDTOV1 retrievalRequestDTO);
+    @PostMapping(value = "payment-core/retrievalTokens/{entityId}",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<RetrievalResponseDTOV1>> retrievalTokens(
+            @PathVariable("entityId") String entityId,
+            @Valid @RequestBody RetrievalRequestDTOV1 retrievalRequestDTO);
 
 }

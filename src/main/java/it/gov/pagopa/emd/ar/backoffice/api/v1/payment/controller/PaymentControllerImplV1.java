@@ -55,9 +55,14 @@ public class PaymentControllerImplV1 implements PaymentControllerV1 {
 
     /**
      * {@inheritDoc}
+     *
+     * <p>Fails with a {@link ValidationException} when {@code entityId} is null or blank.</p>
      */
     @Override
     public Mono<ResponseEntity<RetrievalResponseDTOV1>> retrievalTokens(String entityId, RetrievalRequestDTOV1 retrievalRequestDTO) {
+        if (isBlank(entityId)) {
+            return Mono.error(new ValidationException("entityId must be provided."));
+        }
         return paymentService.saveRetrieval(entityId, retrievalRequestDTO)
                 .map(ResponseEntity::ok);
     }

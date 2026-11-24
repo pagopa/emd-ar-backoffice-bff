@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.16.0...v0.17.0) (2026-11-24)
+
+
+### Features
+
+* [MMC-1441] Update save - add internal param ([#89](https://github.com/pagopa/emd-ar-backoffice-bff/issues/89)) ([b3c1332](https://github.com/pagopa/emd-ar-backoffice-bff/commit/b3c1332decd3aade3894cf42f5dabf68564795d5))
+
 ## [0.16.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.15.0...v0.16.0) (2026-11-12)
 
 

@@ -70,11 +70,15 @@ public class TppServiceImpl implements TppService {
 
     /** {@inheritDoc} */
     @Override
-    public Mono<TppResponseDTOV1> createTppAndKeycloakClient(String entityId, TppDTOV1 tppDTO) {
-        log.info("[AR-BFF][TPP_CREATE] Creating new TPP for entityId={}: {}", entityId, tppDTO.getBusinessName());
+    public Mono<TppResponseDTOV1> createTppAndKeycloakClient(String entityId, TppDTOV1 tppDTO, boolean internal) {
+        log.info("[AR-BFF][TPP_CREATE] Creating new TPP for entityId={}: {} (internal={})", entityId, tppDTO.getBusinessName(), internal);
         return tppConnector.saveTpp(TppConnectorMapper.toCreateRequest(entityId, tppDTO))
                 .flatMap(tppResponse -> {
                     String tppId = tppResponse.getTppId();
+                    if (internal) {
+                        log.info("[AR-BFF][TPP_CREATE] Internal TPP: skipping Keycloak client creation for tppId={}", tppId);
+                        return Mono.just(tppResponse);
+                    }
                     String keycloakClientId = resolveKeycloakClientId(tppResponse);
                     log.info("[AR-BFF][TPP_CREATE] TPP persisted with id={}. Creating Keycloak client with clientId={}.", tppId, keycloakClientId);
                     return keycloakClientService.createKeycloakClient(keycloakClientId, entityId, tppDTO.getBusinessName())

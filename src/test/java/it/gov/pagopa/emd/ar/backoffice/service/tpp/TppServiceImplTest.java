@@ -35,6 +35,8 @@ import static org.mockito.Mockito.*;
 
 import java.util.List;
 import java.util.Map;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 /**
  * Unit tests for {@link TppServiceImpl}.
@@ -90,7 +92,7 @@ public class TppServiceImplTest {
         when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(connectorResponse));
         when(keycloakClientService.createKeycloakClient(entityId, entityId, "Pagopa TPP")).thenReturn(Mono.just(entityId));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, false))
                 .assertNext(response -> {
                     assertThat(response.getTppId()).isEqualTo(savedTppId);
                     assertThat(response.getBusinessName()).isEqualTo("Pagopa TPP");
@@ -128,7 +130,7 @@ public class TppServiceImplTest {
         when(keycloakClientService.createKeycloakClient(legacyClientId, entityId, "Legacy TPP"))
                 .thenReturn(Mono.just(legacyClientId));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, false))
                 .assertNext(response -> assertThat(response.getTppId()).isEqualTo(savedTppId))
                 .verifyComplete();
 
@@ -158,7 +160,7 @@ public class TppServiceImplTest {
         when(keycloakClientService.createKeycloakClient(entityId, entityId, "Empty ClientId TPP"))
                 .thenReturn(Mono.just(entityId));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, false))
                 .assertNext(r -> assertThat(r.getTppId()).isEqualTo(savedTppId))
                 .verifyComplete();
 
@@ -184,11 +186,11 @@ public class TppServiceImplTest {
         when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(connectorResponse));
         when(keycloakClientService.createKeycloakClient(anyString(), any(), any())).thenReturn(Mono.just("tpp-id"));
 
-        tppService.createTppAndKeycloakClient(entityId, original).block();
+        tppService.createTppAndKeycloakClient(entityId, original, false).block();
 
         assertThat(original.getMessageUrl()).as("Original DTO must not be mutated").isNull();
         assertThat(original.getAuthenticationUrl()).as("Original DTO must not be mutated").isNull();
-        
+
     }
 
     /**
@@ -203,7 +205,7 @@ public class TppServiceImplTest {
         when(tppConnector.saveTpp(any(TppCreateRequest.class)))
                 .thenReturn(Mono.error(new RuntimeException("Database error")));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, false))
                 .expectError(RuntimeException.class)
                 .verify();
 
@@ -232,7 +234,7 @@ public class TppServiceImplTest {
                 .thenReturn(Mono.error(kcException));
         when(tppConnector.deleteTpp(savedTppId)).thenReturn(Mono.empty());
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, false))
                 .expectError(RuntimeException.class)
                 .verify();
 
@@ -262,11 +264,64 @@ public class TppServiceImplTest {
         when(tppConnector.deleteTpp(savedTppId))
                 .thenReturn(Mono.error(new RuntimeException("DB also down")));
 
-        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto))
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, false))
                 .expectErrorMatches(ex -> ex.getMessage().equals("Keycloak unavailable"))
                 .verify();
 
         verify(tppConnector, times(1)).deleteTpp(savedTppId);
+    }
+
+    /**
+     * internal=true: la TPP viene salvata su emd-tpp e il client Keycloak NON viene creato.
+     * La risposta è la stessa del flusso standard.
+     */
+    @Test
+    void createTppAndKeycloakClient_Internal_SkipsKeycloakClientCreation() {
+        String entityId   = "12345678901";
+        String savedTppId = "INTERNAL_ID_003";
+        TppDTOV1 dto = new TppDTOV1();
+        dto.setBusinessName("Internal TPP");
+
+        TppEntityIdResponse connectorResponse = TppEntityIdResponse.builder()
+                .tppId(savedTppId)
+                .entityId(entityId)
+                .businessName("Internal TPP")
+                .authenticationType(it.gov.pagopa.emd.ar.backoffice.connector.tpp.dto.AuthenticationType.OAUTH2)
+                .build();
+
+        when(tppConnector.saveTpp(any(TppCreateRequest.class))).thenReturn(Mono.just(connectorResponse));
+
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, true))
+                .assertNext(response -> {
+                    assertThat(response.getTppId()).isEqualTo(savedTppId);
+                    assertThat(response.getBusinessName()).isEqualTo("Internal TPP");
+                })
+                .verifyComplete();
+
+        verify(tppConnector, times(1)).saveTpp(any(TppCreateRequest.class));
+        verifyNoInteractions(keycloakClientService);
+        verify(tppConnector, never()).deleteTpp(anyString());
+    }
+
+    /**
+     * internal=true con errore del connector: l'errore si propaga, nessuna chiamata a Keycloak
+     * e nessuna compensazione.
+     */
+    @Test
+    void createTppAndKeycloakClient_Internal_ErrorOnConnector_PropagatesWithoutKeycloak() {
+        String entityId = "12345678901";
+        TppDTOV1 dto = new TppDTOV1();
+        dto.setBusinessName("Internal Fail TPP");
+
+        when(tppConnector.saveTpp(any(TppCreateRequest.class)))
+                .thenReturn(Mono.error(new RuntimeException("Database error")));
+
+        StepVerifier.create(tppService.createTppAndKeycloakClient(entityId, dto, true))
+                .expectErrorMatches(ex -> ex.getMessage().equals("Database error"))
+                .verify();
+
+        verifyNoInteractions(keycloakClientService);
+        verify(tppConnector, never()).deleteTpp(anyString());
     }
 
     // ── getTppByEntityId ───────────────────────────────────────────────────────
@@ -319,7 +374,7 @@ public class TppServiceImplTest {
     void getTppByEntityId_DetailedTrue_MapsAllFields() throws Exception {
         String entityId = "12345678901";
         String tppId    = "47fc5f3c-78e6-43c7-8d0f-8627fb1e9eff-1773761623176";
-        java.time.LocalDateTime now = java.time.LocalDateTime.of(2026, 8, 7, 10, 0);
+        OffsetDateTime now = OffsetDateTime.of(2026, 8, 7, 10, 0, 0, 0, ZoneOffset.ofHours(2));
 
         TppEntityIdResponse connectorResponse = TppEntityIdResponse.builder()
                 .tppId(tppId)
@@ -348,8 +403,8 @@ public class TppServiceImplTest {
                     assertThat(dto.getEntityId()).isEqualTo(entityId);
                     assertThat(dto.getState()).isTrue();
                     assertThat(dto.getIsPaymentEnabled()).isTrue();
-                    assertThat(dto.getCreationDate()).isNotNull();
-                    assertThat(dto.getLastUpdateDate()).isNotNull();
+                    assertThat(dto.getCreationDate()).isEqualTo(now);
+                    assertThat(dto.getLastUpdateDate()).isEqualTo(now);
                     assertThat(dto.getMessageTemplate()).isEqualTo("template-xyz");
                     assertThat(dto.getMessageTemplateRendered()).isEqualTo("Rendered template");
                     assertThat(dto.getWhitelistRecipient()).containsExactly("user@example.com");
@@ -1197,7 +1252,7 @@ public class TppServiceImplTest {
 
         verify(tppConnector, times(1)).updateTppIsPaymentEnabled(eq(tppId), any(TppUpdateIsPaymentEnabledDTOV1.class));
     }
-    
+
     // ── Whitelist Service Tests ────────────────────────────────────────────────
 
     /**
@@ -1210,7 +1265,7 @@ public class TppServiceImplTest {
 
         StepVerifier.create(tppService.insertRecipientIdOnWhitelist("tpp1", dto))
                 .verifyComplete();
-        
+
         verify(tppConnector).insertRecipientIdOnWhitelist("tpp1", dto);
     }
 
@@ -1279,7 +1334,7 @@ public class TppServiceImplTest {
                 .expectError(ResourceNotFoundException.class)
                 .verify();
     }
-    
+
     // ── testAuthConnection ────────────────────────────────────────────────────
     /**
      * Verifica che il service chiami correttamente il connector con il tppId fornito
@@ -1288,7 +1343,7 @@ public class TppServiceImplTest {
     @Test
     void testAuthConnection_Success_CallsConnector() {
         String tppId = "tpp-123";
-        
+
         TppConnectionResponseDTOV1 expectedDto = TppConnectionResponseDTOV1.builder()
                 .status("SUCCESS")
                 .httpStatus(200)
@@ -1315,7 +1370,7 @@ public class TppServiceImplTest {
     @Test
     void testAuthConnection_LogicalFailure_ReturnsFailureDTO() {
         String tppId = "tpp-123";
-        
+
         TppConnectionResponseDTOV1 failureDto = TppConnectionResponseDTOV1.builder()
                 .status("FAILURE")
                 .errorType("TIMEOUT")
@@ -1342,7 +1397,7 @@ public class TppServiceImplTest {
     @Test
     void testAuthConnection_UnexpectedError_PropagatesError() {
         String tppId = "tpp-123";
-        
+
         when(tppConnector.testAuthConnection(tppId))
                 .thenReturn(Mono.error(new RuntimeException("Critical failure")));
 

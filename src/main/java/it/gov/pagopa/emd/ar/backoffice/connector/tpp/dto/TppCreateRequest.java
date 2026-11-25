@@ -20,6 +20,7 @@ import java.util.Map;
 public class TppCreateRequest {
 
     String entityId;
+    String clientId;
     String businessName;
     String pspDenomination;
     String messageUrl;

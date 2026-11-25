@@ -2,6 +2,8 @@ package it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto;
 
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.enums.AuthenticationTypeV1;
 import it.gov.pagopa.emd.ar.backoffice.api.v1.tpp.dto.model.AgentLinkV1;
+import jakarta.validation.Valid;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,7 +42,7 @@ public class TppDTOWithoutTokenSectionV1 {
     private OffsetDateTime creationDate;
     private OffsetDateTime lastUpdateDate;
     private String pspDenomination;
-    private Map<String, AgentLinkV1> agentLinks;
+    private Map<String, @Valid AgentLinkV1> agentLinks;
     private Boolean isPaymentEnabled;
     private String messageTemplate;
     private List<String> whitelistRecipient;

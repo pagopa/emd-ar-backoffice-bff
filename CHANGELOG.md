@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.17.0...v0.18.0) (2026-11-25)
+
+
+### Features
+
+* [MMC-1471] Add save retrieval endpoint ([#90](https://github.com/pagopa/emd-ar-backoffice-bff/issues/90)) ([3da2470](https://github.com/pagopa/emd-ar-backoffice-bff/commit/3da24705bbfe7b8ab665e790a5a8fa834a39e90d))
+
 ## [0.17.0](https://github.com/pagopa/emd-ar-backoffice-bff/compare/v0.16.0...v0.17.0) (2026-11-24)
 
 

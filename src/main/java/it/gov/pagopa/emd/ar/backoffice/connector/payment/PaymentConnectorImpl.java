@@ -91,6 +91,8 @@ public class PaymentConnectorImpl implements PaymentConnector {
                                 .flatMap(body -> Mono.error(new ExternalServiceException(
                                         "PAYMENT_CORE", "saveRetrieval", body))))
                 .bodyToMono(RetrievalResponseDTOV1.class)
+                .switchIfEmpty(Mono.error(new ExternalServiceException(
+                         "PAYMENT_CORE", "saveRetrieval", "Empty upstream response")))
                 // POST is not idempotent: retry only when the TCP connection could not be established
                 .retryWhen(WebClientRetrySpecs.connectFailureOnly())
                 .onErrorMap(error -> !(error instanceof ExternalServiceException),

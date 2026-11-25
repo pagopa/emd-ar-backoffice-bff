@@ -9,6 +9,8 @@ import it.gov.pagopa.emd.ar.backoffice.domain.exception.ResourceNotFoundExceptio
 import jakarta.validation.ValidationException;
 import it.gov.pagopa.emd.ar.backoffice.service.citizen.CitizenService;
 import it.gov.pagopa.common.utils.Utilities;
+
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -250,7 +252,7 @@ class CitizenConsentControllerV1Test {
                 .expectStatus().isNotFound()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("NOT_FOUND")
-                .jsonPath("$.message").value(String.class, message -> org.assertj.core.api.Assertions.assertThat(message)
+                .jsonPath("$.message").value(String.class, message -> Assertions.assertThat(message)
                         .doesNotContain(FISCAL_CODE));
     }
 
@@ -265,7 +267,70 @@ class CitizenConsentControllerV1Test {
                 .expectStatus().isEqualTo(502)
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("GENERIC_ERROR")
-                .jsonPath("$.message").value(String.class, message -> org.assertj.core.api.Assertions.assertThat(message)
+                .jsonPath("$.message").value(String.class, message -> Assertions.assertThat(message)
                         .doesNotContain("private upstream detail", FISCAL_CODE));
     }
-}
+
+    @Test
+    void savesConsentWithoutRequestBodyAndReturnsConsentJson() {
+        Map<String, CitizenConsentSearchResponseDTOV1.ConsentDTOV1> consents = Map.of(
+                "TPP_XYZ_123", CitizenConsentSearchResponseDTOV1.ConsentDTOV1.builder()
+                        .tppState(true).tcDate(LocalDateTime.parse("2026-11-11T11:11:11.000")).build());
+        when(citizenService.saveCitizenConsent(eq(FISCAL_CODE), eq("TPP_XYZ_123"))).thenReturn(Mono.just(
+                CitizenConsentSearchResponseDTOV1.builder().fiscalCode(FISCAL_CODE).consents(consents).build()));
+
+        webTestClient.post()
+                .uri(TOGGLE_URL, FISCAL_CODE, "TPP_XYZ_123")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectBody()
+                .jsonPath("$.fiscalCode").isEqualTo(FISCAL_CODE)
+                .jsonPath("$.consents.TPP_XYZ_123.tppState").isEqualTo(true)
+                .jsonPath("$.consents.TPP_XYZ_123.tcDate").isEqualTo("2026-11-11T11:11:11");
+
+        verify(citizenService).saveCitizenConsent(FISCAL_CODE, "TPP_XYZ_123");
+    }
+
+    @Test
+    void saveMapsValidationErrorToBff400ErrorDto() {
+        when(citizenService.saveCitizenConsent(eq("invalid"), eq("TPP_XYZ_123")))
+                .thenReturn(Mono.error(new ValidationException("A complete fiscalCode is required.")));
+
+        webTestClient.post()
+                .uri(TOGGLE_URL, "invalid", "TPP_XYZ_123")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST");
+    }
+
+    @Test
+    void saveMapsMissingOrInactiveTppToBff404ErrorDto() {
+        when(citizenService.saveCitizenConsent(eq(FISCAL_CODE), eq("TPP_XYZ_123")))
+                .thenReturn(Mono.error(new ResourceNotFoundException("TPP", "requested TPP")));
+
+        webTestClient.post()
+                .uri(TOGGLE_URL, FISCAL_CODE, "TPP_XYZ_123")
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("NOT_FOUND")
+                .jsonPath("$.message").exists();
+    }
+
+    @Test
+    void saveMapsUpstreamFailureToSanitizedBffGatewayErrorDto() {
+        when(citizenService.saveCitizenConsent(eq(FISCAL_CODE), eq("TPP_XYZ_123")))
+                .thenReturn(Mono.error(new ExternalServiceException(
+                        "CITIZEN_SERVICE", "saveCitizenConsent", "private upstream detail")));
+
+        webTestClient.post()
+                .uri(TOGGLE_URL, FISCAL_CODE, "TPP_XYZ_123")
+                .exchange()
+                .expectStatus().isEqualTo(502)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("GENERIC_ERROR")
+                .jsonPath("$.message").value(String.class, message -> Assertions.assertThat(message)
+                        .doesNotContain("private upstream detail", FISCAL_CODE));
+    }}

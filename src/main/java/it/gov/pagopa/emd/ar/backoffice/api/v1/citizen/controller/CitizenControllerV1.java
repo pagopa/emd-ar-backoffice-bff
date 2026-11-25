@@ -45,9 +45,23 @@ public interface CitizenControllerV1 {
             @RequestHeader(name = "Authorization", required = false) String authHeader);
 
     /**
+     * Creates the consent for the specified citizen and TPP, or reuses it if it already exists.
+     *
+     * @return HTTP 200 with the consent for that TPP, 400 if the fiscal code or TPP identifier is invalid,
+     *         404 if the TPP does not exist or is not active,
+     *         or 502 if the Citizen service returns an unexpected error
+     */
+    @PostMapping(value = "citizen/{fiscalCode}/consents/{tppId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    Mono<ResponseEntity<CitizenConsentSearchResponseDTOV1>> saveCitizenConsent(
+            @PathVariable("fiscalCode") String fiscalCode,
+            @PathVariable("tppId") String tppId,
+            @RequestHeader(name = "Authorization", required = false) String authHeader);
+
+    /**
      * Toggles the consent for the specified citizen and TPP; the caller does not provide a desired state.
      *
-     * @return HTTP 200 with the updated consent for that TPP, 404 if the citizen or consent is missing,
+     * @return HTTP 200 with the updated consent for that TPP, 400 if the fiscal code or TPP identifier is invalid,
+     *         404 if the citizen or consent is missing,
      *         or 502 if the Citizen service returns an unexpected error
      */
     @PutMapping(value = "citizen/{fiscalCode}/consents/{tppId}", produces = MediaType.APPLICATION_JSON_VALUE)

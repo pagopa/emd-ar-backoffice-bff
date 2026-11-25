@@ -248,20 +248,7 @@ public class ControllerExceptionHandler {
     }
 
     static String getRequestDetails(ServerHttpRequest request) {
-        return "%s %s".formatted(request.getMethod(), sanitizeRequestPath(request.getPath().value()));
-    }
-
-    private static String sanitizeRequestPath(String path) {
-        String deleteRoutePrefix = "/emd/backoffice/api/v1/citizen/";
-        int fiscalCodeStart = path.indexOf(deleteRoutePrefix);
-        if (fiscalCodeStart < 0) {
-            return path;
-        }
-        fiscalCodeStart += deleteRoutePrefix.length();
-        if (fiscalCodeStart < path.length() && path.indexOf('/', fiscalCodeStart) < 0) {
-            return path.substring(0, fiscalCodeStart) + "[REDACTED]";
-        }
-        return path;
+        return "%s %s".formatted(request.getMethod(), Utilities.hashFiscalCodeInPath(request.getPath().value()));
     }
 
     /**

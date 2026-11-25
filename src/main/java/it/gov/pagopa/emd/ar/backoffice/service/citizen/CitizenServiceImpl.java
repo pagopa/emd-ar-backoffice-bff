@@ -66,6 +66,23 @@ public class CitizenServiceImpl implements CitizenService {
     }
 
     @Override
+    public Mono<CitizenConsentSearchResponseDTOV1> saveCitizenConsent(String fiscalCode, String tppId) {
+        if (fiscalCode == null || !COMPLETE_FISCAL_CODE.matcher(fiscalCode).matches()) {
+            return Mono.error(new ValidationException("A complete fiscalCode is required."));
+        }
+        if (tppId == null || tppId.isBlank()) {
+            return Mono.error(new ValidationException("tppId must be provided."));
+        }
+        String normalizedFiscalCode = fiscalCode.toUpperCase(Locale.ROOT);
+        log.info("[AR-BFF][CITIZEN_CONSENT_SAVE] Save started");
+        return citizenConnector.saveCitizenConsent(normalizedFiscalCode, tppId)
+                .map(response -> toConsentApiResponse(response, tppId))
+                .doOnSuccess(response -> log.info("[AR-BFF][CITIZEN_CONSENT_SAVE] Save completed"))
+                .doOnError(error -> log.error("[AR-BFF][CITIZEN_CONSENT_SAVE] Save failed: {}",
+                        error.getClass().getSimpleName()));
+    }
+
+    @Override
     public Mono<CitizenConsentSearchResponseDTOV1> toggleCitizenConsent(String fiscalCode, String tppId) {
         String normalizedFiscalCode = fiscalCode.toUpperCase(Locale.ROOT);
         log.info("[AR-BFF][CITIZEN_CONSENT_TOGGLE] Update started");

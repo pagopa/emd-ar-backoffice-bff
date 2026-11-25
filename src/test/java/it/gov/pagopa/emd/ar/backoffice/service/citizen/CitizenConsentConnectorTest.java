@@ -295,4 +295,106 @@ class CitizenConsentConnectorTest {
     private static CitizenConnectorImpl connectorWith(String baseUrl, ExchangeFunction exchangeFunction) {
         return new CitizenConnectorImpl(WebClient.builder().exchangeFunction(exchangeFunction), baseUrl);
     }
-}
+
+    @Test
+    void postSaveEncodesBothPathSegmentsAndSendsNoBody() {
+        AtomicReference<String> capturedUrl = new AtomicReference<>();
+        AtomicReference<HttpMethod> capturedMethod = new AtomicReference<>();
+        AtomicReference<String> capturedBody = new AtomicReference<>();
+
+        CitizenConnectorImpl connector = connectorWith(request -> {
+            capturedUrl.set(request.url().toString());
+            capturedMethod.set(request.method());
+            MockClientHttpRequest mockRequest = new MockClientHttpRequest(request.method(), request.url());
+            return request.writeTo(mockRequest, ExchangeStrategies.withDefaults())
+                    .doOnSuccess(ignored -> capturedBody.set(mockRequest.getBodyAsString().block()))
+                    .thenReturn(jsonResponse(HttpStatus.OK,
+                            "{\"fiscalCode\":\"FC /?#\",\"consents\":{\"TPP /? value\":{"
+                                    + "\"tppState\":true,\"tcDate\":\"2026-11-11T11:11:11.000\"}}}"));
+        });
+
+        StepVerifier.create(connector.saveCitizenConsent(FISCAL_CODE_PATH_VALUE, TPP_ID_PATH_VALUE))
+                .assertNext(response -> {
+                    assertThat(response.getFiscalCode()).isEqualTo(FISCAL_CODE_PATH_VALUE);
+                    assertThat(response.getConsents()).containsOnlyKeys(TPP_ID_PATH_VALUE);
+                    assertThat(response.getConsents().get(TPP_ID_PATH_VALUE).getTppState()).isTrue();
+                    assertThat(response.getConsents().get(TPP_ID_PATH_VALUE).getTcDate())
+                            .isEqualTo(LocalDateTime.parse("2026-11-11T11:11:11.000"));
+                })
+                .verifyComplete();
+
+        assertThat(capturedMethod.get()).isEqualTo(HttpMethod.POST);
+        assertThat(capturedUrl.get()).isEqualTo(BASE_URL + "/emd/citizen/FC%20%2F%3F%23/TPP%20%2F%3F%20value");
+        assertThat(capturedBody.get()).isNullOrEmpty();
+    }
+
+    @Test
+    void saveBadRequestMapsToValidationExceptionWithoutUpstreamDetail() {
+        CitizenConnectorImpl connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.BAD_REQUEST,
+                "{\"code\":\"BAD_REQUEST\",\"message\":\"private detail\"}")));
+
+        StepVerifier.create(connector.saveCitizenConsent(FISCAL_CODE, "TPP_XYZ_123"))
+                .expectErrorMatches(error -> error instanceof ValidationException
+                        && !error.getMessage().contains("private detail"))
+                .verify();
+    }
+
+    @Test
+    void saveNotFoundMapsToBffResourceNotFound() {
+        CitizenConnectorImpl connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.NOT_FOUND,
+                "{\"code\":\"TPP_NOT_FOUND\",\"message\":\"private detail\"}")));
+
+        StepVerifier.create(connector.saveCitizenConsent(FISCAL_CODE, "TPP_XYZ_123"))
+                .expectErrorMatches(error -> error instanceof ResourceNotFoundException
+                        && !error.getMessage().contains("private detail"))
+                .verify();
+    }
+
+    @Test
+    void saveUpstreamServerErrorMapsToSanitizedExternalServiceExceptionWithoutRetry() {
+        AtomicReference<Integer> requestCount = new AtomicReference<>(0);
+
+        CitizenConnectorImpl connector = connectorWith(request -> {
+            requestCount.updateAndGet(count -> count + 1);
+            return Mono.just(jsonResponse(HttpStatus.SERVICE_UNAVAILABLE,
+                    "{\"code\":\"GENERIC_ERROR\",\"message\":\"private detail\"}"));
+        });
+
+        StepVerifier.create(connector.saveCitizenConsent(FISCAL_CODE, "TPP_XYZ_123"))
+                .expectErrorMatches(error -> error instanceof ExternalServiceException
+                        && !error.getMessage().contains("private detail"))
+                .verify();
+
+        assertThat(requestCount.get()).isEqualTo(1);
+    }
+
+    @Test
+    void saveRetriesOnlyWhenConnectionCannotBeEstablished() {
+        AtomicReference<Integer> requestCount = new AtomicReference<>(0);
+
+        CitizenConnectorImpl connector = connectorWith(request -> {
+            if (requestCount.updateAndGet(count -> count + 1) == 1) {
+                return Mono.error(new org.springframework.web.reactive.function.client.WebClientRequestException(
+                        new java.net.ConnectException("connection refused"),
+                        request.method(), request.url(), request.headers()));
+            }
+            return Mono.just(jsonResponse(HttpStatus.OK,
+                    "{\"fiscalCode\":\"" + FISCAL_CODE + "\",\"consents\":{\"TPP_XYZ_123\":{"
+                            + "\"tppState\":true,\"tcDate\":\"2026-11-11T11:11:11.000\"}}}"));
+        });
+
+        StepVerifier.create(connector.saveCitizenConsent(FISCAL_CODE, "TPP_XYZ_123"))
+                .assertNext(response -> assertThat(response.getConsents().get("TPP_XYZ_123").getTppState()).isTrue())
+                .verifyComplete();
+
+        assertThat(requestCount.get()).isEqualTo(2);
+    }
+
+    @Test
+    void saveMalformedResponseMapsToExternalServiceException() {
+        CitizenConnectorImpl connector = connectorWith(request -> Mono.just(jsonResponse(HttpStatus.OK, "not-json")));
+
+        StepVerifier.create(connector.saveCitizenConsent(FISCAL_CODE, "TPP_XYZ_123"))
+                .expectError(ExternalServiceException.class)
+                .verify();
+    }}

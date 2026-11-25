@@ -287,7 +287,7 @@ class CitizenConsentControllerV1Test {
                 .expectBody()
                 .jsonPath("$.fiscalCode").isEqualTo(FISCAL_CODE)
                 .jsonPath("$.consents.TPP_XYZ_123.tppState").isEqualTo(true)
-                .jsonPath("$.consents.TPP_XYZ_123.tcDate").isEqualTo("2026-11-11T11:11:11.000");
+                .jsonPath("$.consents.TPP_XYZ_123.tcDate").isEqualTo("2026-11-11T11:11:11");
 
         verify(citizenService).saveCitizenConsent(FISCAL_CODE, "TPP_XYZ_123");
     }

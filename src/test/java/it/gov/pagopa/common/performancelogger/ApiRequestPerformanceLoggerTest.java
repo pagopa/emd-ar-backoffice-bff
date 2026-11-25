@@ -79,6 +79,43 @@ class ApiRequestPerformanceLoggerTest {
     }
 
     @Test
+    void givenSuccessfulConsentPostWhenFilterThenFiscalCodeIsHashed() {
+            String fiscalCode = "RSSMRA85T10A562S";
+            MockServerWebExchange exchange = MockServerWebExchange.from(
+                    MockServerHttpRequest.post("/emd/backoffice/api/v1/citizen/" + fiscalCode + "/consents/tpp1").build()
+            );
+            Mockito.when(filterChainMock.filter(any())).thenReturn(Mono.empty());
+
+            StepVerifier.create(filter.filter(exchange, filterChainMock))
+                    .expectComplete()
+                    .verify();
+
+            List<?> events = memoryAppender.getLoggedEvents();
+            Assertions.assertTrue(events.stream().anyMatch(event -> event.toString()
+                    .contains("/citizen/bd807ad78163541b86ec74dec91f028a83299ba3adc7e1345f8c213573cd22be/consents/tpp1")));
+            Assertions.assertTrue(events.stream().noneMatch(event -> event.toString().contains(fiscalCode)));
+    }
+
+    @Test
+    void givenFailedConsentPostWhenFilterThenFiscalCodeIsHashed() {
+            String fiscalCode = "RSSMRA85T10A562S";
+            MockServerWebExchange exchange = MockServerWebExchange.from(
+                    MockServerHttpRequest.post("/emd/backoffice/api/v1/citizen/" + fiscalCode + "/consents/tpp1").build()
+            );
+            Mockito.when(filterChainMock.filter(any()))
+                    .thenReturn(Mono.error(new RuntimeException("Simulated Error")));
+
+            StepVerifier.create(filter.filter(exchange, filterChainMock))
+                    .expectError()
+                    .verify();
+
+            List<?> events = memoryAppender.getLoggedEvents();
+            Assertions.assertTrue(events.stream().anyMatch(event -> event.toString()
+                    .contains("/citizen/bd807ad78163541b86ec74dec91f028a83299ba3adc7e1345f8c213573cd22be/consents/tpp1")));
+            Assertions.assertTrue(events.stream().noneMatch(event -> event.toString().contains(fiscalCode)));
+    }
+
+    @Test
     void givenNotCoveredPathWhenFilterThenDontPerformanceLog() {
             String path = "/actuator/health";
             MockServerWebExchange exchange = MockServerWebExchange.from(

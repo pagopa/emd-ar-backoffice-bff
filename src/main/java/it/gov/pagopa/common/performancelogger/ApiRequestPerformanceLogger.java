@@ -1,5 +1,6 @@
 package it.gov.pagopa.common.performancelogger;
 
+import it.gov.pagopa.common.utils.Utilities;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -33,7 +34,7 @@ public class ApiRequestPerformanceLogger implements WebFilter {
     static String getRequestDetails(ServerWebExchange exchange) {
         return "%s %s".formatted(
             exchange.getRequest().getMethod(),
-            exchange.getRequest().getPath().value()
+            Utilities.hashFiscalCodeInPath(exchange.getRequest().getPath().value())
         );
     }
 }
